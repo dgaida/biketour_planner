@@ -67,6 +67,13 @@ if __name__ == "__main__":
 
             closest = find_closest_gpx_point(GPX_DIR, lat, lon)
 
+            # Cache closest point für spätere Verwendung
+            booking["_closest_point_cache"] = {
+                "file": str(closest["file"]),
+                "distance": closest["distance"],
+                "index": closest["index"],
+            }
+
             output_path = extend_gpx_route(
                 closest_point=closest,
                 target_lat=lat,
