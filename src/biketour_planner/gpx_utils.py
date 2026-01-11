@@ -230,3 +230,289 @@ def extend_gpx_route(
     except Exception as e:
         print(f"Fehler beim Erweitern der Route: {e}")
         return None
+
+
+def preprocess_gpx_directory(gpx_dir: Path) -> Dict[str, Dict]:
+    """
+    Liest alle GPX-Dateien genau einmal ein und speichert relevante
+    Metadaten in einer Hashtabelle.
+
+    Key: Dateiname (str)
+    Value: Dict mit:
+        - file (Path)
+        - start_lat, start_lon
+        - end_lat, end_lon
+        - total_distance_m
+        - total_ascent_m
+        - max_elevation_m
+    """
+    gpx_index: Dict[str, Dict] = {}
+
+    for gpx_file in Path(gpx_dir).glob("*.gpx"):
+        gpx = read_gpx_file(gpx_file)
+        if gpx is None or not gpx.tracks:
+            continue
+
+        total_distance = 0.0
+        total_ascent = 0.0
+        max_elevation = float("-inf")
+
+        first_point = None
+        last_point = None
+
+        for track in gpx.tracks:
+            for seg in track.segments:
+                prev = None
+                for p in seg.points:
+                    if first_point is None:
+                        first_point = p
+                    last_point = p
+
+                    if p.elevation is not None:
+                        max_elevation = max(max_elevation, p.elevation)
+
+                    if prev:
+                        d = haversine(
+                            prev.latitude, prev.longitude,
+                            p.latitude, p.longitude
+                        )
+                        total_distance += d
+
+                        if (
+                            prev.elevation is not None
+                            and p.elevation is not None
+                            and p.elevation > prev.elevation
+                        ):
+                            total_ascent += p.elevation - prev.elevation
+                    prev = p
+
+        if first_point is None or last_point is None:
+            continue
+
+        gpx_index[gpx_file.name] = {
+            "file": gpx_file,
+            "start_lat": first_point.latitude,
+            "start_lon": first_point.longitude,
+            "end_lat": last_point.latitude,
+            "end_lon": last_point.longitude,
+            "total_distance_m": total_distance,
+            "total_ascent_m": total_ascent,
+            "max_elevation_m": (
+                int(round(max_elevation))
+                if max_elevation != float("-inf")
+                else None
+            ),
+        }
+
+    return gpx_index
+
+
+def collect_gpx_route_between_locations(
+    gpx_index: Dict[str, Dict],
+    gpx_dir: Path,
+    start_lat: float,
+    start_lon: float,
+    target_lat: float,
+    target_lon: float,
+    booking: Dict,
+    max_chain_length: int = 10,
+    max_connection_distance_m: float = 1000.0
+) -> None:
+    """
+    Collects and chains GPX files between a start and a target location
+    using preprocessed GPX metadata.
+
+    The function automatically detects GPX direction (forward/reverse),
+    enforces a maximum connection distance between consecutive GPX files,
+    and accumulates distance, ascent, and maximum elevation.
+
+    Results are written in-place into the booking dictionary.
+
+    Args:
+        gpx_index: Preprocessed GPX metadata (start/end coords, stats).
+        gpx_dir: Directory containing GPX files.
+        start_lat: Latitude of the start location.
+        start_lon: Longitude of the start location.
+        target_lat: Latitude of the target location.
+        target_lon: Longitude of the target location.
+        booking: Booking/day dictionary to enrich.
+        max_chain_length: Maximum number of GPX files to chain.
+        max_connection_distance_m: Maximum allowed distance (meters)
+            between end of one GPX and start/end of the next.
+    """
+
+    start_cp = find_closest_gpx_point(gpx_dir, start_lat, start_lon)
+    target_cp = find_closest_gpx_point(gpx_dir, target_lat, target_lon)
+
+    start_file = start_cp["file"].name
+    target_file = target_cp["file"].name
+
+    visited = set()
+    route_files = []
+
+    current_file = start_file
+    current_lat = start_lat
+    current_lon = start_lon
+
+    total_distance = 0.0
+    total_ascent = 0.0
+    max_elevation = float("-inf")
+
+    for _ in range(max_chain_length):
+        if current_file in visited:
+            break
+
+        meta = gpx_index.get(current_file)
+        if meta is None:
+            break
+
+        # Direction detection for current GPX
+        d_forward = haversine(
+            current_lat, current_lon,
+            meta["start_lat"], meta["start_lon"]
+        )
+        d_reverse = haversine(
+            current_lat, current_lon,
+            meta["end_lat"], meta["end_lon"]
+        )
+
+        reversed_direction = d_reverse < d_forward
+
+        visited.add(current_file)
+        route_files.append({
+            "file": current_file,
+            "reversed": reversed_direction
+        })
+
+        # Accumulate stats
+        total_distance += meta["total_distance_m"]
+        total_ascent += meta["total_ascent_m"]
+        if meta["max_elevation_m"] is not None:
+            max_elevation = max(max_elevation, meta["max_elevation_m"])
+
+        # Update current position
+        if reversed_direction:
+            current_lat = meta["start_lat"]
+            current_lon = meta["start_lon"]
+        else:
+            current_lat = meta["end_lat"]
+            current_lon = meta["end_lon"]
+
+        if current_file == target_file:
+            break
+
+        # Find next GPX with distance constraint
+        next_file = None
+        best_dist = None
+
+        for name, cand in gpx_index.items():
+            if name in visited:
+                continue
+
+            d_to_start = haversine(
+                current_lat, current_lon,
+                cand["start_lat"], cand["start_lon"]
+            )
+            d_to_end = haversine(
+                current_lat, current_lon,
+                cand["end_lat"], cand["end_lon"]
+            )
+
+            d = min(d_to_start, d_to_end)
+
+            if d > max_connection_distance_m:
+                continue
+
+            if best_dist is None or d < best_dist:
+                best_dist = d
+                next_file = name
+
+        if next_file is None:
+            break
+
+        current_file = next_file
+
+    booking["gpx_files"] = route_files
+    booking["total_distance_km"] = round(total_distance / 1000, 2)
+    booking["total_ascent_m"] = int(round(total_ascent))
+    booking["max_elevation_m"] = (
+        int(round(max_elevation)) if max_elevation != float("-inf") else None
+    )
+
+
+def get_gps_tracks4day_4alldays(gpx_dir, bookings):
+    gpx_index = preprocess_gpx_directory(gpx_dir)
+
+    # Nach Anreisedatum sortieren
+    bookings_sorted = sorted(
+        bookings,
+        key=lambda x: x.get('arrival_date', '9999-12-31')
+    )
+
+    prev_lat = prev_lon = None
+
+    for booking in bookings_sorted:
+
+        lat = booking.get('latitude', None)
+        lon = booking.get('longitude', None)
+
+        if prev_lon and lon and lat:
+            collect_gpx_route_between_locations(gpx_index, gpx_dir, prev_lat, prev_lon, lat, lon, booking)
+
+        prev_lat = lat
+        prev_lon = lon
+
+    return bookings_sorted
+
+
+def merge_gpx_files_with_direction(
+    gpx_dir: Path,
+    route_files: list,
+    output_path: Path
+) -> Path:
+    """
+    Merges multiple GPX files into a single GPX track, respecting
+    per-file direction information.
+
+    Args:
+        gpx_dir: Directory containing GPX files.
+        route_files: List of dicts with keys:
+            - file: GPX filename
+            - reversed: bool indicating direction
+        output_path: Path to write merged GPX file.
+
+    Returns:
+        Path to the written GPX file.
+    """
+
+    merged_gpx = gpxpy.gpx.GPX()
+    track = gpxpy.gpx.GPXTrack()
+    merged_gpx.tracks.append(track)
+    segment = gpxpy.gpx.GPXTrackSegment()
+    track.segments.append(segment)
+
+    for entry in route_files:
+        gpx_file = gpx_dir / entry["file"]
+        reversed_dir = entry["reversed"]
+
+        gpx = read_gpx_file(gpx_file)
+        if gpx is None or not gpx.tracks:
+            continue
+
+        for trk in gpx.tracks:
+            for seg in trk.segments:
+                points = seg.points[::-1] if reversed_dir else seg.points
+                for p in points:
+                    segment.points.append(
+                        gpxpy.gpx.GPXTrackPoint(
+                            latitude=p.latitude,
+                            longitude=p.longitude,
+                            elevation=p.elevation,
+                            time=p.time
+                        )
+                    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(merged_gpx.to_xml(), encoding="utf-8")
+
+    return output_path
