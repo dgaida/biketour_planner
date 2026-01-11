@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biketour_planner"
+version = "0.1.0"
+description = "Automated bike tour planning with Booking.com parsing, GPX manipulation and BRouter routing"
+authors = [
+    { name = "Daniel Gaida", email = "daniel.gaida@th-koeln.de" }
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "geopy>=2.4",
+    "gpxpy>=1.6",
+    "requests>=2.31",
+    "python-dateutil>=2.9"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}

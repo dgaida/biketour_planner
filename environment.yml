@@ -1,0 +1,11 @@
+name: biketour_planner
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.9
+  - beautifulsoup4>=4.12
+  - lxml>=5.0
+  - geopy>=2.4
+  - gpxpy>=1.6
+  - requests>=2.31
+  - python-dateutil>=2.9
