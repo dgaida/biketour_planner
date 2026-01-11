@@ -73,7 +73,7 @@ if __name__ == "__main__":
                 target_lon=lon,
                 route_provider_func=route_to_address,
                 output_dir=OUT_DIR,
-                filename_suffix=booking['arrival_date']
+                filename_suffix=booking["arrival_date"],
             )
 
             if output_path:
@@ -85,17 +85,14 @@ if __name__ == "__main__":
     else:
         all_bookings = load_json(Path("output/bookings.json"))
 
-    all_bookings = get_gps_tracks4day_4alldays(GPX_DIR, all_bookings)
+    all_bookings = get_gps_tracks4day_4alldays(GPX_DIR, all_bookings, OUT_DIR)
 
     # JSON speichern mit UTF-8 Encoding
-    Path("output/bookings.json").write_text(
-        json.dumps(all_bookings, indent=2, ensure_ascii=False),
-        encoding="utf-8"
-    )
+    Path("output/bookings.json").write_text(json.dumps(all_bookings, indent=2, ensure_ascii=False), encoding="utf-8")
 
     export_bookings_to_excel(
         json_path=Path("output/bookings.json"),
         template_path=Path("Reiseplanung_Fahrrad template.xlsx"),
         output_path=Path("output/Reiseplanung_Kroatien_2026.xlsx"),
-        start_row=2  # Ab Zeile 2 einfügen (anpassbar)
+        start_row=2,  # Ab Zeile 2 einfügen (anpassbar)
     )

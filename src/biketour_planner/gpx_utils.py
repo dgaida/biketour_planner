@@ -34,14 +34,14 @@ def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
         Geparste GPX-Datei oder None bei Fehler
     """
     # Versuche verschiedene Encoding-Strategien
-    encodings = ['utf-8', 'utf-8-sig', 'latin-1', 'cp1252']
+    encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
 
     for encoding in encodings:
         try:
             content = gpx_file.read_text(encoding=encoding)
 
             # Entferne BOM falls vorhanden
-            if content.startswith('\ufeff'):
+            if content.startswith("\ufeff"):
                 content = content[1:]
 
             # Entferne führende Whitespaces/Newlines
@@ -59,14 +59,14 @@ def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
 
     # Wenn alle Encodings fehlschlagen, versuche binär zu lesen
     try:
-        with open(gpx_file, 'rb') as f:
+        with open(gpx_file, "rb") as f:
             content = f.read()
 
         # Versuche UTF-8 mit Fehlerbehandlung
-        text = content.decode('utf-8', errors='ignore')
+        text = content.decode("utf-8", errors="ignore")
 
         # Entferne BOM
-        if text.startswith('\ufeff'):
+        if text.startswith("\ufeff"):
             text = text[1:]
 
         text = text.lstrip()
@@ -105,12 +105,7 @@ def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Di
                 for i, p in enumerate(seg.points):
                     d = haversine(lat, lon, p.latitude, p.longitude)
                     if best is None or d < best["distance"]:
-                        best = {
-                            "file": gpx_file,
-                            "segment": seg,
-                            "index": i,
-                            "distance": d
-                        }
+                        best = {"file": gpx_file, "segment": seg, "index": i, "distance": d}
 
     if best is None:
         raise ValueError(f"Keine gültigen GPX-Punkte in {gpx_dir} gefunden")
@@ -119,12 +114,7 @@ def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Di
 
 
 def extend_gpx_route(
-        closest_point: Dict,
-        target_lat: float,
-        target_lon: float,
-        route_provider_func,
-        output_dir: Path,
-        filename_suffix: str
+    closest_point: Dict, target_lat: float, target_lon: float, route_provider_func, output_dir: Path, filename_suffix: str
 ) -> Optional[Path]:
     """Erweitert eine GPX-Route um eine Strecke zu einer Zieladresse.
 
@@ -169,8 +159,10 @@ def extend_gpx_route(
             for seg in track.segments:
                 for i, p in enumerate(seg.points):
                     # Prüfe ob dies der gleiche Punkt ist (mit kleiner Toleranz)
-                    if (abs(p.latitude - target_point.latitude) < 0.000001 and
-                            abs(p.longitude - target_point.longitude) < 0.000001):
+                    if (
+                        abs(p.latitude - target_point.latitude) < 0.000001
+                        and abs(p.longitude - target_point.longitude) < 0.000001
+                    ):
                         found_seg = seg
                         found_idx = i
                         break
@@ -180,7 +172,7 @@ def extend_gpx_route(
                 break
 
         if found_seg is None:
-            raise ValueError(f"Konnte Einfügepunkt in neu geladener GPX nicht finden")
+            raise ValueError("Konnte Einfügepunkt in neu geladener GPX nicht finden")
 
         seg = found_seg
         idx = found_idx
@@ -191,9 +183,7 @@ def extend_gpx_route(
         p = seg.points[idx]
 
         # Route zur Zieladresse berechnen
-        route_gpx_str = route_provider_func(
-            p.latitude, p.longitude, target_lat, target_lon
-        )
+        route_gpx_str = route_provider_func(p.latitude, p.longitude, target_lat, target_lon)
 
         if not route_gpx_str or not route_gpx_str.strip():
             raise ValueError("Route-Provider gab leere Antwort zurück")
@@ -213,7 +203,7 @@ def extend_gpx_route(
         # print(new_points)
 
         # Route in Original-GPX einfügen (nach dem nächsten Punkt)
-        seg.points[idx + 1:idx + 1] = new_points
+        seg.points[idx + 1 : idx + 1] = new_points
 
         # Ausgabedatei speichern
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -272,17 +262,10 @@ def preprocess_gpx_directory(gpx_dir: Path) -> Dict[str, Dict]:
                         max_elevation = max(max_elevation, p.elevation)
 
                     if prev:
-                        d = haversine(
-                            prev.latitude, prev.longitude,
-                            p.latitude, p.longitude
-                        )
+                        d = haversine(prev.latitude, prev.longitude, p.latitude, p.longitude)
                         total_distance += d
 
-                        if (
-                            prev.elevation is not None
-                            and p.elevation is not None
-                            and p.elevation > prev.elevation
-                        ):
+                        if prev.elevation is not None and p.elevation is not None and p.elevation > prev.elevation:
                             total_ascent += p.elevation - prev.elevation
                     prev = p
 
@@ -297,11 +280,7 @@ def preprocess_gpx_directory(gpx_dir: Path) -> Dict[str, Dict]:
             "end_lon": last_point.longitude,
             "total_distance_m": total_distance,
             "total_ascent_m": total_ascent,
-            "max_elevation_m": (
-                int(round(max_elevation))
-                if max_elevation != float("-inf")
-                else None
-            ),
+            "max_elevation_m": (int(round(max_elevation)) if max_elevation != float("-inf") else None),
         }
 
     return gpx_index
@@ -316,7 +295,7 @@ def collect_gpx_route_between_locations(
     target_lon: float,
     booking: Dict,
     max_chain_length: int = 10,
-    max_connection_distance_m: float = 1000.0
+    max_connection_distance_m: float = 1000.0,
 ) -> None:
     """
     Collects and chains GPX files between a start and a target location
@@ -367,22 +346,13 @@ def collect_gpx_route_between_locations(
             break
 
         # Direction detection for current GPX
-        d_forward = haversine(
-            current_lat, current_lon,
-            meta["start_lat"], meta["start_lon"]
-        )
-        d_reverse = haversine(
-            current_lat, current_lon,
-            meta["end_lat"], meta["end_lon"]
-        )
+        d_forward = haversine(current_lat, current_lon, meta["start_lat"], meta["start_lon"])
+        d_reverse = haversine(current_lat, current_lon, meta["end_lat"], meta["end_lon"])
 
         reversed_direction = d_reverse < d_forward
 
         visited.add(current_file)
-        route_files.append({
-            "file": current_file,
-            "reversed": reversed_direction
-        })
+        route_files.append({"file": current_file, "reversed": reversed_direction})
 
         # Accumulate stats
         total_distance += meta["total_distance_m"]
@@ -409,14 +379,8 @@ def collect_gpx_route_between_locations(
             if name in visited:
                 continue
 
-            d_to_start = haversine(
-                current_lat, current_lon,
-                cand["start_lat"], cand["start_lon"]
-            )
-            d_to_end = haversine(
-                current_lat, current_lon,
-                cand["end_lat"], cand["end_lon"]
-            )
+            d_to_start = haversine(current_lat, current_lon, cand["start_lat"], cand["start_lon"])
+            d_to_end = haversine(current_lat, current_lon, cand["end_lat"], cand["end_lon"])
 
             d = min(d_to_start, d_to_end)
 
@@ -435,29 +399,27 @@ def collect_gpx_route_between_locations(
     booking["gpx_files"] = route_files
     booking["total_distance_km"] = round(total_distance / 1000, 2)
     booking["total_ascent_m"] = int(round(total_ascent))
-    booking["max_elevation_m"] = (
-        int(round(max_elevation)) if max_elevation != float("-inf") else None
-    )
+    booking["max_elevation_m"] = int(round(max_elevation)) if max_elevation != float("-inf") else None
 
 
-def get_gps_tracks4day_4alldays(gpx_dir, bookings):
+def get_gps_tracks4day_4alldays(gpx_dir, bookings, output_path):
     gpx_index = preprocess_gpx_directory(gpx_dir)
 
     # Nach Anreisedatum sortieren
-    bookings_sorted = sorted(
-        bookings,
-        key=lambda x: x.get('arrival_date', '9999-12-31')
-    )
+    bookings_sorted = sorted(bookings, key=lambda x: x.get("arrival_date", "9999-12-31"))
 
     prev_lat = prev_lon = None
 
     for booking in bookings_sorted:
+        print(booking.get("hotel_name"))
 
-        lat = booking.get('latitude', None)
-        lon = booking.get('longitude', None)
+        lat = booking.get("latitude", None)
+        lon = booking.get("longitude", None)
 
         if prev_lon and lon and lat:
             collect_gpx_route_between_locations(gpx_index, gpx_dir, prev_lat, prev_lon, lat, lon, booking)
+
+            merge_gpx_files_with_direction(gpx_dir, booking.get("gpx_files"), output_path)
 
         prev_lat = lat
         prev_lon = lon
@@ -465,11 +427,7 @@ def get_gps_tracks4day_4alldays(gpx_dir, bookings):
     return bookings_sorted
 
 
-def merge_gpx_files_with_direction(
-    gpx_dir: Path,
-    route_files: list,
-    output_path: Path
-) -> Path:
+def merge_gpx_files_with_direction(gpx_dir: Path, route_files: list, output_dir: Path) -> Optional[Path]:
     """
     Merges multiple GPX files into a single GPX track, respecting
     per-file direction information.
@@ -479,11 +437,14 @@ def merge_gpx_files_with_direction(
         route_files: List of dicts with keys:
             - file: GPX filename
             - reversed: bool indicating direction
-        output_path: Path to write merged GPX file.
+        output_dir: Path to write merged GPX file.
 
     Returns:
         Path to the written GPX file.
     """
+    if route_files is None:
+        print(f"route_files: {route_files}")
+        return None
 
     merged_gpx = gpxpy.gpx.GPX()
     track = gpxpy.gpx.GPXTrack()
@@ -504,15 +465,14 @@ def merge_gpx_files_with_direction(
                 points = seg.points[::-1] if reversed_dir else seg.points
                 for p in points:
                     segment.points.append(
-                        gpxpy.gpx.GPXTrackPoint(
-                            latitude=p.latitude,
-                            longitude=p.longitude,
-                            elevation=p.elevation,
-                            time=p.time
-                        )
+                        gpxpy.gpx.GPXTrackPoint(latitude=p.latitude, longitude=p.longitude, elevation=p.elevation, time=p.time)
                     )
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+
+    out_name = f"{route_files[0]['file']}_merged.gpx"
+    output_path = output_dir / out_name
+
     output_path.write_text(merged_gpx.to_xml(), encoding="utf-8")
 
     return output_path

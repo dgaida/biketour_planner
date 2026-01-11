@@ -15,7 +15,7 @@ except ImportError:
 
 # Google Maps als Fallback (benötigt API-Key)
 try:
-    from googlemaps import Client as GoogleMaps
+    # from googlemaps import Client as GoogleMaps  # F401 ignore
 
     GOOGLE_AVAILABLE = True
 except ImportError:
@@ -35,14 +35,14 @@ def clean_address(address: str) -> str:
         Bereinigte Adresse für besseres Geocoding
     """
     # Entferne Angaben wie "Prizemlje" (Erdgeschoss), "2. kat" (2. Stock)
-    address = re.sub(r'\s+(Prizemlje|[\d]+\.\s*kat)\b', '', address, flags=re.IGNORECASE)
+    address = re.sub(r"\s+(Prizemlje|[\d]+\.\s*kat)\b", "", address, flags=re.IGNORECASE)
 
     # Entferne komplexe Hausnummer-Zusätze wie "- 3" oder "br. 4"
-    address = re.sub(r'\s+-\s+\d+', '', address)
-    address = re.sub(r'\bbr\.\s+\d+', '', address)
+    address = re.sub(r"\s+-\s+\d+", "", address)
+    address = re.sub(r"\bbr\.\s+\d+", "", address)
 
     # Mehrfache Leerzeichen entfernen
-    address = re.sub(r'\s+', ' ', address).strip()
+    address = re.sub(r"\s+", " ", address).strip()
 
     return address
 
@@ -57,10 +57,10 @@ def extract_city_country(address: str) -> str:
         Nur Stadt und Land
     """
     # Format: "Straße, PLZ Stadt, Land"
-    parts = address.split(',')
+    parts = address.split(",")
     if len(parts) >= 2:
         # Nimm die letzten 2 Teile (Stadt + Land)
-        return ','.join(parts[-2:]).strip()
+        return ",".join(parts[-2:]).strip()
     return address
 
 
