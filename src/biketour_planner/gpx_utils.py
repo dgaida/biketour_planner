@@ -4,6 +4,13 @@ from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
 
+GPXIndex = Dict[str, Dict]
+PointDict = Dict[str, float]
+StartPosResult = Tuple[Optional[str], Optional[int], Optional[str]]
+TargetPosResult = Tuple[Optional[str], Optional[int], Optional[float], Optional[float]]
+TrackStats = Tuple[float, float, float]
+
+
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Berechnet die Distanz zwischen zwei Koordinaten in Metern.
 
@@ -333,7 +340,27 @@ def find_closest_point_in_track(points: List[Dict], target_lat: float, target_lo
     return best_idx, best_dist
 
 
-def _find_start_pos(gpx_index, start_lat, start_lon, previous_last_file):
+def _find_start_pos(
+    gpx_index: GPXIndex,
+    start_lat: float,
+    start_lon: float,
+    previous_last_file: Optional[Dict],
+) -> StartPosResult:
+    """Bestimmt die Startposition in den GPX-Daten und gibt die gpx-Datei zurück, die am nächsten an den
+    Startkoordinaten ist.
+
+    Berücksichtigt optional eine Fortsetzung aus der vorherigen Route
+    und erzwingt dabei ggf. die Fahrtrichtung.
+
+    Args:
+        gpx_index: Vorverarbeitete GPX-Metadaten.
+        start_lat: Breitengrad des Startpunkts.
+        start_lon: Längengrad des Startpunkts.
+        previous_last_file: Letzte verwendete GPX-Datei mit Endindex und Richtung.
+
+    Returns:
+        Tuple aus (Dateiname, Startindex, Distanz in Metern, erzwungene Richtung).
+    """
     start_file = None
     start_index = None
     start_distance = float("inf")
@@ -360,15 +387,39 @@ def _find_start_pos(gpx_index, start_lat, start_lon, previous_last_file):
                 start_file = filename
                 start_index = idx
 
-    return start_file, start_index, start_distance, force_direction
+    print(f"📍 Start: {start_file} (Index {start_index}, Distanz: {start_distance:.1f}m)")
+
+    return start_file, start_index, force_direction
 
 
-def _find_target_pos(gpx_index, start_lat, start_lon, target_lat, target_lon):
+def _find_target_pos(
+    gpx_index: GPXIndex,
+    start_lat: float,
+    start_lon: float,
+    target_lat: float,
+    target_lon: float,
+) -> TargetPosResult:
+    """Bestimmt die Zielposition in den GPX-Daten.
+
+    Zusätzlich wird ermittelt, welche Seite des Ziel-Tracks
+    näher am Startpunkt liegt.
+
+    Args:
+        gpx_index: Vorverarbeitete GPX-Metadaten.
+        start_lat: Breitengrad des Startpunkts.
+        start_lon: Längengrad des Startpunkts.
+        target_lat: Breitengrad des Zielpunkts.
+        target_lon: Längengrad des Zielpunkts.
+
+    Returns:
+        Tuple aus (Dateiname, Zielindex, Distanz in Metern,
+        Breitengrad der Ziel-Seite, Längengrad der Ziel-Seite).
+    """
     target_file = None
     target_index = None
     target_distance = float("inf")
-    target_side_lat = None
-    target_side_lon = None
+    start_point = None
+    end_point = None
 
     for filename, meta in gpx_index.items():
         idx, dist = find_closest_point_in_track(meta["points"], target_lat, target_lon)
@@ -381,22 +432,47 @@ def _find_target_pos(gpx_index, start_lat, start_lon, target_lat, target_lon):
             start_point = meta["points"][0]
             end_point = meta["points"][-1]
 
-            dist_to_start = haversine(start_lat, start_lon, start_point["lat"], start_point["lon"])
-            dist_to_end = haversine(start_lat, start_lon, end_point["lat"], end_point["lon"])
+    dist_to_start = haversine(start_lat, start_lon, start_point["lat"], start_point["lon"])
+    dist_to_end = haversine(start_lat, start_lon, end_point["lat"], end_point["lon"])
 
-            if dist_to_start < dist_to_end:
-                target_side_lat = start_point["lat"]
-                target_side_lon = start_point["lon"]
-                print(f"🎯 Ziel-Track {filename}: Start-Seite näher am Startort")
-            else:
-                target_side_lat = end_point["lat"]
-                target_side_lon = end_point["lon"]
-                print(f"🎯 Ziel-Track {filename}: End-Seite näher am Startort")
+    if dist_to_start < dist_to_end:
+        target_side_lat = start_point["lat"]
+        target_side_lon = start_point["lon"]
+        print(f"🎯 Ziel-Track {target_file}: Start-Seite näher am Startort")
+    else:
+        target_side_lat = end_point["lat"]
+        target_side_lon = end_point["lon"]
+        print(f"🎯 Ziel-Track {target_file}: End-Seite näher am Startort")
 
-    return target_file, target_index, target_distance, target_side_lat, target_side_lon
+    print(f"🎯 Ziel: {target_file} (Index {target_index}, Distanz: {target_distance:.1f}m)")
+    print(f"🎯 Ziel-Seite Position: ({target_side_lat:.6f}, {target_side_lon:.6f})")
+    print()
+
+    return target_file, target_index, target_side_lat, target_side_lon
 
 
-def _init_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon):
+def _init_end_index(
+    current_index: int,
+    meta: Dict,
+    force_direction: str,
+    target_side_lat: float,
+    target_side_lon: float,
+) -> int:
+    """Initialisiert den Endindex bei erzwungener Fahrtrichtung.
+
+    Sucht abhängig von der Richtung den Punkt, der der Ziel-Seite
+    am nächsten liegt.
+
+    Args:
+        current_index: Aktueller Startindex im Track.
+        meta: Metadaten des aktuellen GPX-Tracks.
+        force_direction: Erzwungene Richtung ('forward' oder 'backward').
+        target_side_lat: Breitengrad der relevanten Ziel-Seite.
+        target_side_lon: Längengrad der relevanten Ziel-Seite.
+
+    Returns:
+        Berechneter Endindex im Track.
+    """
     if force_direction == "forward":
         # Fahre vorwärts: suche den nächsten Punkt zur Ziel-Seite der NACH current_index liegt
         best_idx = current_index
@@ -432,7 +508,30 @@ def _init_end_index(current_index, meta, force_direction, target_side_lat, targe
     return end_index
 
 
-def _set_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon, iteration):
+def _set_end_index(
+    current_index: int,
+    meta: Dict,
+    force_direction: Optional[str],
+    target_side_lat: float,
+    target_side_lon: float,
+    iteration: int,
+) -> int:
+    """Bestimmt den Endindex für den aktuellen Track.
+
+    In der ersten Iteration kann eine erzwungene Richtung berücksichtigt werden,
+    danach wird immer der dem Ziel nächstgelegene Punkt gewählt.
+
+    Args:
+        current_index: Aktueller Startindex.
+        meta: Metadaten des aktuellen GPX-Tracks.
+        force_direction: Optional erzwungene Richtung.
+        target_side_lat: Breitengrad der Ziel-Seite.
+        target_side_lon: Längengrad der Ziel-Seite.
+        iteration: Aktuelle Iterationsnummer.
+
+    Returns:
+        Berechneter Endindex im Track.
+    """
     # Wenn Richtung erzwungen ist (erste Iteration nach Fortsetzung)
     if iteration == 0 and force_direction is not None:
         end_index = _init_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon)
@@ -454,7 +553,30 @@ def _set_end_index(current_index, meta, force_direction, target_side_lat, target
     return end_index
 
 
-def _get_statistics4track(meta, current_index, end_index, max_elevation, total_distance, total_ascent):
+def _get_statistics4track(
+    meta: Dict,
+    current_index: int,
+    end_index: int,
+    max_elevation: float,
+    total_distance: float,
+    total_ascent: float,
+) -> TrackStats:
+    """Berechnet Statistiken für einen Track-Abschnitt.
+
+    Ermittelt Distanz, Höhenmeter und maximale Höhe
+    zwischen zwei Indizes eines GPX-Tracks.
+
+    Args:
+        meta: Metadaten des GPX-Tracks.
+        current_index: Startindex des Abschnitts.
+        end_index: Endindex des Abschnitts.
+        max_elevation: Bisherige maximale Höhe.
+        total_distance: Bisherige Gesamtdistanz in Metern.
+        total_ascent: Bisheriger Gesamtanstieg in Metern.
+
+    Returns:
+        Tuple aus (maximale Höhe, Gesamtdistanz, Gesamtanstieg).
+    """
     gpx = read_gpx_file(meta["file"])
     if gpx:
         segment_points = []
@@ -483,6 +605,44 @@ def _get_statistics4track(meta, current_index, end_index, max_elevation, total_d
     print(f"   Punkte: {abs(end_index - current_index) + 1}")
 
     return max_elevation, total_distance, total_ascent
+
+
+def _find_next_gpx_file(gpx_index, visited, used_base_files, current_lat, current_lon, max_connection_distance_m):
+    next_file = None
+    next_index = None
+    best_dist = None
+    length_best_file = float("inf")
+
+    print("   Suche nächste GPX-Datei...")
+    for name, cand in gpx_index.items():
+        if name in visited:
+            continue
+
+        cand_base = get_base_filename(name)
+        if cand_base in used_base_files:
+            continue
+
+        length_file = cand["total_distance_m"]
+
+        # Finde nächsten Punkt in diesem Track
+        idx, dist = find_closest_point_in_track(cand["points"], current_lat, current_lon)
+
+        print(length_file, name, dist)
+
+        if dist > max_connection_distance_m:
+            continue
+
+        if best_dist is None or dist < best_dist or (dist <= best_dist + 300 and length_file < length_best_file):
+            best_dist = dist
+            next_file = name
+            next_index = idx
+            length_best_file = length_file
+
+    if next_file:
+        print(f"   ➡️  Nächste: {next_file} (Index {next_index}, Distanz: {best_dist:.1f}m)")
+        print()
+
+    return next_file, next_index
 
 
 def collect_gpx_route_between_locations(
@@ -523,12 +683,10 @@ def collect_gpx_route_between_locations(
     print(f"{'=' * 80}")
 
     # 1. Finde Start-Position
-    start_file, start_index, start_distance, force_direction = _find_start_pos(
-        gpx_index, start_lat, start_lon, previous_last_file
-    )
+    start_file, start_index, force_direction = _find_start_pos(gpx_index, start_lat, start_lon, previous_last_file)
 
     # 2. Finde Ziel-Position UND welche Seite des Ziel-Tracks näher am Start ist
-    target_file, target_index, target_distance, target_side_lat, target_side_lon = _find_target_pos(
+    target_file, target_index, target_side_lat, target_side_lon = _find_target_pos(
         gpx_index, start_lat, start_lon, target_lat, target_lon
     )
 
@@ -539,11 +697,6 @@ def collect_gpx_route_between_locations(
         booking["total_ascent_m"] = 0
         booking["max_elevation_m"] = None
         return
-
-    print(f"📍 Start: {start_file} (Index {start_index}, Distanz: {start_distance:.1f}m)")
-    print(f"🎯 Ziel: {target_file} (Index {target_index}, Distanz: {target_distance:.1f}m)")
-    print(f"🎯 Ziel-Seite Position: ({target_side_lat:.6f}, {target_side_lon:.6f})")
-    print()
 
     visited = set()
     used_base_files = set()
@@ -619,29 +772,9 @@ def collect_gpx_route_between_locations(
             break
 
         # Finde nächste GPX (nächster Punkt in irgendwelchen anderen Tracks)
-        next_file = None
-        next_index = None
-        best_dist = None
-
-        print("   Suche nächste GPX-Datei...")
-        for name, cand in gpx_index.items():
-            if name in visited:
-                continue
-
-            cand_base = get_base_filename(name)
-            if cand_base in used_base_files:
-                continue
-
-            # Finde nächsten Punkt in diesem Track
-            idx, dist = find_closest_point_in_track(cand["points"], current_lat, current_lon)
-
-            if dist > max_connection_distance_m:
-                continue
-
-            if best_dist is None or dist < best_dist:
-                best_dist = dist
-                next_file = name
-                next_index = idx
+        next_file, next_index = _find_next_gpx_file(
+            gpx_index, visited, used_base_files, current_lat, current_lon, max_connection_distance_m
+        )
 
         if next_file is None:
             print(f"⚠️  Keine passende nächste GPX gefunden (max. Distanz: {max_connection_distance_m}m)")
@@ -682,9 +815,6 @@ def collect_gpx_route_between_locations(
                     }
                 )
             break
-
-        print(f"   ➡️  Nächste: {next_file} (Index {next_index}, Distanz: {best_dist:.1f}m)")
-        print()
 
         current_file = next_file
         current_index = next_index
