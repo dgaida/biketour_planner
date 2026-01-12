@@ -28,3 +28,107 @@ where = ["src"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+# ===== Coverage Configuration =====
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/env/*",
+    "*/.venv/*",
+]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ===== Black Configuration =====
+[tool.black]
+line-length = 127
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | data
+  | logs
+)/
+'''
+
+# ===== isort Configuration =====
+[tool.isort]
+profile = "black"
+line_length = 127
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["*/data/*", "*/logs/*", "*/.venv/*"]
+
+# ===== mypy Configuration =====
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+pretty = true
+
+# ===== Flake8 Configuration =====
+# Note: Flake8 doesn't support pyproject.toml natively
+# This is for documentation; create setup.cfg for actual config
+# [tool.flake8] - Not supported, use setup.cfg instead
+
+# ===== Ruff Configuration (Alternative to Flake8) =====
+[tool.ruff]
+line-length = 127
+target-version = "py311"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
