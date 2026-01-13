@@ -143,14 +143,27 @@ def geocode_address(address: str) -> Tuple[float, float]:
 
     # 1. Versuch: Nominatim mit bereinigter Adresse
     try:
-        return geocode_with_nominatim(cleaned)
+        # TODO: ich kann auch ein dict mit einzelnen Elementen hier angeben, s.:
+        #  https://geopy.readthedocs.io/en/stable/#nominatim
+        lat1, lon1 = geocode_with_nominatim(cleaned)
     except ValueError as e:
+        lat1 = lon1 = None
         errors.append(f"Nominatim (bereinigt): {e}")
 
     # 2. Versuch: Photon mit bereinigter Adresse
     if PHOTON_AVAILABLE:
         try:
-            return geocode_with_photon(cleaned)
+            lat2, lon2 = geocode_with_photon(cleaned)
+            print(lat1, lat2, lon1, lon2)
+            if lat1:
+                print(lat1 - lat2, lon1 - lon2)
+                # wenn Angaben fast identisch, dann vertraue nominatim mehr
+                # wenn weit auseinander, dann nehme nur die Stadt, s.u.
+                # hinweis dafür, dass adresse gar nicht verstanden wurde
+                if abs(lat1 - lat2) < 1.2 and abs(lon1 - lon2) < 0.6:
+                    return lat1, lon1
+            else:
+                return lat2, lon2
         except ValueError as e:
             errors.append(f"Photon (bereinigt): {e}")
 

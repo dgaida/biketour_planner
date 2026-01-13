@@ -560,6 +560,7 @@ def _get_statistics4track(
     max_elevation: float,
     total_distance: float,
     total_ascent: float,
+    reversed_direction: bool,
 ) -> TrackStats:
     """Berechnet Statistiken für einen Track-Abschnitt.
 
@@ -577,16 +578,25 @@ def _get_statistics4track(
     Returns:
         Tuple aus (maximale Höhe, Gesamtdistanz, Gesamtanstieg).
     """
+    mystart_index = min(current_index, end_index)
+    myend_index = max(current_index, end_index)
+
     gpx = read_gpx_file(meta["file"])
     if gpx:
         segment_points = []
         point_counter = 0
         for track in gpx.tracks:
             for seg in track.segments:
-                for p in seg.points:
-                    if current_index <= point_counter <= end_index:
-                        segment_points.append(p)
-                    point_counter += 1
+                if reversed_direction:
+                    for p in seg.points[::-1]:
+                        if mystart_index <= point_counter <= myend_index:
+                            segment_points.append(p)
+                        point_counter += 1
+                else:
+                    for p in seg.points:
+                        if mystart_index <= point_counter <= myend_index:
+                            segment_points.append(p)
+                        point_counter += 1
 
         # Berechne Distanz und Aufstieg
         prev = None
@@ -602,7 +612,7 @@ def _get_statistics4track(
                     total_ascent += p.elevation - prev.elevation
             prev = p
 
-    print(f"   Punkte: {abs(end_index - current_index) + 1}")
+    print(f"   Punkte: {myend_index - mystart_index + 1}")
 
     return max_elevation, total_distance, total_ascent
 
@@ -742,7 +752,7 @@ def collect_gpx_route_between_locations(
         else:
             reversed_direction = True
             direction_str = "rückwärts"
-            current_index, end_index = end_index, current_index
+            # current_index, end_index = end_index, current_index
 
         print(f"   Richtung: {direction_str} (Index {current_index} -> {end_index})")
 
@@ -755,7 +765,7 @@ def collect_gpx_route_between_locations(
 
         # Berechne Statistiken für diesen Abschnitt
         max_elevation, total_distance, total_ascent = _get_statistics4track(
-            meta, current_index, end_index, max_elevation, total_distance, total_ascent
+            meta, current_index, end_index, max_elevation, total_distance, total_ascent, reversed_direction
         )
 
         # Aktualisiere Position
@@ -806,14 +816,25 @@ def collect_gpx_route_between_locations(
                     target_end_idx = target_index
                     reversed_dir = False
 
-                route_files.append(
-                    {
-                        "file": target_file,
-                        "start_index": min(target_start_idx, target_end_idx),
-                        "end_index": max(target_start_idx, target_end_idx),
-                        "reversed": reversed_dir,
-                    }
-                )
+                if reversed_dir:
+                    route_files.append(
+                        {
+                            # if reversed, then start and end indices are reversed
+                            "file": target_file,
+                            "end_index": min(target_start_idx, target_end_idx),
+                            "start_index": max(target_start_idx, target_end_idx),
+                            "reversed": reversed_dir,
+                        }
+                    )
+                else:
+                    route_files.append(
+                        {
+                            "file": target_file,
+                            "start_index": min(target_start_idx, target_end_idx),
+                            "end_index": max(target_start_idx, target_end_idx),
+                            "reversed": reversed_dir,
+                        }
+                    )
             break
 
         current_file = next_file
@@ -915,6 +936,8 @@ def merge_gpx_files_with_direction(gpx_dir: Path, route_files: list, output_dir:
         start_idx = entry["start_index"]
         end_idx = entry["end_index"]
         reversed_dir = entry["reversed"]
+        if reversed_dir:
+            start_idx, end_idx = end_idx, start_idx
 
         gpx = read_gpx_file(gpx_file)
         if gpx is None or not gpx.tracks:

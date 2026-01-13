@@ -13,7 +13,7 @@ GPX_DIR = Path("../2026_Kroatien/gpx")
 OUT_DIR = Path("../2026_Kroatien/gpx_modified")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-create_bookings_json = False
+create_bookings_json = True  # False
 
 
 def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
