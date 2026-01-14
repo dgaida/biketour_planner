@@ -574,6 +574,7 @@ def _get_statistics4track(
         max_elevation: Bisherige maximale Höhe.
         total_distance: Bisherige Gesamtdistanz in Metern.
         total_ascent: Bisheriger Gesamtanstieg in Metern.
+        reversed_direction: Ob der Track rückwärts durchlaufen wird.
 
     Returns:
         Tuple aus (maximale Höhe, Gesamtdistanz, Gesamtanstieg).
@@ -617,7 +618,30 @@ def _get_statistics4track(
     return max_elevation, total_distance, total_ascent
 
 
-def _find_next_gpx_file(gpx_index, visited, used_base_files, current_lat, current_lon, max_connection_distance_m):
+def _find_next_gpx_file(
+    gpx_index: GPXIndex,
+    visited: set,
+    used_base_files: set,
+    current_lat: float,
+    current_lon: float,
+    max_connection_distance_m: float,
+) -> Tuple[Optional[str], Optional[int]]:
+    """Findet die nächste GPX-Datei in der Routenkette.
+
+    Sucht unter noch nicht besuchten Dateien diejenige mit dem nächstgelegenen
+    Punkt zur aktuellen Position, unter Berücksichtigung einer maximalen Distanz.
+
+    Args:
+        gpx_index: Vorverarbeitete GPX-Metadaten.
+        visited: Set mit bereits besuchten Dateinamen.
+        used_base_files: Set mit bereits verwendeten Basis-Dateinamen.
+        current_lat: Aktueller Breitengrad.
+        current_lon: Aktueller Längengrad.
+        max_connection_distance_m: Maximale erlaubte Verbindungsdistanz in Metern.
+
+    Returns:
+        Tuple aus (Dateiname der nächsten GPX-Datei, Startindex) oder (None, None).
+    """
     next_file = None
     next_index = None
     best_dist = None
@@ -653,6 +677,206 @@ def _find_next_gpx_file(gpx_index, visited, used_base_files, current_lat, curren
         print()
 
     return next_file, next_index
+
+
+def _add_target_track_to_route(
+    gpx_index: GPXIndex,
+    target_file: str,
+    target_index: int,
+    current_lat: float,
+    current_lon: float,
+    route_files: List[Dict],
+) -> None:
+    """Fügt den Ziel-Track zur Route hinzu.
+
+    Bestimmt welche Seite des Ziel-Tracks (Start oder Ende) näher am aktuellen
+    Punkt liegt und fügt den entsprechenden Track-Abschnitt zur Route hinzu.
+
+    Args:
+        gpx_index: Vorverarbeitete GPX-Metadaten.
+        target_file: Dateiname der Ziel-GPX-Datei.
+        target_index: Index des Zielpunkts im Ziel-Track.
+        current_lat: Aktueller Breitengrad.
+        current_lon: Aktueller Längengrad.
+        route_files: Liste von Route-Dictionaries die erweitert wird (in-place).
+    """
+    print(f"   ➕ Füge Ziel-Track hinzu: {target_file}")
+
+    # Finde welche Seite des Ziel-Tracks näher am aktuellen Punkt ist
+    target_meta = gpx_index[target_file]
+    target_start_idx = 0
+    target_end_idx = target_index
+
+    dist_to_start = haversine(current_lat, current_lon, target_meta["points"][0]["lat"], target_meta["points"][0]["lon"])
+    dist_to_end = haversine(current_lat, current_lon, target_meta["points"][-1]["lat"], target_meta["points"][-1]["lon"])
+
+    if dist_to_end < dist_to_start:
+        # Von Ende zum Zielpunkt
+        target_start_idx = len(target_meta["points"]) - 1
+        target_end_idx = target_index
+        reversed_dir = True
+    else:
+        # Von Anfang zum Zielpunkt
+        target_start_idx = 0
+        target_end_idx = target_index
+        reversed_dir = False
+
+    if reversed_dir:
+        route_files.append(
+            {
+                # if reversed, then start and end indices are reversed
+                "file": target_file,
+                "end_index": min(target_start_idx, target_end_idx),
+                "start_index": max(target_start_idx, target_end_idx),
+                "reversed": reversed_dir,
+            }
+        )
+    else:
+        route_files.append(
+            {
+                "file": target_file,
+                "start_index": min(target_start_idx, target_end_idx),
+                "end_index": max(target_start_idx, target_end_idx),
+                "reversed": reversed_dir,
+            }
+        )
+
+
+def _process_route_iteration(
+    iteration: int,
+    current_file: str,
+    current_index: int,
+    target_file: str,
+    target_index: int,
+    gpx_index: GPXIndex,
+    visited: set,
+    used_base_files: set,
+    route_files: List[Dict],
+    force_direction: Optional[str],
+    target_side_lat: float,
+    target_side_lon: float,
+    max_elevation: float,
+    total_distance: float,
+    total_ascent: float,
+    max_connection_distance_m: float,
+) -> Tuple[bool, Optional[str], Optional[int], float, float, float, float, float]:
+    """Verarbeitet eine einzelne Iteration der Routensuche.
+
+    Prüft Validität der aktuellen Datei, bestimmt den Endindex, berechnet
+    Statistiken und sucht die nächste GPX-Datei in der Kette.
+
+    Args:
+        iteration: Aktuelle Iterationsnummer (0-basiert).
+        current_file: Name der aktuellen GPX-Datei.
+        current_index: Aktueller Startindex im Track.
+        target_file: Name der Ziel-GPX-Datei.
+        target_index: Index des Zielpunkts im Ziel-Track.
+        gpx_index: Vorverarbeitete GPX-Metadaten.
+        visited: Set mit bereits besuchten Dateinamen (wird modifiziert).
+        used_base_files: Set mit bereits verwendeten Basis-Dateinamen (wird modifiziert).
+        route_files: Liste von Route-Dictionaries (wird erweitert).
+        force_direction: Optional erzwungene Richtung.
+        target_side_lat: Breitengrad der Ziel-Seite.
+        target_side_lon: Längengrad der Ziel-Seite.
+        max_elevation: Bisherige maximale Höhe in Metern.
+        total_distance: Bisherige Gesamtdistanz in Metern.
+        total_ascent: Bisheriger Gesamtanstieg in Metern.
+        max_connection_distance_m: Maximale erlaubte Verbindungsdistanz.
+
+    Returns:
+        Tuple aus:
+            - should_continue: Bool ob Iteration fortgesetzt werden soll
+            - next_file: Name der nächsten GPX-Datei (oder None)
+            - next_index: Startindex in der nächsten Datei (oder None)
+            - current_lat: Aktualisierter Breitengrad
+            - current_lon: Aktualisierter Längengrad
+            - max_elevation: Aktualisierte maximale Höhe
+            - total_distance: Aktualisierte Gesamtdistanz
+            - total_ascent: Aktualisierter Gesamtanstieg
+    """
+    # Validierungen
+    if current_file in visited:
+        print(f"⚠️  Iteration {iteration + 1}: Datei {current_file} bereits besucht - Abbruch")
+        return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
+
+    meta = gpx_index.get(current_file)
+    if meta is None:
+        print(f"⚠️  Iteration {iteration + 1}: Keine Metadaten für {current_file} - Abbruch")
+        return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
+
+    base_name = get_base_filename(current_file)
+    if base_name in used_base_files:
+        print(f"⚠️  Iteration {iteration + 1}: Basis-Datei {base_name} bereits verwendet - Abbruch")
+        return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
+
+    print(f"📁 Iteration {iteration + 1}: {current_file} (aktueller Index: {current_index})")
+
+    # Bestimme Endindex
+    if current_file == target_file:
+        # Fahre einfach zum Zielpunkt
+        end_index = target_index
+        print(f"   ✅ Zieldatei erreicht! Fahre zu Index {end_index}")
+    else:
+        end_index = _set_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon, iteration)
+
+    # Bestimme Richtung
+    if current_index <= end_index:
+        reversed_direction = False
+        direction_str = "vorwärts"
+    else:
+        reversed_direction = True
+        direction_str = "rückwärts"
+
+    print(f"   Richtung: {direction_str} (Index {current_index} -> {end_index})")
+
+    # Markiere als besucht
+    visited.add(current_file)
+    used_base_files.add(base_name)
+
+    # Füge zur Route hinzu
+    route_files.append(
+        {"file": current_file, "start_index": current_index, "end_index": end_index, "reversed": reversed_direction}
+    )
+
+    # Berechne Statistiken für diesen Abschnitt
+    max_elevation, total_distance, total_ascent = _get_statistics4track(
+        meta, current_index, end_index, max_elevation, total_distance, total_ascent, reversed_direction
+    )
+
+    # Aktualisiere Position
+    end_point = meta["points"][end_index]
+    current_lat = end_point["lat"]
+    current_lon = end_point["lon"]
+    current_index = end_index
+
+    print(f"   Neue Position: ({current_lat:.6f}, {current_lon:.6f})")
+
+    # Prüfe ob Ziel erreicht
+    if current_file == target_file:
+        print("✅ Ziel erreicht!")
+        return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent
+
+    # Finde nächste GPX
+    next_file, next_index = _find_next_gpx_file(
+        gpx_index, visited, used_base_files, current_lat, current_lon, max_connection_distance_m
+    )
+
+    if next_file is None:
+        print(f"⚠️  Keine passende nächste GPX gefunden (max. Distanz: {max_connection_distance_m}m)")
+
+        # Prüfe ob Ziel-Track noch nicht besucht wurde
+        if target_file not in visited:
+            _add_target_track_to_route(
+                gpx_index=gpx_index,
+                target_file=target_file,
+                target_index=target_index,
+                current_lat=current_lat,
+                current_lon=current_lon,
+                route_files=route_files,
+            )
+        return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent
+
+    return True, next_file, next_index, current_lat, current_lon, max_elevation, total_distance, total_ascent
 
 
 def collect_gpx_route_between_locations(
@@ -721,120 +945,28 @@ def collect_gpx_route_between_locations(
 
     # Hauptschleife: Fahre von Start Richtung Ziel
     for iteration in range(max_chain_length):
-        if current_file in visited:
-            print(f"⚠️  Iteration {iteration + 1}: Datei {current_file} bereits besucht - Abbruch")
-            break
-
-        meta = gpx_index.get(current_file)
-        if meta is None:
-            print(f"⚠️  Iteration {iteration + 1}: Keine Metadaten für {current_file} - Abbruch")
-            break
-
-        base_name = get_base_filename(current_file)
-        if base_name in used_base_files:
-            print(f"⚠️  Iteration {iteration + 1}: Basis-Datei {base_name} bereits verwendet - Abbruch")
-            break
-
-        print(f"📁 Iteration {iteration + 1}: {current_file} (aktueller Index: {current_index})")
-
-        # Wenn dies die Zieldatei ist
-        if current_file == target_file:
-            # Fahre einfach zum Zielpunkt
-            end_index = target_index
-            print(f"   ✅ Zieldatei erreicht! Fahre zu Index {end_index}")
-        else:
-            end_index = _set_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon, iteration)
-
-        # Bestimme Richtung
-        if current_index <= end_index:
-            reversed_direction = False
-            direction_str = "vorwärts"
-        else:
-            reversed_direction = True
-            direction_str = "rückwärts"
-            # current_index, end_index = end_index, current_index
-
-        print(f"   Richtung: {direction_str} (Index {current_index} -> {end_index})")
-
-        visited.add(current_file)
-        used_base_files.add(base_name)
-
-        route_files.append(
-            {"file": current_file, "start_index": current_index, "end_index": end_index, "reversed": reversed_direction}
+        should_continue, next_file, next_index, current_lat, current_lon, max_elevation, total_distance, total_ascent = (
+            _process_route_iteration(
+                iteration=iteration,
+                current_file=current_file,
+                current_index=current_index,
+                target_file=target_file,
+                target_index=target_index,
+                gpx_index=gpx_index,
+                visited=visited,
+                used_base_files=used_base_files,
+                route_files=route_files,
+                force_direction=force_direction,
+                target_side_lat=target_side_lat,
+                target_side_lon=target_side_lon,
+                max_elevation=max_elevation,
+                total_distance=total_distance,
+                total_ascent=total_ascent,
+                max_connection_distance_m=max_connection_distance_m,
+            )
         )
 
-        # Berechne Statistiken für diesen Abschnitt
-        max_elevation, total_distance, total_ascent = _get_statistics4track(
-            meta, current_index, end_index, max_elevation, total_distance, total_ascent, reversed_direction
-        )
-
-        # Aktualisiere Position
-        end_point = meta["points"][end_index]
-        current_lat = end_point["lat"]
-        current_lon = end_point["lon"]
-        current_index = end_index
-
-        print(f"   Neue Position: ({current_lat:.6f}, {current_lon:.6f})")
-
-        # Prüfe ob Ziel erreicht
-        if current_file == target_file:
-            print("✅ Ziel erreicht!")
-            break
-
-        # Finde nächste GPX (nächster Punkt in irgendwelchen anderen Tracks)
-        next_file, next_index = _find_next_gpx_file(
-            gpx_index, visited, used_base_files, current_lat, current_lon, max_connection_distance_m
-        )
-
-        if next_file is None:
-            print(f"⚠️  Keine passende nächste GPX gefunden (max. Distanz: {max_connection_distance_m}m)")
-
-            # Prüfe ob Ziel-Track noch nicht besucht wurde
-            if target_file not in visited:
-                print(f"   ➕ Füge Ziel-Track hinzu: {target_file}")
-
-                # Finde welche Seite des Ziel-Tracks näher am aktuellen Punkt ist
-                target_meta = gpx_index[target_file]
-                target_start_idx = 0
-                target_end_idx = target_index
-
-                dist_to_start = haversine(
-                    current_lat, current_lon, target_meta["points"][0]["lat"], target_meta["points"][0]["lon"]
-                )
-                dist_to_end = haversine(
-                    current_lat, current_lon, target_meta["points"][-1]["lat"], target_meta["points"][-1]["lon"]
-                )
-
-                if dist_to_end < dist_to_start:
-                    # Von Ende zum Zielpunkt
-                    target_start_idx = len(target_meta["points"]) - 1
-                    target_end_idx = target_index
-                    reversed_dir = True
-                else:
-                    # Von Anfang zum Zielpunkt
-                    target_start_idx = 0
-                    target_end_idx = target_index
-                    reversed_dir = False
-
-                if reversed_dir:
-                    route_files.append(
-                        {
-                            # if reversed, then start and end indices are reversed
-                            "file": target_file,
-                            "end_index": min(target_start_idx, target_end_idx),
-                            "start_index": max(target_start_idx, target_end_idx),
-                            "reversed": reversed_dir,
-                        }
-                    )
-                else:
-                    route_files.append(
-                        {
-                            "file": target_file,
-                            "start_index": min(target_start_idx, target_end_idx),
-                            "end_index": max(target_start_idx, target_end_idx),
-                            "reversed": reversed_dir,
-                        }
-                    )
+        if not should_continue:
             break
 
         current_file = next_file
@@ -862,7 +994,7 @@ def collect_gpx_route_between_locations(
         }
 
 
-def get_gps_tracks4day_4alldays(gpx_dir, bookings, output_path):
+def get_gps_tracks4day_4alldays(gpx_dir: Path, bookings: List[Dict], output_path: Path) -> List[Dict]:
     """Verarbeitet alle Buchungen und sammelt GPS-Tracks für jeden Tag.
 
     Args:
