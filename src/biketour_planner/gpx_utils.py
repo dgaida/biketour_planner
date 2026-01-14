@@ -13,14 +13,22 @@ TrackStats = Tuple[float, float, float]
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Berechnet die Distanz zwischen zwei Koordinaten in Metern.
 
+    Verwendet die Haversine-Formel für Großkreisberechnungen auf einer Kugel.
+    Diese Formel liefert gute Näherungswerte für Distanzen auf der Erdoberfläche.
+
     Args:
-        lat1: Breitengrad Punkt 1
-        lon1: Längengrad Punkt 1
-        lat2: Breitengrad Punkt 2
-        lon2: Längengrad Punkt 2
+        lat1: Breitengrad Punkt 1 in Dezimalgrad.
+        lon1: Längengrad Punkt 1 in Dezimalgrad.
+        lat2: Breitengrad Punkt 2 in Dezimalgrad.
+        lon2: Längengrad Punkt 2 in Dezimalgrad.
 
     Returns:
-        Distanz in Metern
+        Distanz in Metern als float.
+
+    Example:
+        >>> distance = haversine(52.5200, 13.4050, 48.1351, 11.5820)  # Berlin -> München
+        >>> print(f"{distance / 1000:.1f} km")
+        504.2 km
     """
     R = 6371000
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -33,11 +41,19 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
     """Liest eine GPX-Datei mit robustem Encoding-Handling.
 
+    Probiert verschiedene Encoding-Strategien (UTF-8, Latin-1, CP1252) und
+    behandelt BOM (Byte Order Mark) sowie führende Whitespaces. Bei allen
+    Fehlschlägen wird ein binärer Leseversuch mit Fehlertoleranz durchgeführt.
+
     Args:
-        gpx_file: Pfad zur GPX-Datei
+        gpx_file: Pfad zur GPX-Datei.
 
     Returns:
-        Geparste GPX-Datei oder None bei Fehler
+        Geparste GPX-Datei als gpxpy.gpx.GPX Objekt oder None bei Fehler.
+
+    Note:
+        Die Funktion gibt Fehlermeldungen auf stdout aus, wirft aber keine
+        Exceptions, um die Verarbeitung weiterer Dateien nicht zu blockieren.
     """
     # Versuche verschiedene Encoding-Strategien
     encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
@@ -87,13 +103,18 @@ def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
 def get_base_filename(filename: str) -> str:
     """Extrahiert den Basis-Dateinamen ohne Richtungssuffix.
 
-    Entfernt Suffixe wie '_inverted', '_reversed', '_rev' etc.
+    Entfernt Suffixe wie '_inverted', '_reversed', '_rev' etc. um zu verhindern,
+    dass derselbe Track in verschiedenen Richtungen mehrfach verwendet wird.
 
     Args:
-        filename: GPX-Dateiname
+        filename: GPX-Dateiname mit potenziellem Richtungssuffix.
 
     Returns:
-        Basis-Dateiname ohne Richtungsinformationen
+        Basis-Dateiname ohne Richtungsinformationen.
+
+    Example:
+        >>> get_base_filename("route_München_Garmisch_reversed.gpx")
+        'route_München_Garmisch.gpx'
     """
     # Entferne häufige Suffixe für invertierte Tracks
     for suffix in ["_inverted", "_reversed", "_rev", "_inverse", "_backward"]:
@@ -104,15 +125,23 @@ def get_base_filename(filename: str) -> str:
 
 
 def find_closest_point_in_track(points: List[Dict], target_lat: float, target_lon: float) -> Tuple[int, float]:
-    """Findet den nächsten Punkt innerhalb eines Tracks.
+    """Findet den nächsten Punkt innerhalb eines Tracks zu einer Zielkoordinate.
+
+    Durchsucht eine Liste von Punkten und berechnet für jeden die Haversine-Distanz
+    zur Zielkoordinate. Gibt den Index des nächstgelegenen Punkts zurück.
 
     Args:
-        points: Liste von Punkt-Dictionaries mit 'lat', 'lon', 'index'
-        target_lat: Ziel-Breitengrad
-        target_lon: Ziel-Längengrad
+        points: Liste von Punkt-Dictionaries mit Keys 'lat', 'lon', 'index'.
+        target_lat: Ziel-Breitengrad in Dezimalgrad.
+        target_lon: Ziel-Längengrad in Dezimalgrad.
 
     Returns:
-        Tuple (index des nächsten Punkts, Distanz in Metern)
+        Tuple bestehend aus:
+            - index: Index des nächsten Punkts in der ursprünglichen Points-Liste.
+            - distance: Distanz zum nächsten Punkt in Metern.
+
+    Raises:
+        ValueError: Wenn points leer ist (implizit durch float('inf') Rückgabe).
     """
     best_idx = None
     best_dist = float("inf")
@@ -129,17 +158,44 @@ def find_closest_point_in_track(points: List[Dict], target_lat: float, target_lo
 class GPXRouteManager:
     """Verwaltet GPX-Routen und ermöglicht die Verkettung von Tracks zwischen Standorten.
 
-    Diese Klasse bietet Funktionen zum:
-    - Vorverarbeiten von GPX-Dateien in einem Verzeichnis
-    - Finden von optimalen Routen zwischen zwei Koordinaten
-    - Zusammenführen mehrerer GPX-Tracks zu einer Route
-    - Berechnen von Statistiken (Distanz, Höhenmeter, etc.)
+    Diese Klasse implementiert einen intelligenten Algorithmus zur Routenplanung für
+    mehrtägige Fahrradtouren. Der Kernalgorithmus arbeitet wie folgt:
+
+    1. **Ziel-Seiten-Bestimmung**: Findet heraus, welche Seite (Anfang oder Ende) des
+       Ziel-Tracks näher am Startpunkt liegt. Dies ist entscheidend, um die richtige
+       Fahrtrichtung durch Zwischen-Tracks zu bestimmen.
+
+    2. **Start-Punkt-Optimierung**: Im Start-Track wird nicht zum nächstgelegenen Punkt
+       zum Ziel gefahren, sondern zum Punkt, der der relevanten Ziel-Seite am nächsten
+       ist. Dies verhindert ineffiziente Routen.
+
+    3. **Track-Verkettung**: Verbindet mehrere GPX-Tracks unter Berücksichtigung von:
+       - Räumlicher Nähe (max_connection_distance_m)
+       - Vermeidung von Duplikaten (gleiche Basis-Dateinamen)
+       - Fortsetzung vorheriger Routen (für mehrtägige Touren)
+
+    4. **Richtungserkennung**: Bestimmt automatisch, ob ein Track vorwärts oder
+       rückwärts durchfahren werden muss.
 
     Attributes:
-        gpx_dir: Verzeichnis mit GPX-Dateien
-        gpx_index: Vorverarbeitete Metadaten aller GPX-Dateien
-        max_connection_distance_m: Maximale Distanz für Track-Verkettung
-        max_chain_length: Maximale Anzahl zu verkettender Tracks
+        gpx_dir: Verzeichnis mit GPX-Dateien.
+        gpx_index: Vorverarbeitete Metadaten aller GPX-Dateien mit Start-/Endpunkten,
+                   Distanzen, Höhenprofilen und allen Trackpunkten.
+        max_connection_distance_m: Maximale Distanz in Metern für die automatische
+                                   Verkettung von Tracks. Tracks die weiter auseinander
+                                   liegen werden nicht verbunden.
+        max_chain_length: Maximale Anzahl zu verkettender Tracks. Verhindert
+                         Endlosschleifen bei Routing-Problemen.
+
+    Example:
+        >>> manager = GPXRouteManager(Path("gpx/"), max_connection_distance_m=1000)
+        >>> booking = {"arrival_date": "2026-05-15", "hotel_name": "Hotel Alpenblick"}
+        >>> manager.collect_route_between_locations(
+        ...     start_lat=47.5, start_lon=11.1,
+        ...     target_lat=47.6, target_lon=11.3,
+        ...     booking=booking
+        ... )
+        >>> print(f"Route: {booking['total_distance_km']} km")
     """
 
     def __init__(
@@ -148,12 +204,15 @@ class GPXRouteManager:
         max_connection_distance_m: float = 1000.0,
         max_chain_length: int = 20,
     ):
-        """Initialisiert den GPXRouteManager.
+        """Initialisiert den GPXRouteManager und lädt alle GPX-Dateien.
 
         Args:
-            gpx_dir: Verzeichnis mit GPX-Dateien
-            max_connection_distance_m: Maximale Distanz für Track-Verkettung in Metern
-            max_chain_length: Maximale Anzahl zu verkettender Tracks
+            gpx_dir: Verzeichnis mit GPX-Dateien.
+            max_connection_distance_m: Maximale Distanz für Track-Verkettung in Metern.
+                                       Tracks die weiter entfernt sind werden nicht
+                                       automatisch verbunden. Default: 1000m.
+            max_chain_length: Maximale Anzahl zu verkettender Tracks. Verhindert
+                             Endlosschleifen. Default: 20.
         """
         self.gpx_dir = gpx_dir
         self.max_connection_distance_m = max_connection_distance_m
@@ -163,15 +222,21 @@ class GPXRouteManager:
     def _preprocess_gpx_directory(self) -> GPXIndex:
         """Liest alle GPX-Dateien genau einmal ein und speichert relevante Metadaten.
 
+        Diese Vorverarbeitung vermeidet wiederholtes Parsen derselben GPX-Dateien
+        während der Routensuche und beschleunigt die Verarbeitung erheblich.
+
         Returns:
-            Dictionary mit Dateinamen als Key und Metadaten als Value:
-                - file (Path)
-                - start_lat, start_lon
-                - end_lat, end_lon
-                - total_distance_m
-                - total_ascent_m
-                - max_elevation_m
-                - points: Liste aller Punkte mit (lat, lon, elevation, index)
+            Dictionary mit Dateinamen als Key und Metadaten-Dictionary als Value:
+                - file (Path): Pfad zur GPX-Datei.
+                - start_lat, start_lon (float): Koordinaten des ersten Punkts.
+                - end_lat, end_lon (float): Koordinaten des letzten Punkts.
+                - total_distance_m (float): Gesamtdistanz des Tracks in Metern.
+                - total_ascent_m (float): Gesamter positiver Höhenunterschied in Metern.
+                - max_elevation_m (int): Höchster Punkt des Tracks in Metern.
+                - points (List[Dict]): Alle Trackpunkte mit lat, lon, elevation, index.
+
+        Note:
+            Dateien die nicht geparst werden können werden stillschweigend übersprungen.
         """
         gpx_index: GPXIndex = {}
 
@@ -237,18 +302,32 @@ class GPXRouteManager:
         start_lon: float,
         previous_last_file: Optional[Dict],
     ) -> StartPosResult:
-        """Bestimmt die Startposition in den GPX-Daten.
+        """Bestimmt die Startposition für die Routensuche.
 
-        Berücksichtigt optional eine Fortsetzung aus der vorherigen Route
-        und erzwingt dabei ggf. die Fahrtrichtung.
+        Wenn eine vorherige Route existiert (mehrtägige Tour), wird diese fortgesetzt.
+        Dabei wird die Fahrtrichtung des Vortags erzwungen, um konsistente Routen
+        zu gewährleisten. Ohne Vorgänger wird der nächstgelegene Punkt in allen
+        GPX-Dateien gesucht.
 
         Args:
-            start_lat: Breitengrad des Startpunkts.
-            start_lon: Längengrad des Startpunkts.
-            previous_last_file: Letzte verwendete GPX-Datei mit Endindex und Richtung.
+            start_lat: Breitengrad des Startpunkts in Dezimalgrad.
+            start_lon: Längengrad des Startpunkts in Dezimalgrad.
+            previous_last_file: Optional. Dictionary der letzten verwendeten GPX-Datei
+                               vom Vortag mit Keys:
+                               - 'file' (str): Dateiname
+                               - 'end_index' (int): Letzter verwendeter Index
+                               - 'reversed' (bool): Ob Track rückwärts durchfahren wurde
 
         Returns:
-            Tuple aus (Dateiname, Startindex, erzwungene Richtung).
+            Tuple aus:
+                - start_file (str): Dateiname der Start-GPX-Datei.
+                - start_index (int): Startindex im Track.
+                - force_direction (str|None): Erzwungene Richtung ('forward'/'backward')
+                  falls Fortsetzung vom Vortag, sonst None.
+
+        Note:
+            Die erzwungene Richtung stellt sicher, dass mehrtägige Touren konsistent
+            in eine Richtung fortgesetzt werden und nicht hin- und hergefahren wird.
         """
         start_file = None
         start_index = None
@@ -285,20 +364,41 @@ class GPXRouteManager:
         target_lat: float,
         target_lon: float,
     ) -> TargetPosResult:
-        """Bestimmt die Zielposition in den GPX-Daten.
+        """Bestimmt die Zielposition und die relevante Ziel-Seite für die Routensuche.
 
-        Zusätzlich wird ermittelt, welche Seite des Ziel-Tracks
-        näher am Startpunkt liegt.
+        Diese Methode implementiert die zentrale Logik für effizientes Routing:
+
+        1. Findet den Track der dem Ziel am nächsten liegt
+        2. Bestimmt, welche Seite dieses Tracks (Anfang oder Ende) näher am Start ist
+        3. Diese "Ziel-Seite" wird zur Referenz für alle Zwischenschritte
+
+        **Warum die Ziel-Seite wichtig ist:**
+        Stell dir vor, der Ziel-Track verläuft von Nord nach Süd. Wenn der Startpunkt
+        im Norden liegt, sollten alle Zwischen-Tracks zum Nord-Ende des Ziel-Tracks
+        führen. Würden wir stattdessen den nächsten Punkt zum Ziel selbst suchen,
+        könnten wir ineffiziente Routen erhalten, die erst zum Süd-Ende fahren und
+        dann zurück.
 
         Args:
-            start_lat: Breitengrad des Startpunkts.
-            start_lon: Längengrad des Startpunkts.
-            target_lat: Breitengrad des Zielpunkts.
-            target_lon: Längengrad des Zielpunkts.
+            start_lat: Breitengrad des Startpunkts in Dezimalgrad.
+            start_lon: Längengrad des Startpunkts in Dezimalgrad.
+            target_lat: Breitengrad des Zielpunkts (Unterkunft) in Dezimalgrad.
+            target_lon: Längengrad des Zielpunkts (Unterkunft) in Dezimalgrad.
 
         Returns:
-            Tuple aus (Dateiname, Zielindex, Breitengrad der Ziel-Seite,
-            Längengrad der Ziel-Seite).
+            Tuple aus:
+                - target_file (str): Dateiname der Ziel-GPX-Datei.
+                - target_index (int): Index des dem Ziel nächstgelegenen Punkts.
+                - target_side_lat (float): Breitengrad der relevanten Ziel-Seite
+                  (Start- oder End-Punkt des Ziel-Tracks).
+                - target_side_lon (float): Längengrad der relevanten Ziel-Seite
+                  (Start- oder End-Punkt des Ziel-Tracks).
+
+        Note:
+            Die Ziel-Seite (target_side_lat/lon) repräsentiert denjenigen Endpunkt
+            des Ziel-Tracks (Anfang oder Ende), der dem Startort am nächsten ist.
+            Diese Koordinate wird in allen folgenden Routenschritten als Zielpunkt
+            verwendet, um eine konsistente Annäherung zu gewährleisten.
         """
         target_file = None
         target_index = None
@@ -342,17 +442,27 @@ class GPXRouteManager:
         target_side_lat: float,
         target_side_lon: float,
     ) -> int:
-        """Initialisiert den Endindex bei erzwungener Fahrtrichtung.
+        """Initialisiert den Endindex bei erzwungener Fahrtrichtung (Fortsetzung vom Vortag).
+
+        Bei mehrtägigen Touren muss die Richtung vom Vortag beibehalten werden.
+        Diese Methode findet in der erzwungenen Richtung den Punkt, der der
+        relevanten Ziel-Seite am nächsten ist.
 
         Args:
-            current_index: Aktueller Startindex im Track.
-            meta: Metadaten des aktuellen GPX-Tracks.
-            force_direction: Erzwungene Richtung ('forward' oder 'backward').
-            target_side_lat: Breitengrad der relevanten Ziel-Seite.
-            target_side_lon: Längengrad der relevanten Ziel-Seite.
+            current_index: Aktueller Startindex im Track (Fortsetzungspunkt vom Vortag).
+            meta: Metadaten des aktuellen GPX-Tracks aus gpx_index.
+            force_direction: Erzwungene Richtung - entweder 'forward' (vorwärts durch
+                            den Track) oder 'backward' (rückwärts durch den Track).
+            target_side_lat: Breitengrad der relevanten Ziel-Seite (siehe _find_target_pos).
+            target_side_lon: Längengrad der relevanten Ziel-Seite (siehe _find_target_pos).
 
         Returns:
-            Berechneter Endindex im Track.
+            Berechneter Endindex im Track. Dies ist der Punkt in der erzwungenen Richtung,
+            der der Ziel-Seite am nächsten ist.
+
+        Note:
+            Bei 'forward' werden nur Punkte nach current_index betrachtet,
+            bei 'backward' nur Punkte vor current_index.
         """
         if force_direction == "forward":
             best_idx = current_index
@@ -395,18 +505,31 @@ class GPXRouteManager:
         target_side_lon: float,
         iteration: int,
     ) -> int:
-        """Bestimmt den Endindex für den aktuellen Track.
+        """Bestimmt den Endindex für den aktuellen Track-Abschnitt.
+
+        In der ersten Iteration bei Fortsetzung vom Vortag wird die erzwungene Richtung
+        verwendet. In allen anderen Fällen wird der Punkt im gesamten Track gesucht,
+        der der Ziel-Seite am nächsten ist (unabhängig von der Fahrtrichtung).
+
+        **Warum zur Ziel-Seite navigieren:**
+        Durch die Orientierung an der Ziel-Seite (nicht am Ziel selbst) wird in jedem
+        Schritt der Routensuche auf die richtige Seite des Ziel-Tracks zugesteuert.
+        Dies verhindert ineffiziente Umwege.
 
         Args:
-            current_index: Aktueller Startindex.
-            meta: Metadaten des aktuellen GPX-Tracks.
-            force_direction: Optional erzwungene Richtung.
-            target_side_lat: Breitengrad der Ziel-Seite.
-            target_side_lon: Längengrad der Ziel-Seite.
-            iteration: Aktuelle Iterationsnummer.
+            current_index: Aktueller Startindex im Track.
+            meta: Metadaten des aktuellen GPX-Tracks aus gpx_index.
+            force_direction: Optional erzwungene Richtung ('forward'/'backward') bei
+                            Fortsetzung vom Vortag, sonst None.
+            target_side_lat: Breitengrad der relevanten Ziel-Seite. Dies ist die
+                            Koordinate, zu der wir in jedem Schritt navigieren.
+            target_side_lon: Längengrad der relevanten Ziel-Seite.
+            iteration: Aktuelle Iterationsnummer (0-basiert). Bei 0 mit force_direction
+                      wird die erzwungene Richtung verwendet.
 
         Returns:
-            Berechneter Endindex im Track.
+            Berechneter Endindex im Track. Dies ist der Punkt, der der Ziel-Seite
+            am nächsten ist (unter Berücksichtigung der Richtungsvorgabe).
         """
         if iteration == 0 and force_direction is not None:
             end_index = self._init_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon)
@@ -435,19 +558,29 @@ class GPXRouteManager:
         total_ascent: float,
         reversed_direction: bool,
     ) -> TrackStats:
-        """Berechnet Statistiken für einen Track-Abschnitt.
+        """Berechnet Statistiken für einen Track-Abschnitt zwischen zwei Indizes.
+
+        Lädt die GPX-Datei, extrahiert den relevanten Abschnitt und berechnet:
+        - Maximale Höhe
+        - Distanz (aufsummiert über Punktabstände)
+        - Positiver Höhenunterschied (nur Anstiege)
 
         Args:
-            meta: Metadaten des GPX-Tracks.
+            meta: Metadaten des GPX-Tracks aus gpx_index.
             current_index: Startindex des Abschnitts.
             end_index: Endindex des Abschnitts.
-            max_elevation: Bisherige maximale Höhe.
-            total_distance: Bisherige Gesamtdistanz in Metern.
-            total_ascent: Bisheriger Gesamtanstieg in Metern.
-            reversed_direction: Ob der Track rückwärts durchlaufen wird.
+            max_elevation: Bisherige maximale Höhe in Metern (wird aktualisiert).
+            total_distance: Bisherige Gesamtdistanz in Metern (wird aktualisiert).
+            total_ascent: Bisheriger Gesamtanstieg in Metern (wird aktualisiert).
+            reversed_direction: Wenn True, wird der Track-Abschnitt rückwärts
+                               durchlaufen (Punkte in umgekehrter Reihenfolge).
 
         Returns:
-            Tuple aus (maximale Höhe, Gesamtdistanz, Gesamtanstieg).
+            Tuple aus (max_elevation, total_distance, total_ascent) mit aktualisierten Werten.
+
+        Note:
+            Die Statistiken werden kumulativ berechnet, d.h. die übergebenen Werte
+            werden mit den Werten des aktuellen Abschnitts erweitert.
         """
         mystart_index = min(current_index, end_index)
         myend_index = max(current_index, end_index)
@@ -495,14 +628,35 @@ class GPXRouteManager:
     ) -> Tuple[Optional[str], Optional[int]]:
         """Findet die nächste GPX-Datei in der Routenkette.
 
+        Sucht unter allen noch nicht besuchten Dateien diejenige mit dem nächstgelegenen
+        Punkt zur aktuellen Position. Berücksichtigt dabei:
+        - Maximale Verbindungsdistanz (max_connection_distance_m)
+        - Vermeidung bereits besuchter Dateien
+        - Vermeidung derselben Basis-Route (z.B. Route und Route_reversed)
+        - Bei ähnlichen Distanzen wird die kürzere Datei bevorzugt
+
+        **Logik der Dateiauswahl:**
+        Die Methode wählt primär nach geringster Distanz aus. Bei mehreren Kandidaten
+        mit ähnlicher Distanz (<300m Unterschied) wird jedoch die kürzere Route
+        bevorzugt, um unnötige Umwege zu vermeiden.
+
         Args:
-            visited: Set mit bereits besuchten Dateinamen.
-            used_base_files: Set mit bereits verwendeten Basis-Dateinamen.
-            current_lat: Aktueller Breitengrad.
-            current_lon: Aktueller Längengrad.
+            visited: Set mit bereits besuchten Dateinamen zur Vermeidung von Schleifen.
+            used_base_files: Set mit bereits verwendeten Basis-Dateinamen (ohne
+                            Richtungssuffixe) um zu verhindern, dass derselbe Track
+                            in verschiedenen Richtungen verwendet wird.
+            current_lat: Aktueller Breitengrad in Dezimalgrad.
+            current_lon: Aktueller Längengrad in Dezimalgrad.
 
         Returns:
-            Tuple aus (Dateiname der nächsten GPX-Datei, Startindex) oder (None, None).
+            Tuple aus:
+                - next_file (str|None): Dateiname der nächsten GPX-Datei oder None
+                  wenn keine passende Datei gefunden wurde.
+                - next_index (int|None): Startindex im nächsten Track oder None.
+
+        Note:
+            Gibt (None, None) zurück wenn keine Datei innerhalb der max_connection_distance_m
+            gefunden werden kann. In diesem Fall wird die Routensuche unterbrochen.
         """
         next_file = None
         next_index = None
@@ -547,14 +701,27 @@ class GPXRouteManager:
         current_lon: float,
         route_files: List[Dict],
     ) -> None:
-        """Fügt den Ziel-Track zur Route hinzu.
+        """Fügt den Ziel-Track zur Route hinzu wenn kein Zwischen-Track gefunden wurde.
+
+        Diese Methode wird aufgerufen, wenn die automatische Routensuche keinen
+        passenden Zwischen-Track mehr findet (Distanz > max_connection_distance_m),
+        aber der Ziel-Track noch nicht erreicht wurde. Der Ziel-Track wird dann
+        direkt angehängt.
+
+        **Richtungsbestimmung:**
+        Die Methode wählt die Fahrtrichtung durch den Ziel-Track basierend darauf,
+        welches Ende (Start oder Ende) näher an der aktuellen Position liegt.
 
         Args:
             target_file: Dateiname der Ziel-GPX-Datei.
-            target_index: Index des Zielpunkts im Ziel-Track.
-            current_lat: Aktueller Breitengrad.
-            current_lon: Aktueller Längengrad.
-            route_files: Liste von Route-Dictionaries die erweitert wird (in-place).
+            target_index: Index des Zielpunkts (Unterkunft) im Ziel-Track.
+            current_lat: Aktueller Breitengrad in Dezimalgrad.
+            current_lon: Aktueller Längengrad in Dezimalgrad.
+            route_files: Liste von Route-Dictionaries die um den Ziel-Track erweitert
+                        wird (in-place Modifikation).
+
+        Note:
+            Die Methode modifiziert route_files direkt ohne Rückgabewert.
         """
         print(f"   ➕ Füge Ziel-Track hinzu: {target_file}")
 
@@ -612,25 +779,44 @@ class GPXRouteManager:
     ) -> Tuple[bool, Optional[str], Optional[int], float, float, float, float, float]:
         """Verarbeitet eine einzelne Iteration der Routensuche.
 
+        Führt für einen einzelnen Track-Abschnitt folgende Schritte aus:
+        1. Validierung (bereits besucht? Metadaten vorhanden?)
+        2. Bestimmung des Endindex (wohin im Track fahren?)
+        3. Bestimmung der Fahrtrichtung (vorwärts/rückwärts)
+        4. Aktualisierung der Statistiken (Distanz, Höhenmeter)
+        5. Suche nach dem nächsten Track (falls Ziel noch nicht erreicht)
+
         Args:
-            iteration: Aktuelle Iterationsnummer (0-basiert).
+            iteration: Aktuelle Iterationsnummer (0-basiert) für Logging.
             current_file: Name der aktuellen GPX-Datei.
             current_index: Aktueller Startindex im Track.
-            target_file: Name der Ziel-GPX-Datei.
+            target_file: Name der Ziel-GPX-Datei für Zielprüfung.
             target_index: Index des Zielpunkts im Ziel-Track.
-            visited: Set mit bereits besuchten Dateinamen (wird modifiziert).
-            used_base_files: Set mit bereits verwendeten Basis-Dateinamen (wird modifiziert).
+            visited: Set mit bereits besuchten Dateinamen (wird erweitert).
+            used_base_files: Set mit bereits verwendeten Basis-Dateinamen (wird erweitert).
             route_files: Liste von Route-Dictionaries (wird erweitert).
-            force_direction: Optional erzwungene Richtung.
-            target_side_lat: Breitengrad der Ziel-Seite.
-            target_side_lon: Längengrad der Ziel-Seite.
-            max_elevation: Bisherige maximale Höhe in Metern.
-            total_distance: Bisherige Gesamtdistanz in Metern.
-            total_ascent: Bisheriger Gesamtanstieg in Metern.
+            force_direction: Optional erzwungene Richtung bei Fortsetzung vom Vortag.
+            target_side_lat: Breitengrad der relevanten Ziel-Seite für Navigation.
+            target_side_lon: Längengrad der relevanten Ziel-Seite für Navigation.
+            max_elevation: Bisherige maximale Höhe in Metern (wird aktualisiert).
+            total_distance: Bisherige Gesamtdistanz in Metern (wird aktualisiert).
+            total_ascent: Bisheriger Gesamtanstieg in Metern (wird aktualisiert).
 
         Returns:
-            Tuple aus (should_continue, next_file, next_index, current_lat, current_lon,
-            max_elevation, total_distance, total_ascent).
+            Tuple aus:
+                - should_continue (bool): True wenn weitere Iteration nötig, False wenn
+                  Ziel erreicht oder Fehler aufgetreten.
+                - next_file (str|None): Dateiname der nächsten GPX-Datei.
+                - next_index (int|None): Startindex im nächsten Track.
+                - current_lat (float): Aktueller Breitengrad nach diesem Schritt.
+                - current_lon (float): Aktueller Längengrad nach diesem Schritt.
+                - max_elevation (float): Aktualisierte maximale Höhe.
+                - total_distance (float): Aktualisierte Gesamtdistanz.
+                - total_ascent (float): Aktualisierter Gesamtanstieg.
+
+        Note:
+            Bei Fehlern (bereits besuchte Datei, fehlende Metadaten) wird should_continue=False
+            zurückgegeben um die Routensuche zu beenden.
         """
         # Validierungen
         if current_file in visited:
@@ -715,20 +901,53 @@ class GPXRouteManager:
     ) -> None:
         """Sammelt und verkettet GPX-Dateien zwischen Start- und Zielort.
 
-        Die Funktion arbeitet rückwärts vom Ziel zum Start:
-        1. Findet die Seite des Ziel-Tracks die näher am Start ist
-        2. Findet im Start-Track den Punkt der dieser Ziel-Seite am nächsten ist
-        3. Fährt nur bis zu diesem Punkt
-        4. Sucht von dort den nächsten Track
-        5. Wiederholt dies bis zum Ziel
+        Dies ist die Hauptmethode für die Routenplanung. Sie implementiert einen
+        intelligenten Algorithmus zur Verkettung mehrerer GPX-Tracks:
+
+        **Algorithmus-Übersicht:**
+        1. **Ziel-Seiten-Identifikation**: Bestimmt welche Seite (Anfang oder Ende)
+           des Ziel-Tracks näher am Startort liegt. Diese Seite wird zur Referenz
+           für die gesamte Routensuche.
+
+        2. **Start-Optimierung**: Im Start-Track wird nicht zum nächsten Punkt zum
+           Ziel selbst gefahren, sondern zum Punkt der der Ziel-Seite am nächsten
+           ist. Dies verhindert ineffiziente Routenführung.
+
+        3. **Iterative Verkettung**: Von diesem Punkt aus werden sukzessive weitere
+           Tracks aneinandergehängt, wobei jeder Schritt zur Ziel-Seite navigiert.
+
+        4. **Richtungserkennung**: Für jeden Track wird automatisch bestimmt, ob er
+           vorwärts oder rückwärts durchfahren werden muss.
+
+        **Beispiel:**
+        Start in München, Ziel-Unterkunft in Garmisch. Der Ziel-Track verläuft
+        von Mittenwald nach Garmisch. Da München nördlich von beiden liegt, ist
+        das Nord-Ende (Mittenwald) die relevante Ziel-Seite. Alle Zwischen-Tracks
+        werden so ausgewählt, dass sie sukzessive näher an Mittenwald führen, nicht
+        direkt an Garmisch. Im Ziel-Track wird dann von Mittenwald nach Garmisch
+        gefahren.
 
         Args:
-            start_lat: Breitengrad des Startorts.
-            start_lon: Längengrad des Startorts.
-            target_lat: Breitengrad des Zielorts.
-            target_lon: Längengrad des Zielorts.
-            booking: Buchungs-/Tages-Dictionary zum Anreichern.
-            previous_last_file: Dict mit 'file', 'end_index' der letzten Datei.
+            start_lat: Breitengrad des Startorts in Dezimalgrad.
+            start_lon: Längengrad des Startorts in Dezimalgrad.
+            target_lat: Breitengrad des Zielorts (Unterkunft) in Dezimalgrad.
+            target_lon: Längengrad des Zielorts (Unterkunft) in Dezimalgrad.
+            booking: Buchungs-/Tages-Dictionary zum Anreichern mit Route-Informationen.
+                    Wird mit folgenden Keys erweitert:
+                    - gpx_files: Liste der verwendeten Track-Abschnitte
+                    - total_distance_km: Gesamtdistanz in Kilometern
+                    - total_ascent_m: Gesamter positiver Höhenunterschied in Metern
+                    - max_elevation_m: Höchster Punkt in Metern
+                    - _last_gpx_file: Letzte Datei für Fortsetzung am nächsten Tag
+            previous_last_file: Optional. Dictionary der letzten verwendeten GPX-Datei
+                               vom Vortag für mehrtägige Touren mit Keys:
+                               - 'file' (str): Dateiname
+                               - 'end_index' (int): Letzter Index
+                               - 'reversed' (bool): Fahrtrichtung
+
+        Note:
+            Die Methode modifiziert das booking-Dictionary direkt (in-place).
+            Bei Fehlern werden Null-Werte in booking eingetragen.
         """
         print(f"\n{'=' * 80}")
         print(f"Route-Suche: ({start_lat:.6f}, {start_lon:.6f}) -> ({target_lat:.6f}, {target_lon:.6f})")
@@ -812,21 +1031,33 @@ class GPXRouteManager:
             }
 
     def merge_gpx_files(self, route_files: List[Dict], output_dir: Path, booking: Dict) -> Optional[Path]:
-        """Merged mehrere GPX-Dateien zu einem einzelnen GPX-Track.
+        """Merged mehrere GPX-Track-Abschnitte zu einer einzelnen GPX-Datei.
 
-        Berücksichtigt Start- und End-Indizes für Teilstrecken.
+        Erstellt eine neue GPX-Datei, die alle Track-Abschnitte der Route in der
+        richtigen Reihenfolge und Richtung enthält. Berücksichtigt dabei Start- und
+        End-Indizes für Teilstrecken sowie die Fahrtrichtung (vorwärts/rückwärts).
 
         Args:
-            route_files: Liste von Dicts mit Keys:
-                - file: GPX-Dateiname
-                - start_index: Start-Index im Track
-                - end_index: End-Index im Track
-                - reversed: bool für Richtung
-            output_dir: Pfad für merged GPX-Datei
-            booking: Buchungs-Dictionary für Dateinamen-Generierung
+            route_files: Liste von Dictionaries mit Track-Abschnittsinformationen.
+                        Jedes Dictionary muss folgende Keys enthalten:
+                        - file (str): GPX-Dateiname
+                        - start_index (int): Start-Index im Track
+                        - end_index (int): End-Index im Track
+                        - reversed (bool): True für rückwärts, False für vorwärts
+            output_dir: Ausgabeverzeichnis für die merged GPX-Datei.
+            booking: Buchungs-Dictionary zur Generierung des Dateinamens.
+                    Verwendet werden:
+                    - arrival_date: Für Datumsprefix im Dateinamen
+                    - hotel_name: Für lesbaren Dateinamen
 
         Returns:
-            Pfad zur geschriebenen GPX-Datei oder None bei Fehler
+            Path zur geschriebenen GPX-Datei oder None bei Fehler (z.B. leere route_files,
+            Parsing-Fehler).
+
+        Note:
+            Der Dateiname wird automatisch generiert im Format:
+            "{arrival_date}_{hotel_name_clean}_merged.gpx"
+            Problematische Zeichen im Hotelnamen werden entfernt/ersetzt.
         """
         if route_files is None or len(route_files) == 0:
             print(f"route_files: {route_files}")
@@ -889,14 +1120,40 @@ class GPXRouteManager:
         return output_path
 
     def process_all_bookings(self, bookings: List[Dict], output_dir: Path) -> List[Dict]:
-        """Verarbeitet alle Buchungen und sammelt GPS-Tracks für jeden Tag.
+        """Verarbeitet alle Buchungen und erstellt GPS-Tracks für jeden Reisetag.
+
+        Durchläuft alle Buchungen chronologisch und sammelt für jeden Tag die
+        passenden GPS-Tracks. Berücksichtigt dabei die Fortsetzung mehrtägiger
+        Touren (previous_last_file).
+
+        **Ablauf:**
+        1. Sortierung der Buchungen nach Anreisedatum
+        2. Für jede Buchung (außer der ersten):
+           - Sammle Route vom vorherigen Zielort zum aktuellen
+           - Merge alle Track-Abschnitte zu einer GPX-Datei
+           - Speichere letzte verwendete Datei für nächsten Tag
+        3. Rückgabe der angereicherten Buchungen
 
         Args:
-            bookings: Liste mit Buchungen
-            output_dir: Ausgabepfad für merged GPX-Dateien
+            bookings: Liste mit Buchungs-Dictionaries. Jedes Dictionary sollte
+                     mindestens folgende Keys enthalten:
+                     - arrival_date: ISO-formatiertes Datum (YYYY-MM-DD)
+                     - hotel_name: Name der Unterkunft
+                     - latitude: Breitengrad der Unterkunft
+                     - longitude: Längengrad der Unterkunft
+            output_dir: Ausgabepfad für merged GPX-Dateien.
 
         Returns:
-            Sortierte Liste der Buchungen mit GPS-Track-Informationen
+            Sortierte Liste der Buchungen angereichert mit GPS-Track-Informationen:
+            - gpx_files: Liste der verwendeten Track-Abschnitte
+            - total_distance_km: Gesamtdistanz in Kilometern
+            - total_ascent_m: Gesamter positiver Höhenunterschied in Metern
+            - max_elevation_m: Höchster Punkt in Metern
+            - _last_gpx_file: Letzte Datei für Fortsetzung (interne Information)
+
+        Note:
+            Die erste Buchung erhält keine Route-Informationen, da kein Startpunkt
+            existiert. Buchungen ohne Koordinaten werden übersprungen.
         """
         # Nach Anreisedatum sortieren
         bookings_sorted = sorted(bookings, key=lambda x: x.get("arrival_date", "9999-12-31"))
@@ -930,15 +1187,29 @@ class GPXRouteManager:
 
 
 def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Dict]:
-    """Findet den nächsten Punkt in allen GPX-Dateien zu gegebener Koordinate.
+    """Findet den nächsten Punkt in allen GPX-Dateien zu einer gegebenen Koordinate.
+
+    Durchsucht alle GPX-Dateien im angegebenen Verzeichnis und findet den Punkt,
+    der der Zielkoordinate am nächsten liegt.
 
     Args:
-        gpx_dir: Verzeichnis mit GPX-Dateien
-        lat: Ziel-Breitengrad
-        lon: Ziel-Längengrad
+        gpx_dir: Verzeichnis mit GPX-Dateien.
+        lat: Ziel-Breitengrad in Dezimalgrad.
+        lon: Ziel-Längengrad in Dezimalgrad.
 
     Returns:
-        Dictionary mit 'file', 'segment', 'index', 'distance' oder None
+        Dictionary mit folgenden Keys:
+            - file (Path): Pfad zur GPX-Datei
+            - segment: GPX-Segment-Objekt mit dem nächsten Punkt
+            - index (int): Index des Punkts im Segment
+            - distance (float): Distanz zum Punkt in Metern
+
+    Raises:
+        ValueError: Wenn keine gültigen GPX-Punkte im Verzeichnis gefunden wurden.
+
+    Note:
+        Diese Funktion ist für Kompatibilität mit älterem Code vorhanden.
+        Für neue Implementierungen sollte GPXRouteManager verwendet werden.
     """
     best = None
 
@@ -965,27 +1236,42 @@ def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Di
 def extend_gpx_route(
     closest_point: Dict, target_lat: float, target_lon: float, route_provider_func, output_dir: Path, filename_suffix: str
 ) -> Optional[Path]:
-    """Erweitert eine GPX-Route um eine Strecke zu einer Zieladresse.
+    """Erweitert eine GPX-Route um eine berechnete Strecke zu einer Zieladresse.
 
-    Fügt eine neue Route vom nächstgelegenen Punkt in der GPX-Datei
-    zur Zieladresse ein und speichert die modifizierte GPX-Datei.
+    Fügt eine neue Route vom nächstgelegenen Punkt in der GPX-Datei zur Zieladresse
+    ein und speichert die modifizierte GPX-Datei. Die Route wird vom route_provider_func
+    berechnet (z.B. BRouter).
+
+    **Anwendungsfall:**
+    Diese Funktion wird verwendet, um GPX-Tracks direkt zu Unterkünften zu verlängern,
+    wenn die Unterkunft nicht auf dem Track liegt. Die Hauptverwendung ist jedoch durch
+    GPXRouteManager.collect_route_between_locations ersetzt worden.
 
     Args:
-        closest_point: Dictionary mit 'file', 'segment', 'index' vom
-                       nächstgelegenen Punkt (von find_closest_gpx_point)
-        target_lat: Ziel-Breitengrad
-        target_lon: Ziel-Längengrad
-        route_provider_func: Funktion die Route berechnet, z.B. route_to_address.
-                            Muss (lat_from, lon_from, lat_to, lon_to) akzeptieren
-                            und GPX-String zurückgeben
-        output_dir: Ausgabeverzeichnis für modifizierte GPX-Datei
-        filename_suffix: Suffix für Dateinamen (z.B. Anreisedatum)
+        closest_point: Dictionary mit Informationen zum nächstgelegenen Punkt.
+                      Muss folgende Keys enthalten:
+                      - file (Path): Pfad zur GPX-Datei
+                      - segment: GPX-Segment-Objekt
+                      - index (int): Index des Punkts im Segment
+                      Typischerweise von find_closest_gpx_point() zurückgegeben.
+        target_lat: Ziel-Breitengrad in Dezimalgrad.
+        target_lon: Ziel-Längengrad in Dezimalgrad.
+        route_provider_func: Funktion zur Routenberechnung. Muss die Signatur
+                            (lat_from, lon_from, lat_to, lon_to) haben und einen
+                            GPX-String zurückgeben. Beispiel: route_to_address von BRouter.
+        output_dir: Ausgabeverzeichnis für die modifizierte GPX-Datei.
+        filename_suffix: Suffix für den Dateinamen (z.B. Anreisedatum im Format YYYY-MM-DD).
 
     Returns:
-        Pfad zur gespeicherten GPX-Datei oder None bei Fehler
+        Path zur gespeicherten GPX-Datei oder None bei Fehler.
 
     Raises:
-        ValueError: Wenn Route nicht berechnet werden kann
+        ValueError: Wenn die Route nicht berechnet werden kann oder die GPX-Datei
+                   nicht geladen werden kann.
+
+    Note:
+        Diese Funktion ist für Kompatibilität mit älterem Code vorhanden.
+        Für neue Implementierungen sollte GPXRouteManager verwendet werden.
     """
     try:
         # Original GPX laden
