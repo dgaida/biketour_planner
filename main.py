@@ -69,6 +69,9 @@ if __name__ == "__main__":
                 booking["latitude"] = lat
                 booking["longitude"] = lon
 
+            # TODO: diesen Part verschieben in gpx_utils.py und die gpx Datei erweitern, die dort
+            #  identifiziert wurde als Zieldatei. vor dem funktionsuafruf von der merge funktion
+            #  platzieren
             closest = find_closest_gpx_point(GPX_DIR, lat, lon)
 
             # Cache closest point für spätere Verwendung
