@@ -1,6 +1,7 @@
 import gpxpy
 from pathlib import Path
-from itertools import chain
+
+# from itertools import chain
 from typing import Dict, Optional, List, Tuple
 from .gpx_route_manager_static import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
 from .brouter import route_to_address
@@ -99,7 +100,8 @@ class GPXRouteManager:
         """
         self.gpx_index: GPXIndex = {}
 
-        for gpx_file in chain(Path(self.gpx_dir).glob("*.gpx"), Path(self.output_path).glob("*.gpx")):
+        # for gpx_file in chain(Path(self.gpx_dir).glob("*.gpx"), Path(self.output_path).glob("*.gpx")):
+        for gpx_file in Path(self.gpx_dir).glob("*.gpx"):
             gpx = read_gpx_file(gpx_file)
             if gpx is None or not gpx.tracks:
                 continue
@@ -933,7 +935,11 @@ class GPXRouteManager:
                 print(gpx_file)
                 print(entry)
             else:
-                gpx_file = self.gpx_dir / entry["file"]
+                try:
+                    gpx_file = self.gpx_dir / entry["file"]
+                except Exception:
+                    gpx_file = output_dir / entry["file"]
+                    print(gpx_file)
             start_idx = entry["start_index"]
             end_idx = entry["end_index"]
             reversed_dir = entry["reversed"]
@@ -1375,20 +1381,23 @@ class GPXRouteManager:
 
             booking["gpx_files"][-1] = hotel_segment
 
-            print("BEFORE:", booking["_last_gpx_file"])
+            # print("BEFORE:", booking["_last_gpx_file"])
 
             # TODO: wenn man _last_gpx_file verändert, dann muss auch gpxindex um diese neue Datei erweitert werden
             # Aktualisiere _last_gpx_file für potentielle Fortsetzung
+
+            # erstelle gpx_index hier komplett neu. das ist sicherlich übertrieben. TODO
+            # print("BEFORE:", len(self.gpx_index))
+            # self._preprocess_gpx_directory()
+            self._update_gpx_index_entry(old_filename=booking["_last_gpx_file"]["file"], new_gpx_file=output_file)
+            # print(len(self.gpx_index))
+
             booking["_last_gpx_file"] = {
                 "file": out_name,
                 "end_index": len(segment.points) - 1,
                 "reversed": False,
                 # "is_to_hotel": True,
             }
-            # erstelle gpx_index hier komplett neu. das ist sicherlich übertrieben. TODO
-            print("BEFORE:", len(self.gpx_index))
-            self._preprocess_gpx_directory()
-            print(len(self.gpx_index))
 
             print(booking["_last_gpx_file"])
 
@@ -1400,3 +1409,110 @@ class GPXRouteManager:
         except Exception as e:
             print(f"❌ Fehler beim Erweitern der Route: {e}")
             return None
+
+    def _update_gpx_index_entry(
+        self,
+        old_filename: str,
+        new_gpx_file: Path,
+    ) -> None:
+        """Aktualisiert einen einzelnen Eintrag im GPX-Index mit einer neuen Datei.
+
+        Diese Methode ersetzt die Metadaten einer bestehenden GPX-Datei im Index
+        durch die Metadaten einer neuen Datei. Dies ist effizienter als ein
+        komplettes Neueinlesen aller GPX-Dateien und wird verwendet, wenn eine
+        bestehende Route (z.B. durch Anhängen eines Hotel-Punkts) modifiziert wird.
+
+        Die Methode:
+        1. Entfernt den alten Eintrag aus dem Index
+        2. Liest die neue GPX-Datei ein
+        3. Berechnet alle Metadaten (Start/End-Punkte, Distanz, Höhe, etc.)
+        4. Fügt den neuen Eintrag zum Index hinzu
+
+        Args:
+            old_filename: Dateiname des zu ersetzenden Eintrags im gpx_index.
+                         Muss ein Key in self.gpx_index sein.
+            new_gpx_file: Path-Objekt zur neuen GPX-Datei. Die Datei muss
+                         existieren und gültige GPX-Daten enthalten.
+
+        Note:
+            Die Methode modifiziert self.gpx_index direkt (in-place).
+            Wenn old_filename nicht im Index existiert, wird nur der neue
+            Eintrag hinzugefügt. Wenn die neue Datei nicht gelesen werden kann,
+            wird der alte Eintrag entfernt ohne Ersatz.
+
+        Example:
+            >>> # Nach Erweiterung einer Route um Hotel-Punkt
+            >>> old_file = "2026-05-15_route.gpx"
+            >>> new_file = output_path / "2026-05-15_Hotel_Alpenblick_to_hotel.gpx"
+            >>> manager._update_gpx_index_entry(old_file, new_file)
+        """
+        # Entferne alten Eintrag falls vorhanden
+        if old_filename in self.gpx_index:
+            del self.gpx_index[old_filename]
+            print(f"   🗑️  Alter Eintrag '{old_filename}' aus Index entfernt")
+
+        # Lese neue GPX-Datei
+        gpx = read_gpx_file(new_gpx_file)
+        if gpx is None or not gpx.tracks:
+            print(f"   ⚠️  Konnte neue Datei '{new_gpx_file.name}' nicht lesen")
+            return
+
+        # Berechne Metadaten
+        total_distance = 0.0
+        total_ascent = 0.0
+        max_elevation = float("-inf")
+
+        first_point = None
+        last_point = None
+        all_points = []
+
+        point_index = 0
+        for track in gpx.tracks:
+            for seg in track.segments:
+                prev = None
+                for p in seg.points:
+                    if first_point is None:
+                        first_point = p
+                    last_point = p
+
+                    # Speichere alle Punkte mit Index
+                    all_points.append(
+                        {
+                            "lat": p.latitude,
+                            "lon": p.longitude,
+                            "elevation": p.elevation,
+                            "index": point_index,
+                        }
+                    )
+                    point_index += 1
+
+                    if p.elevation is not None:
+                        max_elevation = max(max_elevation, p.elevation)
+
+                    if prev:
+                        d = haversine(prev.latitude, prev.longitude, p.latitude, p.longitude)
+                        total_distance += d
+
+                        if prev.elevation is not None and p.elevation is not None and p.elevation > prev.elevation:
+                            total_ascent += p.elevation - prev.elevation
+                    prev = p
+
+        if first_point is None or last_point is None:
+            print(f"   ⚠️  Keine gültigen Punkte in '{new_gpx_file.name}'")
+            return
+
+        # Füge neuen Eintrag zum Index hinzu
+        self.gpx_index[new_gpx_file.name] = {
+            "file": new_gpx_file,
+            "start_lat": first_point.latitude,
+            "start_lon": first_point.longitude,
+            "end_lat": last_point.latitude,
+            "end_lon": last_point.longitude,
+            "total_distance_m": total_distance,
+            "total_ascent_m": total_ascent,
+            "max_elevation_m": (int(round(max_elevation)) if max_elevation != float("-inf") else None),
+            "points": all_points,
+        }
+
+        print(f"   ✅ Neuer Eintrag '{new_gpx_file.name}' zum Index hinzugefügt")
+        print(f"      Punkte: {len(all_points)}, Distanz: {total_distance / 1000:.2f} km")

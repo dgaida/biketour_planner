@@ -78,7 +78,7 @@ if __name__ == "__main__":
             all_bookings.append(booking)
 
             # TODO: delete: just for debugging in here
-            if len(all_bookings) > 4:
+            if len(all_bookings) > 7:
                 break
     else:
         all_bookings = load_json(Path("output/bookings.json"))

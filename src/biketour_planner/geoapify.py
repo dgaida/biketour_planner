@@ -16,7 +16,7 @@ def find_top_tourist_sights(lat, lon):
     params = {
         "categories": "tourism.sights",  # Sehenswürdigkeiten
         "filter": f"circle:{lon},{lat},5000",  # Stadt
-        "limit": 5,
+        "limit": 2,  # 5,
         "apiKey": geoapify_api_key,
     }
 
