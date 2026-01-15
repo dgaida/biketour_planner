@@ -17,5 +17,5 @@ def get_gps_tracks4day_4alldays(gpx_dir: Path, bookings: List[Dict], output_path
     Returns:
         Sortierte Liste der Buchungen mit GPS-Track-Informationen
     """
-    manager = GPXRouteManager(gpx_dir)
+    manager = GPXRouteManager(gpx_dir, output_path)
     return manager.process_all_bookings(bookings, output_path)

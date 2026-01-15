@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 from typing import Dict, Union, List
 
 from biketour_planner.parse_booking import extract_booking_info
@@ -10,6 +11,8 @@ from biketour_planner.excel_export import export_bookings_to_excel
 BOOKING_DIR = Path("../2026_Kroatien/booking")
 GPX_DIR = Path("../2026_Kroatien/gpx")
 OUT_DIR = Path("../2026_Kroatien/gpx_modified")
+if OUT_DIR.exists():
+    shutil.rmtree(OUT_DIR)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 create_bookings_json = False  # False
