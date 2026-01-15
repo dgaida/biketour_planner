@@ -4,8 +4,7 @@ from typing import Dict, Union, List
 
 from biketour_planner.parse_booking import extract_booking_info
 from biketour_planner.geocode import geocode_address
-from biketour_planner.gpx_utils import find_closest_gpx_point, extend_gpx_route, get_gps_tracks4day_4alldays
-from biketour_planner.brouter import route_to_address
+from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
 from biketour_planner.excel_export import export_bookings_to_excel
 
 BOOKING_DIR = Path("../2026_Kroatien/booking")
@@ -68,32 +67,6 @@ if __name__ == "__main__":
 
                 booking["latitude"] = lat
                 booking["longitude"] = lon
-
-            # TODO: diesen Part verschieben in gpx_utils.py und die gpx Datei erweitern, die dort
-            #  identifiziert wurde als Zieldatei. vor dem funktionsuafruf von der merge funktion
-            #  platzieren
-            closest = find_closest_gpx_point(GPX_DIR, lat, lon)
-
-            # Cache closest point für spätere Verwendung
-            booking["_closest_point_cache"] = {
-                "file": str(closest["file"]),
-                "distance": closest["distance"],
-                "index": closest["index"],
-            }
-
-            output_path = extend_gpx_route(
-                closest_point=closest,
-                target_lat=lat,
-                target_lon=lon,
-                route_provider_func=route_to_address,
-                output_dir=OUT_DIR,
-                filename_suffix=booking["arrival_date"],
-            )
-
-            if output_path:
-                print(f"GPX erweitert: {output_path}")
-            else:
-                print(f"Fehler beim Erweitern der Route für {booking['hotel_name']}")
 
             all_bookings.append(booking)
     else:

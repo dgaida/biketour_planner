@@ -2,7 +2,7 @@ import gpxpy
 import math
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
-from gpx_route_manager import GPXRouteManager
+from .gpx_route_manager import GPXRouteManager
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -195,127 +195,6 @@ def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Di
         raise ValueError(f"Keine gültigen GPX-Punkte in {gpx_dir} gefunden")
 
     return best
-
-
-def extend_gpx_route(
-    closest_point: Dict, target_lat: float, target_lon: float, route_provider_func, output_dir: Path, filename_suffix: str
-) -> Optional[Path]:
-    """Erweitert eine GPX-Route um eine berechnete Strecke zu einer Zieladresse.
-
-    Fügt eine neue Route vom nächstgelegenen Punkt in der GPX-Datei zur Zieladresse
-    ein und speichert die modifizierte GPX-Datei. Die Route wird vom route_provider_func
-    berechnet (z.B. BRouter).
-
-    **Anwendungsfall:**
-    Diese Funktion wird verwendet, um GPX-Tracks direkt zu Unterkünften zu verlängern,
-    wenn die Unterkunft nicht auf dem Track liegt. Die Hauptverwendung ist jedoch durch
-    GPXRouteManager.collect_route_between_locations ersetzt worden.
-
-    Args:
-        closest_point: Dictionary mit Informationen zum nächstgelegenen Punkt.
-                      Muss folgende Keys enthalten:
-                      - file (Path): Pfad zur GPX-Datei
-                      - segment: GPX-Segment-Objekt
-                      - index (int): Index des Punkts im Segment
-                      Typischerweise von find_closest_gpx_point() zurückgegeben.
-        target_lat: Ziel-Breitengrad in Dezimalgrad.
-        target_lon: Ziel-Längengrad in Dezimalgrad.
-        route_provider_func: Funktion zur Routenberechnung. Muss die Signatur
-                            (lat_from, lon_from, lat_to, lon_to) haben und einen
-                            GPX-String zurückgeben. Beispiel: route_to_address von BRouter.
-        output_dir: Ausgabeverzeichnis für die modifizierte GPX-Datei.
-        filename_suffix: Suffix für den Dateinamen (z.B. Anreisedatum im Format YYYY-MM-DD).
-
-    Returns:
-        Path zur gespeicherten GPX-Datei oder None bei Fehler.
-
-    Raises:
-        ValueError: Wenn die Route nicht berechnet werden kann oder die GPX-Datei
-                   nicht geladen werden kann.
-
-    Note:
-        Diese Funktion ist für Kompatibilität mit älterem Code vorhanden.
-        Für neue Implementierungen sollte GPXRouteManager verwendet werden.
-    """
-    try:
-        # Original GPX laden
-        gpx = read_gpx_file(closest_point["file"])
-        if gpx is None:
-            raise ValueError(f"Konnte {closest_point['file'].name} nicht lesen")
-
-        # WICHTIG: closest_point["segment"] ist eine Referenz aus einer anderen
-        # GPX-Instanz. Wir müssen das entsprechende Segment in der neu geladenen
-        # GPX-Datei finden. Dazu nutzen wir den gespeicherten Index.
-        idx = closest_point["index"]
-
-        # Finde das richtige Segment durch erneutes Durchsuchen
-        target_point = closest_point["segment"].points[idx]
-        found_seg = None
-        found_idx = None
-
-        for track in gpx.tracks:
-            for seg in track.segments:
-                for i, p in enumerate(seg.points):
-                    # Prüfe ob dies der gleiche Punkt ist (mit kleiner Toleranz)
-                    if (
-                        abs(p.latitude - target_point.latitude) < 0.000001
-                        and abs(p.longitude - target_point.longitude) < 0.000001
-                    ):
-                        found_seg = seg
-                        found_idx = i
-                        break
-                if found_seg:
-                    break
-            if found_seg:
-                break
-
-        if found_seg is None:
-            raise ValueError("Konnte Einfügepunkt in neu geladener GPX nicht finden")
-
-        seg = found_seg
-        idx = found_idx
-
-        if idx >= len(seg.points):
-            raise ValueError(f"Index {idx} außerhalb des gültigen Bereichs")
-
-        p = seg.points[idx]
-
-        # Route zur Zieladresse berechnen
-        route_gpx_str = route_provider_func(p.latitude, p.longitude, target_lat, target_lon)
-
-        if not route_gpx_str or not route_gpx_str.strip():
-            raise ValueError("Route-Provider gab leere Antwort zurück")
-
-        # Route parsen
-        route_gpx = gpxpy.parse(route_gpx_str)
-
-        # Validierung: Route muss mindestens einen Track mit Segment haben
-        if not route_gpx.tracks or not route_gpx.tracks[0].segments:
-            raise ValueError("Berechnete Route enthält keine Tracks/Segmente")
-
-        new_points = route_gpx.tracks[0].segments[0].points
-
-        if not new_points:
-            raise ValueError("Berechnete Route enthält keine Punkte")
-
-        # Route in Original-GPX einfügen (nach dem nächsten Punkt)
-        seg.points[idx + 1 : idx + 1] = new_points
-
-        # Ausgabedatei speichern
-        output_dir.mkdir(parents=True, exist_ok=True)
-        out_name = f"{closest_point['file'].stem}_{filename_suffix}.gpx"
-        output_path = output_dir / out_name
-
-        output_path.write_text(gpx.to_xml(), encoding="utf-8")
-
-        return output_path
-
-    except gpxpy.gpx.GPXException as e:
-        print(f"GPX-Fehler: {e}")
-        return None
-    except Exception as e:
-        print(f"Fehler beim Erweitern der Route: {e}")
-        return None
 
 
 def get_gps_tracks4day_4alldays(gpx_dir: Path, bookings: List[Dict], output_path: Path) -> List[Dict]:
