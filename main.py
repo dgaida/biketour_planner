@@ -7,6 +7,7 @@ from biketour_planner.parse_booking import extract_booking_info
 from biketour_planner.geocode import geocode_address
 from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
 from biketour_planner.excel_export import export_bookings_to_excel
+from biketour_planner.geoapify import find_top_tourist_sights
 
 BOOKING_DIR = Path("../2026_Kroatien/booking")
 GPX_DIR = Path("../2026_Kroatien/gpx")
@@ -15,7 +16,7 @@ if OUT_DIR.exists():
     shutil.rmtree(OUT_DIR)
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-create_bookings_json = False  # False
+create_bookings_json = True  # False
 
 
 def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
@@ -71,7 +72,14 @@ if __name__ == "__main__":
                 booking["latitude"] = lat
                 booking["longitude"] = lon
 
+            data_sights = find_top_tourist_sights(lat, lon)
+            booking["tourist_sights"] = data_sights
+
             all_bookings.append(booking)
+
+            # TODO: delete: just for debugging in here
+            if len(all_bookings) > 4:
+                break
     else:
         all_bookings = load_json(Path("output/bookings.json"))
 

@@ -5,6 +5,7 @@ from typing import Dict
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from datetime import datetime, timedelta
+from .geoapify import get_names_as_comma_separated_string
 
 
 def extract_city_name(address: str) -> str:
@@ -171,8 +172,14 @@ def export_bookings_to_excel(json_path: Path, template_path: Path, output_path: 
 
         ws[f"G{row}"] = f"{booking.get('total_ascent_m', '')} / {booking.get('max_elevation_m', '')}"
 
+        cs_string_names = get_names_as_comma_separated_string(booking.get("tourist_sights", None))
+
+        ws[f"I{row}"] = cs_string_names
+
         # Spalte J: Preis
         ws[f"J{row}"] = booking.get("total_price", "")
+
+        ws[f"K{row}"] = f"Stornierung bis: {booking.get('free_cancel_until', '')}"
 
         # Aktualisiere Variablen für nächste Iteration
         previous_city = current_city

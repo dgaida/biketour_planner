@@ -20,7 +20,8 @@ dependencies = [
     "gpxpy>=1.6",
     "requests>=2.31",
     "python-dateutil>=2.9",
-    "openpyxl>=3.1"
+    "openpyxl>=3.1",
+    "python-dotenv"
 ]
 
 [tool.setuptools.packages.find]
