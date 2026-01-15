@@ -935,11 +935,16 @@ class GPXRouteManager:
                 print(gpx_file)
                 print(entry)
             else:
-                try:
-                    gpx_file = self.gpx_dir / entry["file"]
-                except Exception:
+                # Prüfe erst im gpx_dir, dann im output_dir
+                gpx_file = self.gpx_dir / entry["file"]
+
+                if not gpx_file.exists():
+                    # Falls nicht in gpx_dir, versuche output_dir
                     gpx_file = output_dir / entry["file"]
-                    print(gpx_file)
+
+                if not gpx_file.exists():
+                    print(f"⚠️  Datei nicht gefunden: {entry['file']} (weder in gpx_dir noch in output_dir)")
+                    continue
             start_idx = entry["start_index"]
             end_idx = entry["end_index"]
             reversed_dir = entry["reversed"]
