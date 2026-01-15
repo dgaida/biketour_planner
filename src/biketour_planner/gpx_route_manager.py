@@ -1,7 +1,7 @@
 import gpxpy
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
-from .gpx_utils import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
+from .gpx_route_manager_static import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
 from .brouter import route_to_address
 
 GPXIndex = Dict[str, Dict]
@@ -925,8 +925,12 @@ class GPXRouteManager:
         segment = gpxpy.gpx.GPXTrackSegment()
         track.segments.append(segment)
 
-        for entry in route_files:
-            gpx_file = self.gpx_dir / entry["file"]
+        for i, entry in enumerate(route_files):
+            # Letzte Datei liegt in output_dir (gpx_modified), alle anderen in gpx_dir
+            if i == len(route_files) - 1 and entry.get("is_to_hotel", False):
+                gpx_file = output_dir / entry["file"]
+            else:
+                gpx_file = self.gpx_dir / entry["file"]
             start_idx = entry["start_index"]
             end_idx = entry["end_index"]
             reversed_dir = entry["reversed"]
@@ -1028,7 +1032,6 @@ class GPXRouteManager:
                     prev_lat, prev_lon, lat, lon, booking, previous_last_file=previous_last_file
                 )
 
-                # TODO: ergänze _last_gpx_file um die Strecke bis zur Unterkunft
                 self.extend_track2hotel(booking, output_dir)
 
                 self.merge_gpx_files(booking.get("gpx_files"), output_dir, booking)
@@ -1041,71 +1044,84 @@ class GPXRouteManager:
 
         return bookings_sorted
 
-    def extend_track2hotel(self, booking: Dict, output_path: Path):
+    def extend_track2hotel(self, booking: Dict, output_path: Path) -> None:
+        """Verlängert die Route vom letzten Track-Punkt bis zur Unterkunft.
+
+        Diese Methode nimmt den letzten Punkt der gesammelten Route (_last_gpx_file)
+        und berechnet eine Route zur Unterkunft mittels BRouter. Die verlängerte Route
+        wird als neue GPX-Datei gespeichert und die booking-Informationen werden
+        aktualisiert.
+
+        Args:
+            booking: Buchungs-Dictionary mit folgenden Keys:
+                     - latitude: Breitengrad der Unterkunft
+                     - longitude: Längengrad der Unterkunft
+                     - arrival_date: Anreisedatum für Dateinamen
+                     - hotel_name: Name für Dateinamen
+                     - _last_gpx_file: Dictionary mit letztem Track-Punkt:
+                       * file (str): Dateiname
+                       * end_index (int): Letzter Index
+                       * reversed (bool): Fahrtrichtung
+                     - gpx_files: Liste der Route-Abschnitte (wird erweitert)
+            output_path: Ausgabeverzeichnis für die verlängerte GPX-Datei.
+
+        Note:
+            Die Methode modifiziert booking direkt:
+            - Fügt den Hotel-Abschnitt zu gpx_files hinzu
+            - Aktualisiert _last_gpx_file mit der neuen Datei
+        """
+        if "_last_gpx_file" not in booking:
+            print("⚠️  Keine vorherige Route vorhanden - kann nicht zur Unterkunft verlängern")
+            return
+
         lat = booking["latitude"]
         lon = booking["longitude"]
 
-        # closest = find_closest_gpx_point(GPX_DIR, lat, lon)
-
-        # Cache closest point für spätere Verwendung
-        # booking["_closest_point_cache"] = {
-        #     "file": str(closest["file"]),
-        #     "distance": closest["distance"],
-        #     "index": closest["index"],
-        # }
+        last_file_info = booking["_last_gpx_file"]
 
         output_path = self.extend_gpx_route(
-            # hier anderes Argument übergeben, im Grunde _last_gpx_file aus booking, Argument umbenennen
-            closest_point=booking["_last_gpx_file"],
+            last_file_info=last_file_info,
             target_lat=lat,
             target_lon=lon,
             route_provider_func=route_to_address,
             output_dir=output_path,
-            filename_suffix=booking["arrival_date"],
+            booking=booking,
         )
 
         if output_path:
-            print(f"GPX erweitert: {output_path}")
+            print(f"📍 GPX bis zur Unterkunft verlängert: {output_path}")
         else:
-            print(f"Fehler beim Erweitern der Route für {booking['hotel_name']}")
+            print(f"⚠️  Fehler beim Verlängern der Route für {booking['hotel_name']}")
 
     def extend_gpx_route(
         self,
-        closest_point: Dict,
+        last_file_info: Dict,
         target_lat: float,
         target_lon: float,
         route_provider_func,
         output_dir: Path,
-        filename_suffix: str,
+        booking: Dict,
     ) -> Optional[Path]:
-        """Erweitert eine GPX-Route um eine berechnete Strecke zu einer Zieladresse.
+        """Verlängert die letzte GPX-Route vom End-Punkt bis zur Zieladresse.
 
-        # TODO: Methode so ändern, dass _last_gpx_file von dem nächsten Punkt zur Unterkunft (target_lon, lat), das
-        #  müsste der end_point des tracks sein, bis zur unterkunft verlängert wird.
-
-        Fügt eine neue Route vom nächstgelegenen Punkt in der GPX-Datei zur Zieladresse
-        ein und speichert die modifizierte GPX-Datei. Die Route wird vom route_provider_func
-        berechnet (z.B. BRouter).
-
-        **Anwendungsfall:**
-        Diese Funktion wird verwendet, um GPX-Tracks direkt zu Unterkünften zu verlängern,
-        wenn die Unterkunft nicht auf dem Track liegt. Die Hauptverwendung ist jedoch durch
-        GPXRouteManager.collect_route_between_locations ersetzt worden.
+        Lädt die letzte verwendete GPX-Datei, extrahiert den End-Punkt basierend auf
+        end_index und Fahrtrichtung, berechnet eine Route zur Unterkunft mittels
+        BRouter und speichert die verlängerte Route als neue GPX-Datei.
 
         Args:
-            closest_point: Dictionary mit Informationen zum nächstgelegenen Punkt.
-                          Muss folgende Keys enthalten:
-                          - file (Path): Pfad zur GPX-Datei
-                          - segment: GPX-Segment-Objekt
-                          - index (int): Index des Punkts im Segment
-                          Typischerweise von find_closest_gpx_point() zurückgegeben.
-            target_lat: Ziel-Breitengrad in Dezimalgrad.
-            target_lon: Ziel-Längengrad in Dezimalgrad.
-            route_provider_func: Funktion zur Routenberechnung. Muss die Signatur
-                                (lat_from, lon_from, lat_to, lon_to) haben und einen
-                                GPX-String zurückgeben. Beispiel: route_to_address von BRouter.
-            output_dir: Ausgabeverzeichnis für die modifizierte GPX-Datei.
-            filename_suffix: Suffix für den Dateinamen (z.B. Anreisedatum im Format YYYY-MM-DD).
+            last_file_info: Dictionary mit Informationen zur letzten Route:
+                           - file (str): Dateiname der GPX-Datei
+                           - end_index (int): Index des letzten verwendeten Punkts
+                           - reversed (bool): True wenn Track rückwärts durchfahren wurde
+            target_lat: Ziel-Breitengrad der Unterkunft in Dezimalgrad.
+            target_lon: Ziel-Längengrad der Unterkunft in Dezimalgrad.
+            route_provider_func: Funktion zur Routenberechnung (z.B. route_to_address).
+                                Signatur: (lat_from, lon_from, lat_to, lon_to) -> GPX-String
+            output_dir: Ausgabeverzeichnis für die verlängerte GPX-Datei.
+            booking: Buchungs-Dictionary zum Aktualisieren der Route-Informationen.
+                    Wird erweitert um:
+                    - Neuen Abschnitt in gpx_files
+                    - Aktualisierte _last_gpx_file Information
 
         Returns:
             Path zur gespeicherten GPX-Datei oder None bei Fehler.
@@ -1115,62 +1131,43 @@ class GPXRouteManager:
                        nicht geladen werden kann.
 
         Note:
-            Diese Funktion ist für Kompatibilität mit älterem Code vorhanden.
-            Für neue Implementierungen sollte GPXRouteManager verwendet werden.
+            Die Methode modifiziert das booking-Dictionary direkt:
+            - Fügt neuen Eintrag zu booking["gpx_files"] hinzu
+            - Aktualisiert booking["_last_gpx_file"] mit der neuen Datei
         """
         try:
             # Original GPX laden
-            gpx = read_gpx_file(closest_point["file"])
+            gpx_file = self.gpx_dir / last_file_info["file"]
+            gpx = read_gpx_file(gpx_file)
             if gpx is None:
-                raise ValueError(f"Konnte {closest_point['file'].name} nicht lesen")
+                raise ValueError(f"Konnte {gpx_file.name} nicht lesen")
 
-            # WICHTIG: closest_point["segment"] ist eine Referenz aus einer anderen
-            # GPX-Instanz. Wir müssen das entsprechende Segment in der neu geladenen
-            # GPX-Datei finden. Dazu nutzen wir den gespeicherten Index.
-            idx = closest_point["index"]
+            # Hole Metadaten aus dem Index
+            meta = self.gpx_index.get(last_file_info["file"])
+            if meta is None:
+                raise ValueError(f"Keine Metadaten für {last_file_info['file']} gefunden")
 
-            # Finde das richtige Segment durch erneutes Durchsuchen
-            target_point = closest_point["segment"].points[idx]
-            found_seg = None
-            found_idx = None
+            # Finde den End-Punkt basierend auf end_index
+            end_index = last_file_info["end_index"]
+            if end_index >= len(meta["points"]):
+                raise ValueError(f"End-Index {end_index} außerhalb des gültigen Bereichs")
 
-            for track in gpx.tracks:
-                for seg in track.segments:
-                    for i, p in enumerate(seg.points):
-                        # Prüfe ob dies der gleiche Punkt ist (mit kleiner Toleranz)
-                        if (
-                            abs(p.latitude - target_point.latitude) < 0.000001
-                            and abs(p.longitude - target_point.longitude) < 0.000001
-                        ):
-                            found_seg = seg
-                            found_idx = i
-                            break
-                    if found_seg:
-                        break
-                if found_seg:
-                    break
+            end_point = meta["points"][end_index]
+            end_lat = end_point["lat"]
+            end_lon = end_point["lon"]
 
-            if found_seg is None:
-                raise ValueError("Konnte Einfügepunkt in neu geladener GPX nicht finden")
+            print(f"   📍 Verlängere von Index {end_index}: ({end_lat:.6f}, {end_lon:.6f})")
+            print(f"   🏨 Bis zur Unterkunft: ({target_lat:.6f}, {target_lon:.6f})")
 
-            seg = found_seg
-            idx = found_idx
-
-            if idx >= len(seg.points):
-                raise ValueError(f"Index {idx} außerhalb des gültigen Bereichs")
-
-            p = seg.points[idx]
-
-            # Route zur Zieladresse berechnen
-            route_gpx_str = route_provider_func(p.latitude, p.longitude, target_lat, target_lon)
+            # Berechne Route zur Unterkunft
+            route_gpx_str = route_provider_func(end_lat, end_lon, target_lat, target_lon)
 
             if not route_gpx_str or not route_gpx_str.strip():
                 raise ValueError("Route-Provider gab leere Antwort zurück")
 
-            # Route parsen
+            # Parse die berechnete Route
             route_gpx = gpxpy.parse(route_gpx_str)
 
-            # Validierung: Route muss mindestens einen Track mit Segment haben
             if not route_gpx.tracks or not route_gpx.tracks[0].segments:
                 raise ValueError("Berechnete Route enthält keine Tracks/Segmente")
 
@@ -1179,21 +1176,86 @@ class GPXRouteManager:
             if not new_points:
                 raise ValueError("Berechnete Route enthält keine Punkte")
 
-            # Route in Original-GPX einfügen (nach dem nächsten Punkt)
-            seg.points[idx + 1 : idx + 1] = new_points
+            # Erstelle neue GPX-Datei mit verlängerter Route
+            extended_gpx = gpxpy.gpx.GPX()
+            track = gpxpy.gpx.GPXTrack()
+            extended_gpx.tracks.append(track)
+            segment = gpxpy.gpx.GPXTrackSegment()
+            track.segments.append(segment)
 
-            # Ausgabedatei speichern
+            # Füge ursprüngliche Route bis end_index hinzu
+            point_counter = 0
+            start_index = last_file_info.get("start_index", 0)
+            reversed_dir = last_file_info.get("reversed", False)
+
+            for trk in gpx.tracks:
+                for seg in trk.segments:
+                    points_to_add = []
+                    for p in seg.points:
+                        if start_index <= point_counter <= end_index:
+                            points_to_add.append(p)
+                        point_counter += 1
+
+                    # Invertiere falls nötig
+                    if reversed_dir:
+                        points_to_add = points_to_add[::-1]
+
+                    # Füge Punkte hinzu
+                    for p in points_to_add:
+                        segment.points.append(
+                            gpxpy.gpx.GPXTrackPoint(
+                                latitude=p.latitude, longitude=p.longitude, elevation=p.elevation, time=p.time
+                            )
+                        )
+
+            # Füge Route zur Unterkunft hinzu
+            for p in new_points:
+                segment.points.append(
+                    gpxpy.gpx.GPXTrackPoint(latitude=p.latitude, longitude=p.longitude, elevation=p.elevation, time=p.time)
+                )
+
+            # Speichere verlängerte GPX-Datei
             output_dir.mkdir(parents=True, exist_ok=True)
-            out_name = f"{closest_point['file'].stem}_{filename_suffix}.gpx"
+
+            # Erstelle aussagekräftigen Dateinamen
+            arrival_date = booking.get("arrival_date", "unknown_date")
+            hotel_name = booking.get("hotel_name", "unknown_hotel")
+            hotel_name_clean = "".join(c for c in hotel_name if c.isalnum() or c in (" ", "-", "_")).strip()
+            hotel_name_clean = hotel_name_clean.replace(" ", "_")[:30]
+
+            out_name = f"{arrival_date}_{hotel_name_clean}_to_hotel.gpx"
             output_path = output_dir / out_name
 
-            output_path.write_text(gpx.to_xml(), encoding="utf-8")
+            output_path.write_text(extended_gpx.to_xml(), encoding="utf-8")
+
+            # Aktualisiere booking mit neuem Abschnitt
+            hotel_segment = {
+                "file": out_name,
+                "start_index": 0,
+                "end_index": len(segment.points) - 1,
+                "reversed": False,
+                "is_to_hotel": True,  # Markierung für späteren Export
+            }
+
+            if "gpx_files" not in booking:
+                booking["gpx_files"] = []
+
+            booking["gpx_files"].append(hotel_segment)
+
+            # Aktualisiere _last_gpx_file für potentielle Fortsetzung
+            booking["_last_gpx_file"] = {
+                "file": out_name,
+                "end_index": len(segment.points) - 1,
+                "reversed": False,
+            }
+
+            print(f"   ✅ Verlängerte Route enthält {len(segment.points)} Punkte")
 
             return output_path
 
         except gpxpy.gpx.GPXException as e:
-            print(f"GPX-Fehler: {e}")
+            print(f"❌ GPX-Fehler: {e}")
             return None
         except Exception as e:
-            print(f"Fehler beim Erweitern der Route: {e}")
+            print(f"❌ Fehler beim Verlängern der Route: {e}")
             return None
