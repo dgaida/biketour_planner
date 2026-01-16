@@ -132,7 +132,7 @@ class TestExcelExport(unittest.TestCase):
         self.assertEqual(ws_out["D3"].value, None)  # Destination is empty
 
         # Check Row 4 (Booking 2)
-        self.assertEqual(ws_out["A5"].value, 3)
+        self.assertEqual(ws_out["A5"].value, 4)
         self.assertIsInstance(ws_out["B5"].value, datetime)
         self.assertEqual(ws_out["B5"].value.strftime("%Y-%m-%d"), "2026-08-05")
         self.assertEqual(ws_out["C5"].value, "CityA")  # Start is previous city

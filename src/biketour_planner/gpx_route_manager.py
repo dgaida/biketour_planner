@@ -2,7 +2,7 @@ import gpxpy
 from pathlib import Path
 
 # from itertools import chain
-from typing import Dict, Optional, List, Tuple
+from typing import Optional
 from .gpx_route_manager_static import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
 from .brouter import get_route2address_as_points
 
@@ -11,11 +11,11 @@ from .logger import get_logger
 # Initialisiere Logger
 logger = get_logger()
 
-GPXIndex = Dict[str, Dict]
-PointDict = Dict[str, float]
-StartPosResult = Tuple[Optional[str], Optional[int], Optional[str]]
-TargetPosResult = Tuple[Optional[str], Optional[int], Optional[float], Optional[float]]
-TrackStats = Tuple[float, float, float]
+GPXIndex = dict[str, dict]
+PointDict = dict[str, float]
+StartPosResult = tuple[Optional[str], Optional[int], Optional[str]]
+TargetPosResult = tuple[Optional[str], Optional[int], Optional[float], Optional[float]]
+TrackStats = tuple[float, float, float]
 
 
 class GPXRouteManager:
@@ -98,7 +98,7 @@ class GPXRouteManager:
                 - total_distance_m (float): Gesamtdistanz des Tracks in Metern.
                 - total_ascent_m (float): Gesamter positiver Höhenunterschied in Metern.
                 - max_elevation_m (int): Höchster Punkt des Tracks in Metern.
-                - points (List[Dict]): Alle Trackpunkte mit lat, lon, elevation, index.
+                - points (list[dict]): Alle Trackpunkte mit lat, lon, elevation, index.
 
         Note:
             Dateien die nicht geparst werden können werden stillschweigend übersprungen.
@@ -164,7 +164,7 @@ class GPXRouteManager:
         self,
         start_lat: float,
         start_lon: float,
-        previous_last_file: Optional[Dict],
+        previous_last_file: Optional[dict],
     ) -> StartPosResult:
         """Bestimmt die Startposition für die Routensuche.
 
@@ -301,7 +301,7 @@ class GPXRouteManager:
     def _init_end_index(
         self,
         current_index: int,
-        meta: Dict,
+        meta: dict,
         force_direction: str,
         target_side_lat: float,
         target_side_lon: float,
@@ -363,7 +363,7 @@ class GPXRouteManager:
     def _set_end_index(
         self,
         current_index: int,
-        meta: Dict,
+        meta: dict,
         force_direction: Optional[str],
         target_side_lat: float,
         target_side_lon: float,
@@ -414,7 +414,7 @@ class GPXRouteManager:
 
     def _get_statistics4track(
         self,
-        meta: Dict,
+        meta: dict,
         current_index: int,
         end_index: int,
         max_elevation: float,
@@ -489,7 +489,7 @@ class GPXRouteManager:
         used_base_files: set,
         current_lat: float,
         current_lon: float,
-    ) -> Tuple[Optional[str], Optional[int]]:
+    ) -> tuple[Optional[str], Optional[int]]:
         """Findet die nächste GPX-Datei in der Routenkette.
 
         Sucht unter allen noch nicht besuchten Dateien diejenige mit dem nächstgelegenen
@@ -563,7 +563,7 @@ class GPXRouteManager:
         target_index: int,
         current_lat: float,
         current_lon: float,
-        route_files: List[Dict],
+        route_files: list[dict],
     ) -> None:
         """Fügt den Ziel-Track zur Route hinzu wenn kein Zwischen-Track gefunden wurde.
 
@@ -633,14 +633,14 @@ class GPXRouteManager:
         target_index: int,
         visited: set,
         used_base_files: set,
-        route_files: List[Dict],
+        route_files: list[dict],
         force_direction: Optional[str],
         target_side_lat: float,
         target_side_lon: float,
         max_elevation: float,
         total_distance: float,
         total_ascent: float,
-    ) -> Tuple[bool, Optional[str], Optional[int], float, float, float, float, float]:
+    ) -> tuple[bool, Optional[str], Optional[int], float, float, float, float, float]:
         """Verarbeitet eine einzelne Iteration der Routensuche.
 
         Führt für einen einzelnen Track-Abschnitt folgende Schritte aus:
@@ -760,8 +760,8 @@ class GPXRouteManager:
         start_lon: float,
         target_lat: float,
         target_lon: float,
-        booking: Dict,
-        previous_last_file: Optional[Dict] = None,
+        booking: dict,
+        previous_last_file: Optional[dict] = None,
     ) -> None:
         """Sammelt und verkettet GPX-Dateien zwischen Start- und Zielort.
 
@@ -894,7 +894,7 @@ class GPXRouteManager:
                 "reversed": last["reversed"],
             }
 
-    def merge_gpx_files(self, route_files: List[Dict], output_dir: Path, booking: Dict) -> Optional[Path]:
+    def merge_gpx_files(self, route_files: list[dict], output_dir: Path, booking: dict) -> Optional[Path]:
         """Merged mehrere GPX-Track-Abschnitte zu einer einzelnen GPX-Datei.
 
         Erstellt eine neue GPX-Datei, die alle Track-Abschnitte der Route in der
@@ -998,7 +998,7 @@ class GPXRouteManager:
 
         return output_path
 
-    def process_all_bookings(self, bookings: List[Dict], output_dir: Path) -> List[Dict]:
+    def process_all_bookings(self, bookings: list[dict], output_dir: Path) -> list[dict]:
         """Verarbeitet alle Buchungen und erstellt GPS-Tracks für jeden Reisetag.
 
         Durchläuft alle Buchungen chronologisch und sammelt für jeden Tag die
@@ -1063,7 +1063,7 @@ class GPXRouteManager:
 
         return bookings_sorted
 
-    def extend_track2hotel(self, booking: Dict, output_path: Path) -> Optional[Path]:
+    def extend_track2hotel(self, booking: dict, output_path: Path) -> Optional[Path]:
         """Hängt einfach die Hotel-Koordinaten als Punkt an die letzte GPX-Datei an.
 
         Diese vereinfachte Methode fügt nur einen einzelnen Punkt mit den Hotel-Koordinaten
