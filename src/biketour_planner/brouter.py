@@ -20,6 +20,7 @@ Example:
 """
 
 import requests
+import gpxpy
 
 
 def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: float) -> str:
@@ -79,3 +80,24 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
     r = requests.get(url, params=params)
     r.raise_for_status()
     return r.text
+
+
+def get_route2address_as_points(end_lat, end_lon, target_lat, target_lon):
+    # Berechne Route zur Unterkunft
+    route_gpx_str = route_to_address(end_lat, end_lon, target_lat, target_lon)
+
+    if not route_gpx_str or not route_gpx_str.strip():
+        raise ValueError("Route-Provider gab leere Antwort zurück")
+
+    # Parse die berechnete Route
+    route_gpx = gpxpy.parse(route_gpx_str)
+
+    if not route_gpx.tracks or not route_gpx.tracks[0].segments:
+        raise ValueError("Berechnete Route enthält keine Tracks/Segmente")
+
+    new_points = route_gpx.tracks[0].segments[0].points
+
+    if not new_points:
+        raise ValueError("Berechnete Route enthält keine Punkte")
+
+    return new_points
