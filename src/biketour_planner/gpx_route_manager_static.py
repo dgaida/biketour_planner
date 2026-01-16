@@ -3,6 +3,11 @@ import math
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
+from .logger import get_logger
+
+# Initialisiere Logger
+logger = get_logger()
+
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Berechnet die Distanz zwischen zwei Koordinaten in Metern.
@@ -70,7 +75,7 @@ def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
         except (UnicodeDecodeError, gpxpy.gpx.GPXXMLSyntaxException):
             continue
         except Exception as e:
-            print(f"Unerwarteter Fehler beim Lesen von {gpx_file.name}: {e}")
+            logger.error(f"Unerwarteter Fehler beim Lesen von {gpx_file.name}: {e}")
             continue
 
     # Wenn alle Encodings fehlschlagen, versuche binär zu lesen
@@ -90,7 +95,7 @@ def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
         return gpxpy.parse(text)
 
     except Exception as e:
-        print(f"Fehler beim Parsen von {gpx_file.name}: {e}")
+        logger.error(f"Fehler beim Parsen von {gpx_file.name}: {e}")
         return None
 
 

@@ -144,8 +144,8 @@ def get_names_as_comma_separated_string(data: Optional[Dict]) -> str:
             names.append(coord_str)
 
     result = ", ".join(names)
-    if result:
-        result += ", "  # Trailing comma für Konsistenz
+    # if result:
+    #     result += ", "  # Trailing comma für Konsistenz
 
     logger.debug(f"Extrahierte {len(names)} POI-Namen")
 

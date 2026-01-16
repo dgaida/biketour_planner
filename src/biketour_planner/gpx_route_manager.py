@@ -6,6 +6,11 @@ from typing import Dict, Optional, List, Tuple
 from .gpx_route_manager_static import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
 from .brouter import route_to_address
 
+from .logger import get_logger
+
+# Initialisiere Logger
+logger = get_logger()
+
 GPXIndex = Dict[str, Dict]
 PointDict = Dict[str, float]
 StartPosResult = Tuple[Optional[str], Optional[int], Optional[str]]
@@ -202,8 +207,8 @@ class GPXRouteManager:
 
                 force_direction = "backward" if previous_last_file.get("reversed", False) else "forward"
 
-                print(f"🔗 Fortsetzung erkannt: {start_file} ab Index {start_index}")
-                print(f"🔗 Erzwungene Richtung: {force_direction} (vom Vortag)")
+                logger.debug(f"🔗 Fortsetzung erkannt: {start_file} ab Index {start_index}")
+                logger.debug(f"🔗 Erzwungene Richtung: {force_direction} (vom Vortag)")
                 break
             else:
                 idx, dist = find_closest_point_in_track(meta["points"], start_lat, start_lon)
@@ -212,7 +217,7 @@ class GPXRouteManager:
                     start_file = filename
                     start_index = idx
 
-        print(f"📍 Start: {start_file} (Index {start_index}, Distanz: {start_distance:.1f}m)")
+        logger.debug(f"📍 Start: {start_file} (Index {start_index}, Distanz: {start_distance:.1f}m)")
 
         return start_file, start_index, force_direction
 
@@ -281,15 +286,15 @@ class GPXRouteManager:
         if dist_to_start < dist_to_end:
             target_side_lat = start_point["lat"]
             target_side_lon = start_point["lon"]
-            print(f"🎯 Ziel-Track {target_file}: Start-Seite näher am Startort")
+            logger.debug(f"🎯 Ziel-Track {target_file}: Start-Seite näher am Startort")
         else:
             target_side_lat = end_point["lat"]
             target_side_lon = end_point["lon"]
-            print(f"🎯 Ziel-Track {target_file}: End-Seite näher am Startort")
+            logger.debug(f"🎯 Ziel-Track {target_file}: End-Seite näher am Startort")
 
-        print(f"🎯 Ziel: {target_file} (Index {target_index}, Distanz: {target_distance:.1f}m)")
-        print(f"🎯 Ziel-Seite Position: ({target_side_lat:.6f}, {target_side_lon:.6f})")
-        print()
+        logger.debug(f"🎯 Ziel: {target_file} (Index {target_index}, Distanz: {target_distance:.1f}m)")
+        logger.debug(f"🎯 Ziel-Seite Position: ({target_side_lat:.6f}, {target_side_lon:.6f})")
+        # logger.debug()
 
         return target_file, target_index, target_side_lat, target_side_lon
 
@@ -336,7 +341,7 @@ class GPXRouteManager:
                     best_idx = point["index"]
 
             end_index = best_idx
-            print(f"   🔍 Vorwärts (erzwungen): Index {end_index} (Distanz: {best_dist:.1f}m)")
+            logger.debug(f"   🔍 Vorwärts (erzwungen): Index {end_index} (Distanz: {best_dist:.1f}m)")
 
         else:  # backward
             best_idx = current_index
@@ -351,7 +356,7 @@ class GPXRouteManager:
                     best_idx = point["index"]
 
             end_index = best_idx
-            print(f"   🔍 Rückwärts (erzwungen): Index {end_index} (Distanz: {best_dist:.1f}m)")
+            logger.debug(f"   🔍 Rückwärts (erzwungen): Index {end_index} (Distanz: {best_dist:.1f}m)")
 
         return end_index
 
@@ -403,7 +408,7 @@ class GPXRouteManager:
                     best_idx = point["index"]
 
             end_index = best_idx
-            print(f"   🔍 Nächster Punkt zur Ziel-Seite: Index {end_index} (Distanz: {best_dist:.1f}m)")
+            logger.debug(f"   🔍 Nächster Punkt zur Ziel-Seite: Index {end_index} (Distanz: {best_dist:.1f}m)")
 
         return end_index
 
@@ -474,7 +479,7 @@ class GPXRouteManager:
                         total_ascent += p.elevation - prev.elevation
                 prev = p
 
-        print(f"   Punkte: {myend_index - mystart_index + 1}")
+        logger.debug(f"   Punkte: {myend_index - mystart_index + 1}")
 
         return max_elevation, total_distance, total_ascent
 
@@ -522,7 +527,7 @@ class GPXRouteManager:
         best_dist = None
         length_best_file = float("inf")
 
-        print("   Suche nächste GPX-Datei...")
+        logger.debug("   Suche nächste GPX-Datei...")
         for name, cand in self.gpx_index.items():
             if name in visited:
                 continue
@@ -535,7 +540,7 @@ class GPXRouteManager:
 
             idx, dist = find_closest_point_in_track(cand["points"], current_lat, current_lon)
 
-            print(length_file, name, dist)
+            logger.debug(length_file, name, dist)
 
             if dist > self.max_connection_distance_m:
                 continue
@@ -547,8 +552,8 @@ class GPXRouteManager:
                 length_best_file = length_file
 
         if next_file:
-            print(f"   ➡️  Nächste: {next_file} (Index {next_index}, Distanz: {best_dist:.1f}m)")
-            print()
+            logger.debug(f"   ➡️  Nächste: {next_file} (Index {next_index}, Distanz: {best_dist:.1f}m)")
+            # logger.debug()
 
         return next_file, next_index
 
@@ -582,7 +587,7 @@ class GPXRouteManager:
         Note:
             Die Methode modifiziert route_files direkt ohne Rückgabewert.
         """
-        print(f"   ➕ Füge Ziel-Track hinzu: {target_file}")
+        logger.debug(f"   ➕ Füge Ziel-Track hinzu: {target_file}")
 
         target_meta = self.gpx_index[target_file]
         target_start_idx = 0
@@ -679,25 +684,25 @@ class GPXRouteManager:
         """
         # Validierungen
         if current_file in visited:
-            print(f"⚠️  Iteration {iteration + 1}: Datei {current_file} bereits besucht - Abbruch")
+            logger.debug(f"⚠️  Iteration {iteration + 1}: Datei {current_file} bereits besucht - Abbruch")
             return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
 
         meta = self.gpx_index.get(current_file)
         if meta is None:
-            print(f"⚠️  Iteration {iteration + 1}: Keine Metadaten für {current_file} - Abbruch")
+            logger.debug(f"⚠️  Iteration {iteration + 1}: Keine Metadaten für {current_file} - Abbruch")
             return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
 
         base_name = get_base_filename(current_file)
         if base_name in used_base_files:
-            print(f"⚠️  Iteration {iteration + 1}: Basis-Datei {base_name} bereits verwendet - Abbruch")
+            logger.debug(f"⚠️  Iteration {iteration + 1}: Basis-Datei {base_name} bereits verwendet - Abbruch")
             return False, None, None, 0.0, 0.0, max_elevation, total_distance, total_ascent
 
-        print(f"📁 Iteration {iteration + 1}: {current_file} (aktueller Index: {current_index})")
+        logger.debug(f"📁 Iteration {iteration + 1}: {current_file} (aktueller Index: {current_index})")
 
         # Bestimme Endindex
         if current_file == target_file:
             end_index = target_index
-            print(f"   ✅ Zieldatei erreicht! Fahre zu Index {end_index}")
+            logger.debug(f"   ✅ Zieldatei erreicht! Fahre zu Index {end_index}")
         else:
             end_index = self._set_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon, iteration)
 
@@ -709,7 +714,7 @@ class GPXRouteManager:
             reversed_direction = True
             direction_str = "rückwärts"
 
-        print(f"   Richtung: {direction_str} (Index {current_index} -> {end_index})")
+        logger.debug(f"   Richtung: {direction_str} (Index {current_index} -> {end_index})")
 
         # Markiere als besucht
         visited.add(current_file)
@@ -730,7 +735,7 @@ class GPXRouteManager:
         current_lat = end_point["lat"]
         current_lon = end_point["lon"]
 
-        print(f"   Neue Position: ({current_lat:.6f}, {current_lon:.6f})")
+        logger.debug(f"   Neue Position: ({current_lat:.6f}, {current_lon:.6f})")
 
         # Prüfe ob Ziel erreicht
         if current_file == target_file:
@@ -741,7 +746,7 @@ class GPXRouteManager:
         next_file, next_index = self._find_next_gpx_file(visited, used_base_files, current_lat, current_lon)
 
         if next_file is None:
-            print(f"⚠️  Keine passende nächste GPX gefunden (max. Distanz: {self.max_connection_distance_m}m)")
+            logger.debug(f"⚠️  Keine passende nächste GPX gefunden (max. Distanz: {self.max_connection_distance_m}m)")
 
             if target_file not in visited:
                 self._add_target_track_to_route(target_file, target_index, current_lat, current_lon, route_files)
@@ -808,11 +813,11 @@ class GPXRouteManager:
             Die Methode modifiziert das booking-Dictionary direkt (in-place).
             Bei Fehlern werden Null-Werte in booking eingetragen.
         """
-        print(f"\n{'=' * 80}")
-        print(f"Route-Suche: ({start_lat:.6f}, {start_lon:.6f}) -> ({target_lat:.6f}, {target_lon:.6f})")
+        logger.info(f"\n{'=' * 80}")
+        logger.info(f"Route-Suche: ({start_lat:.6f}, {start_lon:.6f}) -> ({target_lat:.6f}, {target_lon:.6f})")
         if previous_last_file:
-            print(f"🔗 Fortsetzung von: {previous_last_file['file']} (Index {previous_last_file['end_index']})")
-        print(f"{'=' * 80}")
+            logger.info(f"🔗 Fortsetzung von: {previous_last_file['file']} (Index {previous_last_file['end_index']})")
+        logger.info(f"{'=' * 80}")
 
         # 1. Finde Start-Position
         start_file, start_index, force_direction = self._find_start_pos(start_lat, start_lon, previous_last_file)
@@ -823,7 +828,7 @@ class GPXRouteManager:
         )
 
         if not start_file or not target_file:
-            print("⚠️  Keine passenden GPX-Dateien gefunden!")
+            logger.warning("⚠️  Keine passenden GPX-Dateien gefunden!")
             booking["gpx_files"] = []
             booking["total_distance_km"] = 0
             booking["total_ascent_m"] = 0
@@ -868,12 +873,12 @@ class GPXRouteManager:
             current_file = next_file
             current_index = next_index
 
-        print("\n📊 Zusammenfassung:")
-        print(f"   Dateien: {len(route_files)}")
-        print(f"   Gesamt-Distanz: {total_distance / 1000:.2f} km")
-        print(f"   Gesamt-Aufstieg: {total_ascent:.0f} m")
-        print(f"   Max. Höhe: {max_elevation:.0f} m" if max_elevation != float("-inf") else "   Max. Höhe: N/A")
-        print(f"{'=' * 80}\n")
+        logger.info("\n📊 Zusammenfassung:")
+        logger.info(f"   Dateien: {len(route_files)}")
+        logger.info(f"   Gesamt-Distanz: {total_distance / 1000:.2f} km")
+        logger.info(f"   Gesamt-Aufstieg: {total_ascent:.0f} m")
+        logger.info(f"   Max. Höhe: {max_elevation:.0f} m" if max_elevation != float("-inf") else "   Max. Höhe: N/A")
+        logger.info(f"{'=' * 80}\n")
 
         booking["gpx_files"] = route_files
         booking["total_distance_km"] = round(total_distance / 1000, 2)
@@ -919,7 +924,7 @@ class GPXRouteManager:
             Problematische Zeichen im Hotelnamen werden entfernt/ersetzt.
         """
         if route_files is None or len(route_files) == 0:
-            print(f"route_files: {route_files}")
+            logger.warning(f"route_files: {route_files}")
             return None
 
         merged_gpx = gpxpy.gpx.GPX()
@@ -932,8 +937,8 @@ class GPXRouteManager:
             # Letzte Datei liegt in output_dir (gpx_modified), alle anderen in gpx_dir
             if i == len(route_files) - 1 and entry.get("is_to_hotel", False):
                 gpx_file = output_dir / entry["file"]
-                print(gpx_file)
-                print(entry)
+                logger.debug(gpx_file)
+                logger.debug(entry)
             else:
                 # Prüfe erst im gpx_dir, dann im output_dir
                 gpx_file = self.gpx_dir / entry["file"]
@@ -943,7 +948,7 @@ class GPXRouteManager:
                     gpx_file = output_dir / entry["file"]
 
                 if not gpx_file.exists():
-                    print(f"⚠️  Datei nicht gefunden: {entry['file']} (weder in gpx_dir noch in output_dir)")
+                    logger.warning(f"⚠️  Datei nicht gefunden: {entry['file']} (weder in gpx_dir noch in output_dir)")
                     continue
             start_idx = entry["start_index"]
             end_idx = entry["end_index"]
@@ -989,7 +994,7 @@ class GPXRouteManager:
 
         output_path.write_text(merged_gpx.to_xml(), encoding="utf-8")
 
-        print(f"💾 Merged GPX gespeichert: {output_path.name}")
+        logger.info(f"💾 Merged GPX gespeichert: {output_path.name}")
 
         return output_path
 
@@ -1036,7 +1041,7 @@ class GPXRouteManager:
         previous_last_file = None
 
         for booking in bookings_sorted:
-            print(booking.get("hotel_name"))
+            logger.debug(booking.get("hotel_name"))
 
             lat = booking.get("latitude", None)
             lon = booking.get("longitude", None)
@@ -1086,7 +1091,7 @@ class GPXRouteManager:
             - Aktualisiert _last_gpx_file mit der neuen Datei
         """
         if "_last_gpx_file" not in booking:
-            print("⚠️  Keine vorherige Route vorhanden - kann nicht zur Unterkunft verlängern")
+            logger.warning("⚠️  Keine vorherige Route vorhanden - kann nicht zur Unterkunft verlängern")
             return
 
         lat = booking["latitude"]
@@ -1104,9 +1109,9 @@ class GPXRouteManager:
         )
 
         if output_path:
-            print(f"📍 GPX bis zur Unterkunft verlängert: {output_path}")
+            logger.debug(f"📍 GPX bis zur Unterkunft verlängert: {output_path}")
         else:
-            print(f"⚠️  Fehler beim Verlängern der Route für {booking['hotel_name']}")
+            logger.warning(f"⚠️  Fehler beim Verlängern der Route für {booking['hotel_name']}")
 
     def extend_gpx_route(
         self,
@@ -1171,8 +1176,8 @@ class GPXRouteManager:
             end_lat = end_point["lat"]
             end_lon = end_point["lon"]
 
-            print(f"   📍 Verlängere von Index {end_index}: ({end_lat:.6f}, {end_lon:.6f})")
-            print(f"   🏨 Bis zur Unterkunft: ({target_lat:.6f}, {target_lon:.6f})")
+            logger.debug(f"   📍 Verlängere von Index {end_index}: ({end_lat:.6f}, {end_lon:.6f})")
+            logger.debug(f"   🏨 Bis zur Unterkunft: ({target_lat:.6f}, {target_lon:.6f})")
 
             # Berechne Route zur Unterkunft
             route_gpx_str = route_provider_func(end_lat, end_lon, target_lat, target_lon)
@@ -1454,12 +1459,12 @@ class GPXRouteManager:
         # Entferne alten Eintrag falls vorhanden
         if old_filename in self.gpx_index:
             del self.gpx_index[old_filename]
-            print(f"   🗑️  Alter Eintrag '{old_filename}' aus Index entfernt")
+            logger.debug(f"   🗑️  Alter Eintrag '{old_filename}' aus Index entfernt")
 
         # Lese neue GPX-Datei
         gpx = read_gpx_file(new_gpx_file)
         if gpx is None or not gpx.tracks:
-            print(f"   ⚠️  Konnte neue Datei '{new_gpx_file.name}' nicht lesen")
+            logger.warning(f"   ⚠️  Konnte neue Datei '{new_gpx_file.name}' nicht lesen")
             return
 
         # Berechne Metadaten
@@ -1503,7 +1508,7 @@ class GPXRouteManager:
                     prev = p
 
         if first_point is None or last_point is None:
-            print(f"   ⚠️  Keine gültigen Punkte in '{new_gpx_file.name}'")
+            logger.warning(f"   ⚠️  Keine gültigen Punkte in '{new_gpx_file.name}'")
             return
 
         # Füge neuen Eintrag zum Index hinzu
@@ -1519,5 +1524,5 @@ class GPXRouteManager:
             "points": all_points,
         }
 
-        print(f"   ✅ Neuer Eintrag '{new_gpx_file.name}' zum Index hinzugefügt")
-        print(f"      Punkte: {len(all_points)}, Distanz: {total_distance / 1000:.2f} km")
+        logger.info(f"   ✅ Neuer Eintrag '{new_gpx_file.name}' zum Index hinzugefügt")
+        logger.debug(f"      Punkte: {len(all_points)}, Distanz: {total_distance / 1000:.2f} km")

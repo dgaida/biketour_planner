@@ -6,8 +6,12 @@ auf die Konsole als auch in Dateien schreiben kann.
 
 import logging
 import sys
+import os
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
+
+LOG_FILE = Path(os.path.join("logs", f"app_{datetime.now().strftime('%Y%m%d_%H%M')}.log"))
 
 
 def setup_logger(
@@ -38,6 +42,9 @@ def setup_logger(
         >>> logger = setup_logger(log_file=Path("logs/app.log"))
         >>> logger.debug("Debug-Information")
     """
+    if log_file is None:
+        log_file = LOG_FILE
+
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -54,7 +61,7 @@ def setup_logger(
     # Console Handler
     if console_output:
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
+        console_handler.setLevel(logging.WARNING)  # (level)
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
@@ -92,6 +99,6 @@ def get_logger(name: str = "biketour_planner") -> logging.Logger:
 
     # Wenn Logger noch keine Handler hat, initialisiere mit Standardwerten
     if not logger.handlers:
-        logger = setup_logger(name)
+        logger = setup_logger(name, level=logging.DEBUG)
 
     return logger

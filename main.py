@@ -56,7 +56,6 @@ if __name__ == "__main__":
 
         for html_file in BOOKING_DIR.glob("*.htm"):
             booking = extract_booking_info(html_file)
-            print(booking)
 
             if booking.get("latitude") is not None:
                 lat = booking.get("latitude")
@@ -78,8 +77,8 @@ if __name__ == "__main__":
             all_bookings.append(booking)
 
             # TODO: delete: just for debugging in here
-            if len(all_bookings) > 7:
-                break
+            # if len(all_bookings) > 7:
+            #     break
     else:
         all_bookings = load_json(Path("output/bookings.json"))
 

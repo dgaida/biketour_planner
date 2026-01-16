@@ -2,6 +2,11 @@ import re
 from bs4 import BeautifulSoup
 from pathlib import Path
 
+from .logger import get_logger
+
+# Initialisiere Logger
+logger = get_logger()
+
 MONTHS_DE = {
     "Januar": "01",
     "Februar": "02",
@@ -269,7 +274,7 @@ def extract_booking_info(html_path: Path):
                 if bui_text:
                     hotel_name = bui_text.text.strip()
 
-    return {
+    booking = {
         "hotel_name": hotel_name,
         "city_name": city_name,
         "country_name": country_name,
@@ -285,3 +290,7 @@ def extract_booking_info(html_path: Path):
         "total_price": total_price,
         "free_cancel_until": free_cancel_until,
     }
+
+    logger.debug(f"booking: {booking}")
+
+    return booking
