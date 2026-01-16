@@ -319,7 +319,7 @@ def extract_booking_info(html_path: Path):
 
                 arrival_date = f"{year}-{MONTHS_DE.get(month, '01')}-{int(day):02d}"
 
-            # Check-in-Zeit
+            # Check-in-Zeit - FIX: Nur wenn noch nicht gesetzt
             if not checkin_time:
                 time_div = arrival_col.find("div", class_="dates__time")
                 if time_div:
@@ -356,7 +356,7 @@ def extract_booking_info(html_path: Path):
         if departure_elem:
             departure_date = parse_date(departure_elem.find_next("div").text)
 
-    # früheste Check-in-Zeit (alter Fallback)
+    # früheste Check-in-Zeit (alter Fallback) - FIX: Nur wenn noch nicht gesetzt
     if not checkin_time:
         try:
             checkin_elem = soup.find("h3", string="Anreise")
@@ -372,14 +372,15 @@ def extract_booking_info(html_path: Path):
         if address_label:
             address = address_label.find_next("div").text.strip()
 
-    # Ausstattung
+    # Ausstattung - FIX: Suche im richtigen Parent-Element
     has_kitchen = False
     has_washing_machine = False
     amenities_header = soup.find("h5", string="Ausstattung")
     if amenities_header:
-        amenities_td = amenities_header.find_parent("th")
-        if amenities_td:
-            amenities_td = amenities_td.find_next("td")
+        # Finde das parent <tr> oder <th> Element und dann das nächste <td>
+        amenities_parent = amenities_header.find_parent(["tr", "th"])
+        if amenities_parent:
+            amenities_td = amenities_parent.find_next("td")
             if amenities_td:
                 amenities_text = amenities_td.get_text(" ")
                 has_kitchen = "Küche" in amenities_text

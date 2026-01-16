@@ -132,17 +132,17 @@ class TestExcelExport(unittest.TestCase):
         self.assertEqual(ws_out["D3"].value, None)  # Destination is empty
 
         # Check Row 4 (Booking 2)
-        self.assertEqual(ws_out["A4"].value, 3)
-        self.assertIsInstance(ws_out["B4"].value, datetime)
-        self.assertEqual(ws_out["B4"].value.strftime("%Y-%m-%d"), "2026-08-05")
-        self.assertEqual(ws_out["C4"].value, "CityA")  # Start is previous city
-        self.assertEqual(ws_out["D4"].value, "CityB")
-        self.assertEqual(ws_out["E4"].value, 75)
-        self.assertEqual(ws_out["F4"].value, "Hotel B\nAvenue 2, 54321 CityB, Country\nKüche")
-        self.assertEqual(ws_out["G4"].value, "300 / 400")
+        self.assertEqual(ws_out["A5"].value, 3)
+        self.assertIsInstance(ws_out["B5"].value, datetime)
+        self.assertEqual(ws_out["B5"].value.strftime("%Y-%m-%d"), "2026-08-05")
+        self.assertEqual(ws_out["C5"].value, "CityA")  # Start is previous city
+        self.assertEqual(ws_out["D5"].value, "CityB")
+        self.assertEqual(ws_out["E5"].value, 75)
+        self.assertEqual(ws_out["F5"].value, "Hotel B\nAvenue 2, 54321 CityB, Country\nKüche")
+        self.assertEqual(ws_out["G5"].value, "300 / 400")
         mock_get_names.assert_called()  # Should be called
-        self.assertEqual(ws_out["J4"].value, 150)
-        self.assertEqual(ws_out["K4"].value, "Stornierung bis: 2026-07-20")
+        self.assertEqual(ws_out["J5"].value, 150)
+        self.assertEqual(ws_out["K5"].value, "Stornierung bis: 2026-07-20")
 
         # Clean up the temporary directory
         shutil.rmtree(test_dir)

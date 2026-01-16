@@ -26,7 +26,7 @@ def extract_city_name(address: str) -> str:
         # Nimm den vorletzten Teil (sollte "PLZ Stadt" sein)
         city_part = parts[-2].strip()
 
-        # Entferne PLZ (führende Zahlen)
+        # Entferne PLZ (führende Zahlen und Leerzeichen)
         city_match = re.search(r"^\d+\s+(.+)$", city_part)
         if city_match:
             return city_match.group(1).strip()

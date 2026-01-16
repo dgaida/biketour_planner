@@ -77,7 +77,9 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
           https://github.com/abrensch/brouter/tree/master/misc/profiles2
     """
     url = "http://localhost:17777/brouter"
-    params = {"lonlats": f"{lon_from},{lat_from}|{lon_to},{lat_to}", "profile": "trekking", "format": "gpx"}
+    # FIX: Formatiere Koordinaten ohne trailing zeros
+    lonlats = f"{lon_from:g},{lat_from:g}|{lon_to:g},{lat_to:g}"
+    params = {"lonlats": lonlats, "profile": "trekking", "format": "gpx"}
     r = requests.get(url, params=params)
     r.raise_for_status()
     return r.text

@@ -131,6 +131,9 @@ def get_names_as_comma_separated_string(data: Optional[Dict]) -> str:
     names = []
 
     for poi in data.get("features", []):
+        if "properties" not in poi:
+            continue
+
         props = poi["properties"]
 
         # Versuche verschiedene Namensquellen
