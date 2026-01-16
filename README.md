@@ -65,17 +65,25 @@ biketour_planner/
 ├── pyproject.toml
 ├── requirements.txt
 ├── environment.yml
+├── Reiseplanung_Fahrrad template.xlsx
+├── setup_precommit.sh
+├── start_biketour_planner.bat
 ├── src/
 │   └── biketour_planner/
 │       ├── parse_booking.py
 │       ├── geocode.py
 │       ├── gpx_utils.py
-│       └── brouter.py
-├── booking/          # Booking.com HTML confirmations
-├── gpx/              # Original GPX route files
+│       ├── brouter.py
+│       ├── excel_export.py
+│       └── geoapify.py
+├── booking/          # (Optional) Directory for Booking.com HTML confirmations
+├── gpx/              # (Optional) Directory for original GPX route files
+├── brouter_docker/   # Dockerfile for BRouter setup
+├── logs/             # Log files
 ├── output/
 │   ├── bookings.json
 │   └── gpx_modified/
+├── tests/            # Unit and integration tests
 └── LICENSE
 ```
 
@@ -169,6 +177,18 @@ python main.py
 
    * `output/bookings.json` – structured booking & tour metadata
    * `output/gpx_modified/` – GPX files extended to accommodations
+
+---
+
+## Usage
+
+To run the Bike Tour Planner, execute the `main.py` script from the project's root directory:
+
+```bash
+python main.py
+```
+
+This will process your booking confirmations and GPX files, generating extended routes and tour data in the `output/` directory.
 
 ---
 

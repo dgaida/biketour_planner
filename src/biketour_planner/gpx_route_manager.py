@@ -1345,25 +1345,23 @@ class GPXRouteManager:
             min_idx = min(start_index, end_index)
             max_idx = max(start_index, end_index)
 
+            points_to_add = []
             for trk in gpx.tracks:
                 for seg in trk.segments:
-                    points_to_add = []
                     for p in seg.points:
                         if min_idx <= point_counter <= max_idx:
                             points_to_add.append(p)
                         point_counter += 1
 
-                    # Invertiere falls nötig
-                    if reversed_dir:
-                        points_to_add = points_to_add[::-1]
+            # Invertiere falls nötig
+            if reversed_dir:
+                points_to_add = points_to_add[::-1]
 
-                    # Füge Punkte hinzu
-                    for p in points_to_add:
-                        segment.points.append(
-                            gpxpy.gpx.GPXTrackPoint(
-                                latitude=p.latitude, longitude=p.longitude, elevation=p.elevation, time=p.time
-                            )
-                        )
+            # Füge Punkte hinzu
+            for p in points_to_add:
+                segment.points.append(
+                    gpxpy.gpx.GPXTrackPoint(latitude=p.latitude, longitude=p.longitude, elevation=p.elevation, time=p.time)
+                )
 
             # Füge Hotel-Koordinaten als zusätzlichen Punkt hinzu
             hotel_point = gpxpy.gpx.GPXTrackPoint(
