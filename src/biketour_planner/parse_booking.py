@@ -76,8 +76,139 @@ def parse_gps_coordinates(gps_text: str) -> tuple:
     return lat, lon
 
 
+def parse_airbnb_booking(soup: BeautifulSoup) -> dict:
+    """Extrahiert Buchungsinformationen aus einer Airbnb HTML-Bestätigung.
+
+    Args:
+        soup: BeautifulSoup-Objekt der HTML-Seite
+
+    Returns:
+        Dictionary mit Buchungsinformationen oder None bei Fehler
+    """
+    # Suche nach Script-Tag mit Airbnb-Daten (metadata)
+    script_tag = soup.find("script", string=re.compile(r'"metadata".*"title".*"check_in_date"'))
+
+    if not script_tag:
+        return None
+
+    script_text = script_tag.string
+
+    # Extrahiere title (Name der Unterkunft)
+    title_match = re.search(r'"title"\s*:\s*"([^"]*)"', script_text)
+    hotel_name = title_match.group(1) if title_match else None
+
+    # Extrahiere check_in_date (Ankunftsdatum)
+    checkin_match = re.search(r'"check_in_date"\s*:\s*"([^"]*)"', script_text)
+    arrival_date = checkin_match.group(1) if checkin_match else None
+
+    # Extrahiere check_out_date (Abreisedatum)
+    checkout_match = re.search(r'"check_out_date"\s*:\s*"([^"]*)"', script_text)
+    departure_date = checkout_match.group(1) if checkout_match else None
+
+    # Extrahiere GPS-Koordinaten
+    lat_match = re.search(r'"lat"\s*:\s*([\d.]+)', script_text)
+    gps_lat = float(lat_match.group(1)) if lat_match else None
+
+    lng_match = re.search(r'"lng"\s*:\s*([\d.]+)', script_text)
+    gps_lon = float(lng_match.group(1)) if lng_match else None
+
+    # Validiere dass mindestens die kritischen Felder gefunden wurden
+    if not (hotel_name and arrival_date and departure_date):
+        logger.warning("Airbnb-Parser: Kritische Felder fehlen")
+        return None
+
+    # Suche nach zusätzlichen Informationen in SSRUIStateToken
+    city_name = ""
+    country_name = ""
+    address = None
+    checkin_time = None
+    total_price = None
+
+    # Suche in allen Script-Tags nach den spezifischen JSON-Strukturen
+    for script in soup.find_all("script"):
+        if not script.string:
+            continue
+
+        script_content = script.string
+
+        # Suche nach checkin_checkout_arrival_guide für Check-in/out Zeiten
+        if '"id":"checkin_checkout_arrival_guide"' in script_content:
+            # Extrahiere Check-in Zeit
+            checkin_match = re.search(
+                r'"leading_kicker"\s*:\s*"Check-in".*?"leading_subtitle"\s*:\s*"([^"]*)"', script_content, re.DOTALL
+            )
+            if checkin_match:
+                checkin_time = checkin_match.group(1)
+
+        # Suche nach header_action.direction für Adresse
+        if '"id":"header_action.direction"' in script_content:
+            # Extrahiere Adresse aus subtitle
+            address_match = re.search(
+                r'"id"\s*:\s*"header_action\.direction".*?"subtitle"\s*:\s*"([^"]*)"', script_content, re.DOTALL
+            )
+            if address_match:
+                address = address_match.group(1).strip()
+                # Extrahiere Stadt (letzter Teil nach Komma)
+                address_parts = address.split(",")
+                if len(address_parts) >= 2:
+                    city_name = address_parts[-1].strip()
+                elif len(address_parts) == 1:
+                    city_name = address_parts[0].strip()
+
+        # Suche nach Gesamtpreis
+        if '"id":"payment_summary"' in script_content:
+            price_match = re.search(r"Gesamtkosten:\s*([\d,]+(?:\.\d{2})?)\s*€", script_content)
+            if price_match:
+                try:
+                    price_str = price_match.group(1).replace(",", ".")
+                    total_price = float(price_str)
+                except ValueError:
+                    pass
+
+    address_div = soup.find("div", class_="rz78adb")
+    if address_div:
+        # Suche nach Adresse in <p class="_yz1jt7x">
+        address_p = address_div.find("p", class_="_yz1jt7x", string=re.compile(r".+,.+"))
+        if address_p:
+            address_new = address_p.get_text().strip()
+            if not address:
+                address = address_new
+            #
+            if address_new and ", " in address_new:
+                address_parts = [part.strip() for part in address.split(",")]
+                if len(address_parts) >= 1:
+                    country_name = address_parts[-1]  # Letzter Teil ist das Land
+                    if not city_name:
+                        city_name = address_parts[-2] if len(address_parts) >= 2 else ""
+
+    # Versuche Telefonnummer zu finden
+    phone = None
+    phone_match = re.search(r"tel:(\+[\d]+)", script_text)
+    if phone_match:
+        phone = phone_match.group(1)
+
+    logger.info(f"Airbnb-Buchung erkannt: {hotel_name}")
+
+    return {
+        "hotel_name": hotel_name,
+        "arrival_date": arrival_date,
+        "departure_date": departure_date,
+        "latitude": gps_lat,
+        "longitude": gps_lon,
+        "city_name": city_name,
+        "country_name": country_name,
+        "checkin_time": checkin_time,
+        "address": address,
+        "phone": phone,
+        "has_kitchen": False,  # Airbnb liefert nicht alle Ausstattungsdetails
+        "has_washing_machine": False,
+        "total_price": total_price,
+        "free_cancel_until": None,  # Airbnb hat andere Stornierungslogik
+    }
+
+
 def extract_booking_info(html_path: Path):
-    """Extrahiert Buchungsinformationen aus einer Booking.com HTML-Bestätigung.
+    """Extrahiert Buchungsinformationen aus einer Booking.com oder Airbnb HTML-Bestätigung.
 
     Args:
         html_path: Pfad zur HTML-Datei
@@ -89,7 +220,7 @@ def extract_booking_info(html_path: Path):
 
     text = soup.get_text(" ", strip=True)
 
-    # Versuche zuerst Daten aus utag_data JavaScript zu extrahieren
+    # Versuche zuerst Daten aus utag_data JavaScript zu extrahieren (Booking.com)
     hotel_name = ""
     city_name = ""
     country_name = ""
@@ -101,6 +232,14 @@ def extract_booking_info(html_path: Path):
     gps_lat = gps_lon = None
 
     script_tag = soup.find("script", string=re.compile(r"window\.utag_data"))
+
+    # Falls kein Booking.com Format, versuche Airbnb
+    if not script_tag:
+        airbnb_data = parse_airbnb_booking(soup)
+        if airbnb_data:
+            return airbnb_data
+        # Falls auch Airbnb fehlschlägt, fahre mit Booking.com Fallback-Logik fort
+
     if script_tag:
         script_text = script_tag.string
 

@@ -21,6 +21,7 @@ Example:
 
 import requests
 import gpxpy
+from typing import List
 
 
 def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: float) -> str:
@@ -82,9 +83,52 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
     return r.text
 
 
-def get_route2address_as_points(end_lat, end_lon, target_lat, target_lon):
+def get_route2address_as_points(
+    start_lat: float, start_lon: float, target_lat: float, target_lon: float
+) -> List[gpxpy.gpx.GPXTrackPoint]:
+    """Berechnet eine Route zwischen zwei Koordinaten und gibt die Trackpunkte zurück.
+
+    Diese Funktion nutzt BRouter um eine Fahrradroute zu berechnen und extrahiert
+    die einzelnen GPX-Trackpunkte aus dem Ergebnis. Sie dient als Wrapper um
+    route_to_address() mit zusätzlicher Validierung und Punktextraktion.
+
+    Args:
+        start_lat: Start-Breitengrad in Dezimalgrad (z.B. 48.1351 für München).
+        start_lon: Start-Längengrad in Dezimalgrad (z.B. 11.5820 für München).
+        target_lat: Ziel-Breitengrad in Dezimalgrad (z.B. 47.4917 für Garmisch).
+        target_lon: Ziel-Längengrad in Dezimalgrad (z.B. 11.0953 für Garmisch).
+
+    Returns:
+        Liste von GPXTrackPoint-Objekten mit der berechneten Route. Jeder Punkt
+        enthält latitude, longitude, elevation (falls vorhanden) und time-Informationen.
+
+    Raises:
+        ValueError: Wenn route_to_address() eine leere Antwort zurückgibt.
+        ValueError: Wenn die berechnete Route keine Tracks/Segmente enthält.
+        ValueError: Wenn die berechnete Route keine Punkte enthält.
+        requests.exceptions.HTTPError: Wenn BRouter einen HTTP-Fehler zurückgibt.
+        requests.exceptions.ConnectionError: Wenn BRouter nicht erreichbar ist.
+        requests.exceptions.Timeout: Wenn die Routenberechnung zu lange dauert.
+
+    Example:
+        >>> # Berechne Route von Berlin nach Potsdam
+        >>> points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
+        >>> print(f"Route hat {len(points)} Punkte")
+        Route hat 342 Punkte
+        >>>
+        >>> # Zugriff auf einzelne Punkt-Eigenschaften
+        >>> first_point = points[0]
+        >>> print(f"Start: {first_point.latitude}, {first_point.longitude}")
+        >>> print(f"Höhe: {first_point.elevation}m")
+
+    Note:
+        - Verwendet das "trekking"-Profil von BRouter (siehe route_to_address)
+        - BRouter-Server muss unter http://localhost:17777 laufen
+        - Die zurückgegebenen Punkte sind bereits in der richtigen Reihenfolge
+        - Elevation-Werte können None sein falls nicht verfügbar
+    """
     # Berechne Route zur Unterkunft
-    route_gpx_str = route_to_address(end_lat, end_lon, target_lat, target_lon)
+    route_gpx_str = route_to_address(start_lat, start_lon, target_lat, target_lon)
 
     if not route_gpx_str or not route_gpx_str.strip():
         raise ValueError("Route-Provider gab leere Antwort zurück")
