@@ -540,7 +540,7 @@ class GPXRouteManager:
 
             idx, dist = find_closest_point_in_track(cand["points"], current_lat, current_lon)
 
-            logger.debug(length_file, name, dist)
+            logger.debug(f"{length_file} {name} {dist}")
 
             if dist > self.max_connection_distance_m:
                 continue
@@ -1292,17 +1292,13 @@ class GPXRouteManager:
                      - longitude: Längengrad der Unterkunft
                      - arrival_date: Anreisedatum für Dateinamen
                      - hotel_name: Name für Dateinamen
-                     - _last_gpx_file: Dictionary mit letztem Track-Punkt:
-                       * file (str): Dateiname
-                       * end_index (int): Letzter Index
-                       * reversed (bool): Fahrtrichtung
                      - gpx_files: Liste der Route-Abschnitte (wird erweitert)
             output_path: Ausgabeverzeichnis für die erweiterte GPX-Datei.
 
         Returns:
             Path zur gespeicherten GPX-Datei oder None bei Fehler.
         """
-        if "_last_gpx_file" not in booking:
+        if "gpx_files" not in booking or not booking["gpx_files"]:
             print("⚠️  Keine vorherige Route vorhanden - kann nicht zur Unterkunft verlängern")
             return None
 
@@ -1311,16 +1307,22 @@ class GPXRouteManager:
             return None
 
         try:
-            # Original GPX laden
-            gpx_file = self.gpx_dir / booking["_last_gpx_file"]["file"]
+            # Nimm die LETZTE Datei aus gpx_files (nicht _last_gpx_file!)
+            last_segment = booking["gpx_files"][-1]
+
+            # Original GPX laden - versuche erst gpx_dir, dann output_path
+            gpx_file = self.gpx_dir / last_segment["file"]
+            if not gpx_file.exists():
+                gpx_file = output_path / last_segment["file"]
+
             gpx = read_gpx_file(gpx_file)
             if gpx is None:
                 raise ValueError(f"Konnte {gpx_file.name} nicht lesen")
 
             # Hole Metadaten aus dem Index
-            meta = self.gpx_index.get(booking["_last_gpx_file"]["file"])
+            meta = self.gpx_index.get(last_segment["file"])
             if meta is None:
-                raise ValueError(f"Keine Metadaten für {booking['_last_gpx_file']['file']} gefunden")
+                raise ValueError(f"Keine Metadaten für {last_segment['file']} gefunden")
 
             # Erstelle neue GPX-Datei mit erweiterter Route
             extended_gpx = gpxpy.gpx.GPX()
@@ -1329,17 +1331,25 @@ class GPXRouteManager:
             segment = gpxpy.gpx.GPXTrackSegment()
             track.segments.append(segment)
 
-            # Füge ursprüngliche Route bis end_index hinzu
+            # Hole Indizes und Richtung
+            start_index = last_segment.get("start_index", 0)
+            end_index = last_segment["end_index"]
+            reversed_dir = last_segment.get("reversed", False)
+
+            logger.debug(
+                f"   extend_track2hotel_simple: start_index={start_index}, end_index={end_index}, reversed={reversed_dir}"
+            )
+
+            # Füge ursprüngliche Route hinzu
             point_counter = 0
-            start_index = booking["_last_gpx_file"].get("start_index", 0)
-            end_index = booking["_last_gpx_file"]["end_index"]
-            reversed_dir = booking["_last_gpx_file"].get("reversed", False)
+            min_idx = min(start_index, end_index)
+            max_idx = max(start_index, end_index)
 
             for trk in gpx.tracks:
                 for seg in trk.segments:
                     points_to_add = []
                     for p in seg.points:
-                        if start_index <= point_counter <= end_index:
+                        if min_idx <= point_counter <= max_idx:
                             points_to_add.append(p)
                         point_counter += 1
 
@@ -1391,22 +1401,13 @@ class GPXRouteManager:
 
             booking["gpx_files"][-1] = hotel_segment
 
-            # print("BEFORE:", booking["_last_gpx_file"])
-
-            # TODO: wenn man _last_gpx_file verändert, dann muss auch gpxindex um diese neue Datei erweitert werden
-            # Aktualisiere _last_gpx_file für potentielle Fortsetzung
-
-            # erstelle gpx_index hier komplett neu. das ist sicherlich übertrieben. TODO
-            # print("BEFORE:", len(self.gpx_index))
-            # self._preprocess_gpx_directory()
-            self._update_gpx_index_entry(old_filename=booking["_last_gpx_file"]["file"], new_gpx_file=output_file)
-            # print(len(self.gpx_index))
+            # Aktualisiere GPX-Index mit der neuen Datei
+            self._update_gpx_index_entry(old_filename=last_segment["file"], new_gpx_file=output_file)
 
             booking["_last_gpx_file"] = {
                 "file": out_name,
                 "end_index": len(segment.points) - 1,
                 "reversed": False,
-                # "is_to_hotel": True,
             }
 
             print(booking["_last_gpx_file"])
