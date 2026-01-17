@@ -319,14 +319,14 @@ def extract_booking_info(html_path: Path):
 
                 arrival_date = f"{year}-{MONTHS_DE.get(month, '01')}-{int(day):02d}"
 
-            # Check-in-Zeit - FIX: Nur wenn noch nicht gesetzt
-            if not checkin_time:
-                time_div = arrival_col.find("div", class_="dates__time")
-                if time_div:
-                    time_text = time_div.text.strip()
-                    time_match = re.search(r"(\d{1,2}:\d{2})\s*-", time_text)
-                    if time_match:
-                        checkin_time = time_match.group(1)
+        # Check-in-Zeit - immer aus dates-Sektion extrahieren wenn vorhanden
+        if arrival_col:
+            time_div = arrival_col.find("div", class_="dates__time")
+            if time_div:
+                time_text = time_div.text.strip()
+                time_match = re.search(r"(\d{1,2}:\d{2})\s*-", time_text)
+                if time_match:
+                    checkin_time = time_match.group(1)
 
         # Abreise
         departure_cols = dates_section.find_all("div", class_="col-6 dates__item")
@@ -381,6 +381,13 @@ def extract_booking_info(html_path: Path):
         amenities_parent = amenities_header.find_parent(["tr", "th"])
         if amenities_parent:
             amenities_td = amenities_parent.find_next("td")
+            if amenities_td:
+                amenities_text = amenities_td.get_text(" ")
+                has_kitchen = "Küche" in amenities_text
+                has_washing_machine = "Waschmaschine" in amenities_text
+        else:
+            # Fallback: Suche einfach nach dem nächsten <td> nach dem Header
+            amenities_td = amenities_header.find_next("td")
             if amenities_td:
                 amenities_text = amenities_td.get_text(" ")
                 has_kitchen = "Küche" in amenities_text
