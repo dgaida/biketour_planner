@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 import shutil
-from typing import Dict, Union, List
 
 from biketour_planner.parse_booking import extract_booking_info
 from biketour_planner.geocode import geocode_address
@@ -10,6 +9,7 @@ from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
 # from biketour_planner.excel_export import export_bookings_to_excel
 from biketour_planner.pdf_export import export_bookings_to_pdf
 from biketour_planner.geoapify import find_top_tourist_sights
+from biketour_planner.pass_finder import process_passes, load_json
 
 BOOKING_DIR = Path("../2026_Kroatien/booking")
 GPX_DIR = Path("../2026_Kroatien/gpx")
@@ -19,37 +19,6 @@ if OUT_DIR.exists():
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 create_bookings_json = True  # False
-
-
-def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
-    """Lädt eine JSON-Datei mit Error-Handling.
-
-    Die Funktion sucht die Datei relativ zum 'src/data/' Verzeichnis.
-
-    Args:
-        file_path: Path oder String zur JSON-Datei (relativ zu src/data/).
-
-    Returns:
-        Dictionary oder Liste mit den JSON-Daten.
-
-    Raises:
-        FileNotFoundError: Wenn die JSON-Datei nicht existiert.
-        json.JSONDecodeError: Wenn das JSON-Format ungültig ist.
-
-    Example:
-        >>> data = load_json("german_cities.json")
-        Loaded JSON from german_cities.json
-        >>> print(type(data))
-        <class 'list'>
-    """
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        print(f"Loaded JSON from {file_path.name}")
-        return data
-    except Exception as e:
-        print(f"Error loading JSON {file_path}: {e}")
-        raise
 
 
 if __name__ == "__main__":
@@ -86,12 +55,17 @@ if __name__ == "__main__":
 
     all_bookings = get_gps_tracks4day_4alldays(GPX_DIR, all_bookings, OUT_DIR)
 
+    # NEU: Verarbeite Pässe
+    all_bookings = process_passes(passes_json_path=GPX_DIR / "Paesse.json", gpx_dir=GPX_DIR, bookings=all_bookings)
+
     # JSON speichern mit UTF-8 Encoding
     Path("output/bookings.json").write_text(json.dumps(all_bookings, indent=2, ensure_ascii=False), encoding="utf-8")
 
     export_bookings_to_pdf(
         json_path=Path("output/bookings.json"),
         output_path=Path("output/Reiseplanung_Kroatien_2026.pdf"),
+        output_dir=OUT_DIR,
+        gpx_dir=GPX_DIR,  # NEU!
         title="Reiseplanung Kroatien 2026",
     )
 

@@ -23,6 +23,7 @@ dependencies = [
     "openpyxl>=3.1",
     "python-dotenv",
     "reportlab",
+    "matplotlib"
 ]
 
 [tool.setuptools.packages.find]

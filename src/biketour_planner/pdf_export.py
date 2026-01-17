@@ -19,6 +19,7 @@ from reportlab.lib.enums import TA_CENTER  # TA_LEFT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from .excel_export import extract_city_name, create_accommodation_text
+from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
 
 
 def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
@@ -67,22 +68,25 @@ def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
     return links
 
 
-def export_bookings_to_pdf(json_path: Path, output_path: Path, title: str = "Reiseplanung Kroatien 2026") -> None:
+def export_bookings_to_pdf(
+    json_path: Path,
+    output_path: Path,
+    output_dir: Path = None,  # Pfad zu gemergten GPX-Dateien
+    gpx_dir: Path = None,  # NEU: Pfad zu Original-GPX-Dateien (für Pass-Tracks)
+    title: str = "Reiseplanung Kroatien 2026",
+) -> None:
     """Exportiert Buchungsinformationen in eine PDF-Datei mit klickbaren Links.
 
     Erstellt ein PDF im Querformat mit einer Tabelle ähnlich dem Excel-Template.
     Sehenswürdigkeiten werden als klickbare Google Maps Links eingefügt.
+    Am Ende werden Höhenprofile für alle Tage und Pässe hinzugefügt.
 
     Args:
         json_path: Pfad zur JSON-Datei mit Buchungen.
         output_path: Pfad für die Ausgabe-PDF-Datei.
+        output_dir: Pfad zum Verzeichnis mit gemergten GPX-Dateien (Default: None).
+        gpx_dir: Pfad zum Verzeichnis mit Original-GPX-Dateien für Pässe (Default: None).
         title: Titel des Dokuments (wird auf jeder Seite angezeigt).
-
-    Example:
-        >>> export_bookings_to_pdf(
-        ...     json_path=Path("output/bookings.json"),
-        ...     output_path=Path("output/Reiseplanung_Kroatien_2026.pdf")
-        ... )
     """
     # Registriere Unicode-Schriftarten (für kroatische Zeichen wie č, ć, ž, š, đ)
     try:
@@ -244,6 +248,19 @@ def export_bookings_to_pdf(json_path: Path, output_path: Path, title: str = "Rei
         if booking.get("total_price"):
             total_price += float(booking.get("total_price", 0))
 
+        # GPX-Spalte: Haupt-Track + Pass-Tracks
+        gpx_tracks = []
+        if booking.get("gpx_track_final"):
+            gpx_tracks.append(str(booking.get("gpx_track_final", ""))[:12])
+
+        # Füge Pass-Tracks hinzu
+        for pass_track in booking.get("paesse_tracks", []):
+            pass_file = pass_track.get("file", "")[:15]
+            passname = pass_track.get("passname", "")
+            gpx_tracks.append(f"{pass_file}<br/>({passname})")
+
+        gpx_text = "<br/>".join(gpx_tracks) if gpx_tracks else ""
+
         row = [
             Paragraph(str(day_counter), cell_style),
             Paragraph(date_str, cell_style),
@@ -252,7 +269,7 @@ def export_bookings_to_pdf(json_path: Path, output_path: Path, title: str = "Rei
             Paragraph(str(booking.get("total_distance_km", "")), cell_style),
             Paragraph(accommodation_text.replace("\n", "<br/>"), cell_style),
             Paragraph(f"{booking.get('total_ascent_m', '')} / {booking.get('max_elevation_m', '')}", cell_style),
-            Paragraph(str(booking.get("gpx_track_final", ""))[:12], cell_style),
+            Paragraph(gpx_text, cell_style),  # Geändert!
             Paragraph(sights_html, link_style),
             Paragraph(str(booking.get("total_price", "")), cell_style),
             Paragraph(f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "", cell_style),
@@ -322,6 +339,13 @@ def export_bookings_to_pdf(json_path: Path, output_path: Path, title: str = "Rei
         f"<b>Gesamtkosten:</b> {total_price:.2f} €"
     )
     story.append(Paragraph(summary_text, summary_style))
+
+    # Höhenprofile hinzufügen
+    if output_dir:
+        gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)
+        add_elevation_profiles_to_story(
+            story, gpx_files, bookings_sorted, gpx_dir or output_dir, title_style, page_width_cm=25.0  # NEU!  # NEU!
+        )
 
     # PDF generieren
     doc.build(story)
