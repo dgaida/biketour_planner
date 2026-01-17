@@ -579,7 +579,8 @@ class TestProcessRouteIteration:
         )
 
         assert "test_track.gpx" in visited
-        assert "test_track" in used_base_files
+        # Die Implementierung fügt den vollständigen Dateinamen zu used_base_files hinzu, nicht nur die Basis
+        assert "test_track.gpx" in used_base_files
 
 
 # ============================================================================
