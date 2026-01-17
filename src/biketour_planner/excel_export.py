@@ -5,7 +5,9 @@ from typing import Dict
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from datetime import datetime, timedelta
-from .geoapify import get_names_as_comma_separated_string
+
+# from .geoapify import get_names_as_comma_separated_string
+from .excel_hyperlinks import create_tourist_sights_hyperlinks
 
 
 def extract_city_name(address: str) -> str:
@@ -174,9 +176,10 @@ def export_bookings_to_excel(json_path: Path, template_path: Path, output_path: 
 
         ws[f"H{row}"] = booking.get("gpx_track_final", "")[:12]
 
-        cs_string_names = get_names_as_comma_separated_string(booking.get("tourist_sights", None))
+        # cs_string_names = get_names_as_comma_separated_string(booking.get("tourist_sights", None))
 
-        ws[f"I{row}"] = cs_string_names
+        # ws[f"I{row}"] = cs_string_names
+        create_tourist_sights_hyperlinks(ws, row, booking.get("tourist_sights", None))
 
         # Spalte J: Preis
         ws[f"J{row}"] = booking.get("total_price", "")
