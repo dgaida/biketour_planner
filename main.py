@@ -6,7 +6,9 @@ from typing import Dict, Union, List
 from biketour_planner.parse_booking import extract_booking_info
 from biketour_planner.geocode import geocode_address
 from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
-from biketour_planner.excel_export import export_bookings_to_excel
+
+# from biketour_planner.excel_export import export_bookings_to_excel
+from biketour_planner.pdf_export import export_bookings_to_pdf
 from biketour_planner.geoapify import find_top_tourist_sights
 
 BOOKING_DIR = Path("../2026_Kroatien/booking")
@@ -87,9 +89,15 @@ if __name__ == "__main__":
     # JSON speichern mit UTF-8 Encoding
     Path("output/bookings.json").write_text(json.dumps(all_bookings, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    export_bookings_to_excel(
+    export_bookings_to_pdf(
         json_path=Path("output/bookings.json"),
-        template_path=Path("Reiseplanung_Fahrrad template.xlsx"),
-        output_path=Path("output/Reiseplanung_Kroatien_2026.xlsx"),
-        start_row=2,  # Ab Zeile 2 einfügen (anpassbar)
+        output_path=Path("output/Reiseplanung_Kroatien_2026.pdf"),
+        title="Reiseplanung Kroatien 2026",
     )
+
+    # export_bookings_to_excel(
+    #     json_path=Path("output/bookings.json"),
+    #     template_path=Path("Reiseplanung_Fahrrad template.xlsx"),
+    #     output_path=Path("output/Reiseplanung_Kroatien_2026.xlsx"),
+    #     start_row=2,  # Ab Zeile 2 einfügen (anpassbar)
+    # )

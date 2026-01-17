@@ -21,7 +21,8 @@ dependencies = [
     "requests>=2.31",
     "python-dateutil>=2.9",
     "openpyxl>=3.1",
-    "python-dotenv"
+    "python-dotenv",
+    "reportlab",
 ]
 
 [tool.setuptools.packages.find]
