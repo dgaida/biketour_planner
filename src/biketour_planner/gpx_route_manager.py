@@ -164,6 +164,168 @@ class GPXRouteManager:
         self,
         start_lat: float,
         start_lon: float,
+        target_lat: float,
+        target_lon: float,
+        previous_last_file: Optional[dict] = None,
+    ) -> StartPosResult:
+        """Bestimmt die Startposition für die Routensuche.
+
+        Wenn mehrere Tracks im Umkreis von 3 km vom Startort liegen, wird derjenige
+        gewählt, dessen Start- oder Endpunkt näher am Zielort liegt. Dies optimiert
+        die Routenplanung, indem bereits der Start-Track in die richtige Richtung zeigt.
+
+        Wenn eine vorherige Route existiert (mehrtägige Tour), wird diese fortgesetzt.
+        Dabei wird die Fahrtrichtung des Vortags erzwungen, um konsistente Routen
+        zu gewährleisten.
+
+        Args:
+            start_lat: Breitengrad des Startpunkts in Dezimalgrad.
+            start_lon: Längengrad des Startpunkts in Dezimalgrad.
+            target_lat: Breitengrad des Zielpunkts in Dezimalgrad.
+            target_lon: Längengrad des Zielpunkts in Dezimalgrad.
+            previous_last_file: Optional. Dictionary der letzten verwendeten GPX-Datei
+                            vom Vortag mit Keys:
+                            - 'file' (str): Dateiname
+                            - 'end_index' (int): Letzter verwendeter Index
+                            - 'reversed' (bool): Ob Track rückwärts durchfahren wurde
+
+        Returns:
+            Tuple aus:
+                - start_file (str): Dateiname der Start-GPX-Datei.
+                - start_index (int): Startindex im Track.
+                - force_direction (str|None): Erzwungene Richtung ('forward'/'backward')
+                falls Fortsetzung vom Vortag, sonst None.
+
+        Note:
+            Die erzwungene Richtung stellt sicher, dass mehrtägige Touren konsistent
+            in eine Richtung fortgesetzt werden und nicht hin- und hergefahren wird.
+        """
+        return self._find_optimal_start_track(start_lat, start_lon, target_lat, target_lon, previous_last_file)
+
+    def _find_optimal_start_track(
+        self,
+        start_lat: float,
+        start_lon: float,
+        target_lat: float,
+        target_lon: float,
+        previous_last_file: Optional[dict] = None,
+        start_radius_km: float = 3.0,
+    ) -> tuple[Optional[str], Optional[int], Optional[str]]:
+        """Findet den optimalen Start-Track basierend auf Nähe zu Start UND Ziel.
+
+        Wenn mehrere Tracks im Umkreis von start_radius_km vom Startort liegen,
+        wird derjenige gewählt, dessen Start- oder Endpunkt näher am Zielort liegt.
+        Dies ermöglicht eine bessere Routenplanung, indem bereits der Start-Track
+        in die richtige Richtung zeigt.
+
+        **Logik:**
+        1. Wenn previous_last_file existiert, wird dieser Track bevorzugt (Fortsetzung)
+        2. Sonst: Finde alle Tracks im Umkreis von start_radius_km
+        3. Für jeden Track: Prüfe ob Start ODER Ende näher am Ziel liegt
+        4. Wähle den Track, dessen nähere Seite am nächsten zum Ziel ist
+
+        Args:
+            start_lat: Breitengrad des Startorts in Dezimalgrad.
+            start_lon: Längengrad des Startorts in Dezimalgrad.
+            target_lat: Breitengrad des Zielorts in Dezimalgrad.
+            target_lon: Längengrad des Zielorts in Dezimalgrad.
+            previous_last_file: Optional. Dictionary der letzten verwendeten GPX-Datei
+                            vom Vortag für Fortsetzung mehrtägiger Touren.
+            start_radius_km: Suchradius in Kilometern um den Startort für Kandidaten-Tracks.
+                            Default: 3.0 km.
+
+        Returns:
+            Tuple aus:
+                - start_file (str): Dateiname der Start-GPX-Datei.
+                - start_index (int): Startindex im Track (nächster Punkt zum Startort).
+                - force_direction (str|None): Erzwungene Richtung bei Fortsetzung vom Vortag,
+                sonst None.
+
+        Example:
+            >>> # Mehrere Tracks in der Nähe von München
+            >>> start_file, start_idx, force_dir = manager._find_optimal_start_track(
+            ...     start_lat=48.1351, start_lon=11.5820,  # München
+            ...     target_lat=47.4917, target_lon=11.0953,  # Garmisch
+            ...     previous_last_file=None
+            ... )
+            >>> print(f"Gewählter Start-Track: {start_file}")
+            # Wählt Track dessen Ende/Anfang Richtung Garmisch zeigt
+        """
+        start_radius_m = start_radius_km * 1000
+
+        # 1. Prüfe ob Fortsetzung vom Vortag
+        if previous_last_file:
+            filename = previous_last_file["file"]
+            meta = self.gpx_index.get(filename)
+
+            if meta:
+                start_file = filename
+                start_index = previous_last_file["end_index"]
+                last_point = meta["points"][start_index]
+                start_distance = haversine(start_lat, start_lon, last_point["lat"], last_point["lon"])
+
+                force_direction = "backward" if previous_last_file.get("reversed", False) else "forward"
+
+                logger.debug(f"🔗 Fortsetzung erkannt: {start_file} ab Index {start_index}")
+                logger.debug(f"🔗 Erzwungene Richtung: {force_direction} (vom Vortag)")
+                logger.debug(f"🔗 Distanz zum Fortsetzungspunkt: {start_distance:.1f}m")
+
+                return start_file, start_index, force_direction
+
+        # 2. Finde alle Kandidaten im Umkreis
+        candidates = []
+
+        for filename, meta in self.gpx_index.items():
+            # Finde nächsten Punkt zum Startort
+            idx, dist_to_start = find_closest_point_in_track(meta["points"], start_lat, start_lon)
+
+            # Nur Tracks im definierten Radius betrachten
+            if dist_to_start > start_radius_m:
+                continue
+
+            # Berechne Distanzen vom Track-Anfang und Track-Ende zum Zielort
+            dist_track_start_to_target = haversine(meta["start_lat"], meta["start_lon"], target_lat, target_lon)
+            dist_track_end_to_target = haversine(meta["end_lat"], meta["end_lon"], target_lat, target_lon)
+
+            # Wähle die Seite des Tracks, die näher am Ziel liegt
+            min_dist_to_target = min(dist_track_start_to_target, dist_track_end_to_target)
+
+            candidates.append(
+                {
+                    "filename": filename,
+                    "index": idx,
+                    "dist_to_start": dist_to_start,
+                    "dist_to_target": min_dist_to_target,
+                }
+            )
+
+            logger.debug(
+                f"   Kandidat: {filename}, "
+                f"Dist zu Start: {dist_to_start:.0f}m, "
+                f"Min-Dist zu Ziel: {min_dist_to_target:.0f}m"
+            )
+
+        # 3. Wähle den Track mit der geringsten Distanz zum Ziel
+        if not candidates:
+            logger.warning("⚠️  Keine Tracks im Umkreis gefunden!")
+            return None, None, None
+
+        # Sortiere nach Distanz zum Ziel (primär), dann nach Distanz zum Start (sekundär)
+        best_candidate = min(candidates, key=lambda c: (c["dist_to_target"], c["dist_to_start"]))
+
+        logger.info(f"✅ Gewählter Start-Track: {best_candidate['filename']}")
+        logger.debug(
+            f"   📍 Start-Index: {best_candidate['index']}, "
+            f"Dist zu Start: {best_candidate['dist_to_start']:.0f}m, "
+            f"Dist zu Ziel: {best_candidate['dist_to_target']:.0f}m"
+        )
+
+        return best_candidate["filename"], best_candidate["index"], None
+
+    def _find_start_pos_old(
+        self,
+        start_lat: float,
+        start_lon: float,
         previous_last_file: Optional[dict],
     ) -> StartPosResult:
         """Bestimmt die Startposition für die Routensuche.
@@ -820,7 +982,10 @@ class GPXRouteManager:
         logger.info(f"{'=' * 80}")
 
         # 1. Finde Start-Position
-        start_file, start_index, force_direction = self._find_start_pos(start_lat, start_lon, previous_last_file)
+        # start_file, start_index, force_direction = self._find_start_pos(start_lat, start_lon, previous_last_file)
+        start_file, start_index, force_direction = self._find_start_pos(
+            start_lat, start_lon, target_lat, target_lon  # , previous_last_file
+        )
 
         # 2. Finde Ziel-Position UND welche Seite des Ziel-Tracks näher am Start ist
         target_file, target_index, target_side_lat, target_side_lon = self._find_target_pos(
@@ -993,6 +1158,8 @@ class GPXRouteManager:
         output_path = output_dir / out_name
 
         output_path.write_text(merged_gpx.to_xml(), encoding="utf-8")
+
+        booking["gpx_track_final"] = out_name
 
         logger.info(f"💾 Merged GPX gespeichert: {output_path.name}")
 

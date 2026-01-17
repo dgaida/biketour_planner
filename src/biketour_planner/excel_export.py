@@ -172,6 +172,8 @@ def export_bookings_to_excel(json_path: Path, template_path: Path, output_path: 
 
         ws[f"G{row}"] = f"{booking.get('total_ascent_m', '')} / {booking.get('max_elevation_m', '')}"
 
+        ws[f"H{row}"] = booking.get("gpx_track_final", "")[:12]
+
         cs_string_names = get_names_as_comma_separated_string(booking.get("tourist_sights", None))
 
         ws[f"I{row}"] = cs_string_names
