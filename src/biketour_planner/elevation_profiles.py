@@ -136,11 +136,12 @@ def get_color_for_gradient(gradient: float) -> str:
             return "#00cc00"  # Dunkelgrün
 
 
-def create_elevation_profile_plot(gpx_file: Path, title: str = None, figsize: Tuple[int, int] = (12, 4)) -> BytesIO:
+def create_elevation_profile_plot(gpx_file: Path, booking, title: str = None, figsize: Tuple[int, int] = (12, 4)) -> BytesIO:
     """Erstellt ein farbcodiertes Höhenprofil aus einer GPX-Datei.
 
     Args:
         gpx_file: Pfad zur GPX-Datei.
+        booking:
         title: Titel des Plots (Default: Dateiname).
         figsize: Größe der Figur in Zoll (Breite, Höhe).
 
@@ -178,12 +179,11 @@ def create_elevation_profile_plot(gpx_file: Path, title: str = None, figsize: Tu
 
     # Achsenlimits
     ax.set_xlim(0, distances[-1])
-    ax.set_ylim(0, max(elevations) * 1.1)
+    ax.set_ylim(min(elevations) * 0.8, max(elevations) * 1.1)
 
     # Statistiken als Text
-    total_ascent = sum(
-        elevations[i] - elevations[i - 1] for i in range(1, len(elevations)) if elevations[i] > elevations[i - 1]
-    )
+    total_ascent = booking.get("total_ascent_m", "")
+
     total_descent = sum(
         elevations[i - 1] - elevations[i] for i in range(1, len(elevations)) if elevations[i] < elevations[i - 1]
     )
@@ -263,15 +263,16 @@ def add_elevation_profiles_to_story(
     # Für jede GPX-Datei ein Profil erstellen
     for gpx_file in gpx_files:
         try:
+            booking = gpx_to_booking.get(gpx_file.name)
+
             # Haupt-Track Profil erstellen
-            img_buffer = create_elevation_profile_plot(gpx_file, title=gpx_file.stem)
+            img_buffer = create_elevation_profile_plot(gpx_file, booking, title=gpx_file.stem)
 
             # Als reportlab Image hinzufügen
             img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
             story.append(img)
 
             # Prüfe ob es Pass-Tracks für diesen Tag gibt
-            booking = gpx_to_booking.get(gpx_file.name)
             if booking and booking.get("paesse_tracks"):
                 for pass_track in booking["paesse_tracks"]:
                     pass_file = gpx_dir / pass_track["file"]
@@ -280,7 +281,9 @@ def add_elevation_profiles_to_story(
                     if pass_file.exists():
                         try:
                             # Pass-Track Profil erstellen
-                            pass_img_buffer = create_elevation_profile_plot(pass_file, title=f"{passname} ({pass_file.stem})")
+                            pass_img_buffer = create_elevation_profile_plot(
+                                pass_file, booking, title=f"{passname} ({pass_file.stem})"
+                            )
 
                             # Als reportlab Image hinzufügen
                             pass_img = Image(pass_img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)

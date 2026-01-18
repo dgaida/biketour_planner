@@ -248,7 +248,7 @@ def export_bookings_to_pdf(
 
             # km-Wert für Haupt-Track
             km_val = booking.get("total_distance_km", "")
-            km_values.append(str(km_val) if km_val else "")
+            km_values.append(f"{km_val:.0f}" if km_val else "")
 
             # Hm/Max für Haupt-Track
             hm = booking.get("total_ascent_m", "")
@@ -276,7 +276,7 @@ def export_bookings_to_pdf(
 
                     # Füge km-Wert hinzu
                     pass_km = pass_distance / 1000
-                    km_values.append(f"{pass_km:.2f}")
+                    km_values.append(f"{pass_km:.0f}")
                     total_km += pass_km
 
                     # Füge Hm/Max hinzu
