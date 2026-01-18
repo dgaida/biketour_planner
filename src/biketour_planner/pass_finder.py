@@ -11,7 +11,7 @@ from typing import List, Dict, Optional, Tuple, Union
 # import math
 
 from .geocode import geocode_address
-from .gpx_route_manager_static import read_gpx_file, haversine
+from .gpx_route_manager_static import read_gpx_file, haversine, get_statistics4track
 from .logger import get_logger
 
 logger = get_logger()
@@ -203,7 +203,8 @@ def process_passes(
     1. Geocodiert den Passnamen
     2. Findet das nächstgelegene Hotel
     3. Sucht einen GPS-Track vom Hotel zum Pass
-    4. Fügt den Track zum Buchungs-Dictionary hinzu
+    4. Berechnet Statistiken für den Pass-Track
+    5. Fügt den Track zum Buchungs-Dictionary hinzu
 
     Args:
         passes_json_path: Pfad zur passes.json Datei.
@@ -222,7 +223,7 @@ def process_passes(
         ...     bookings
         ... )
         >>> print(bookings[0].get("paesse_tracks"))
-        [{"file": "Sveti_Jure.gpx", "passname": "Sveti Jure"}]
+        [{"file": "Sveti_Jure.gpx", "passname": "Sveti Jure", "total_ascent_m": 1234, "total_descent_m": 567}]
     """
     if not passes_json_path.exists():
         logger.warning(f"Keine Pässe-Datei gefunden: {passes_json_path}")
@@ -279,11 +280,32 @@ def process_passes(
         track_file = find_pass_track(hotel_lat, hotel_lon, pass_lat, pass_lon, gpx_dir, hotel_radius_km, pass_radius_km)
 
         if track_file:
-            # Füge Track zum Buchungs-Dictionary hinzu
-            pass_track_entry = {"file": track_file.name, "passname": passname, "latitude": pass_lat, "longitude": pass_lon}
-            nearest_hotel["paesse_tracks"].append(pass_track_entry)
+            # Berechne Statistiken für Pass-Track
+            gpx = read_gpx_file(track_file)
 
-            logger.info(f"   ✅ Track zugeordnet: {track_file.name} → " f"{hotel_name}")
+            if gpx and gpx.tracks:
+                max_elevation, total_distance, total_ascent, total_descent = get_statistics4track(gpx)
+
+                # Füge Track zum Buchungs-Dictionary hinzu mit Statistiken
+                pass_track_entry = {
+                    "file": track_file.name,
+                    "passname": passname,
+                    "latitude": pass_lat,
+                    "longitude": pass_lon,
+                    "total_distance_km": round(total_distance / 1000, 2),
+                    "total_ascent_m": int(round(total_ascent)),
+                    "total_descent_m": int(round(total_descent)),
+                    "max_elevation_m": int(round(max_elevation)) if max_elevation != float("-inf") else None,
+                }
+
+                nearest_hotel["paesse_tracks"].append(pass_track_entry)
+
+                logger.info(f"   ✅ Track zugeordnet: {track_file.name} → {hotel_name}")
+                logger.info(
+                    f"      Statistiken: {total_distance/1000:.1f} km, {int(total_ascent)} hm↑, {int(total_descent)} hm↓"
+                )
+            else:
+                logger.warning(f"   ⚠️  Konnte GPX-Datei {track_file.name} nicht lesen")
         else:
             logger.warning(f"   ⚠️  Kein passender GPS-Track für {passname} gefunden")
 

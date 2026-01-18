@@ -69,6 +69,59 @@ def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
     return links
 
 
+def get_cancellation_cell_style(
+    free_cancel_until: Optional[str], arrival_date: str, base_cell_style: ParagraphStyle
+) -> ParagraphStyle:
+    """Erstellt einen ParagraphStyle für Stornierungszellen basierend auf dem Zeitraum.
+
+    Args:
+        free_cancel_until: ISO-Datum der kostenlosen Stornierungsfrist (YYYY-MM-DD) oder None.
+        arrival_date: ISO-Datum der Anreise (YYYY-MM-DD).
+        base_cell_style: Basis-ParagraphStyle der kopiert wird.
+
+    Returns:
+        ParagraphStyle mit angepasster Textfarbe:
+        - Grün: Stornierungsfrist < 7 Tage vor Anreise (flexibel)
+        - Rot: Stornierungsfrist > 30 Tage vor Anreise (unflexibel)
+        - Schwarz: Dazwischen oder keine Stornierungsfrist
+
+    Example:
+        >>> style = get_cancellation_cell_style("2026-05-01", "2026-05-15", cell_style)
+        >>> # Differenz: 14 Tage -> schwarzer Text
+        >>> style = get_cancellation_cell_style("2026-05-10", "2026-05-15", cell_style)
+        >>> # Differenz: 5 Tage -> grüner Text
+        >>> style = get_cancellation_cell_style("2026-04-10", "2026-05-15", cell_style)
+        >>> # Differenz: 35 Tage -> roter Text
+    """
+    # Standardfarbe (schwarz)
+    text_color = colors.black
+
+    if free_cancel_until and arrival_date:
+        try:
+            cancel_date = datetime.fromisoformat(free_cancel_until)
+            arrival = datetime.fromisoformat(arrival_date)
+
+            # Berechne Differenz in Tagen
+            days_diff = (arrival - cancel_date).days
+
+            if days_diff < 7:
+                # Flexible Stornierung: Grün
+                text_color = colors.HexColor("#008000")  # Grün
+            elif days_diff > 30:
+                # Unflexible Stornierung: Rot
+                text_color = colors.HexColor("#DC143C")  # Crimson Red
+            # else: bleibt schwarz (7-30 Tage)
+
+        except ValueError:
+            # Bei Parsing-Fehler: Standardfarbe
+            pass
+
+    # Erstelle neuen Style basierend auf base_cell_style
+    colored_style = ParagraphStyle(f"CancellationStyle_{id(free_cancel_until)}", parent=base_cell_style, textColor=text_color)
+
+    return colored_style
+
+
 def export_bookings_to_pdf(
     json_path: Path,
     output_path: Path,
@@ -316,6 +369,11 @@ def export_bookings_to_pdf(
 
         sights_html = "<br/>".join(sights_links) if sights_links else ""
 
+        # In der for-Schleife bei der Zeilenerstellung:
+        cancellation_style = get_cancellation_cell_style(
+            booking.get("free_cancel_until"), booking.get("arrival_date"), cell_style
+        )
+
         row = [
             Paragraph(str(day_counter), cell_style),
             Paragraph(date_str, cell_style),
@@ -327,7 +385,10 @@ def export_bookings_to_pdf(
             Paragraph(gpx_text, cell_style),
             Paragraph(sights_html, link_style),
             Paragraph(str(booking.get("total_price", "")), cell_style),
-            Paragraph(f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "", cell_style),
+            Paragraph(
+                f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "",
+                cancellation_style,  # <- Verwende den farbigen Style
+            ),
         ]
         table_data.append(row)
 
@@ -337,16 +398,16 @@ def export_bookings_to_pdf(
 
     # Tabelle erstellen
     col_widths = [
-        1.1 * cm,  # Tag
+        1.0 * cm,  # Tag
         2.3 * cm,  # Datum
         2.2 * cm,  # Von
         2.2 * cm,  # Nach
-        1.1 * cm,  # km
-        5.0 * cm,  # Unterkunft
+        1.0 * cm,  # km
+        5.3 * cm,  # Unterkunft
         1.8 * cm,  # Hm/Max
         2.0 * cm,  # GPX
-        4.0 * cm,  # Sehenswürdigkeiten
-        1.4 * cm,  # Preis
+        4.1 * cm,  # Sehenswürdigkeiten
+        1.2 * cm,  # Preis
         2.0 * cm,  # Storno
     ]
 

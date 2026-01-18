@@ -219,7 +219,7 @@ def get_statistics4track(
         prev = p
 
     elevations = [p.elevation for p in segment_points if p.elevation is not None]
-    max_elevation = max(elevations)
+    max_elevation = max(max(elevations), max_elevation)
     total_ascent += calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
     total_descent += calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
 

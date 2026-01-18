@@ -136,12 +136,15 @@ def get_color_for_gradient(gradient: float) -> str:
             return "#00cc00"  # Dunkelgrün
 
 
-def create_elevation_profile_plot(gpx_file: Path, booking, title: str = None, figsize: Tuple[int, int] = (12, 4)) -> BytesIO:
+def create_elevation_profile_plot(
+    gpx_file: Path, booking: dict, pass_track: dict = None, title: str = None, figsize: Tuple[int, int] = (12, 4)
+) -> BytesIO:
     """Erstellt ein farbcodiertes Höhenprofil aus einer GPX-Datei.
 
     Args:
         gpx_file: Pfad zur GPX-Datei.
-        booking:
+        booking: Buchungs-Dictionary (für Haupt-Track Statistiken).
+        pass_track: Optional. Pass-Track Dictionary mit Statistiken (falls Pass-Track).
         title: Titel des Plots (Default: Dateiname).
         figsize: Größe der Figur in Zoll (Breite, Höhe).
 
@@ -149,8 +152,12 @@ def create_elevation_profile_plot(gpx_file: Path, booking, title: str = None, fi
         BytesIO-Objekt mit PNG-Bilddaten.
 
     Example:
-        >>> img_buffer = create_elevation_profile_plot(Path("route.gpx"))
-        >>> # Kann direkt in reportlab Image() verwendet werden
+        >>> # Haupt-Track
+        >>> img_buffer = create_elevation_profile_plot(Path("route.gpx"), booking)
+        >>>
+        >>> # Pass-Track
+        >>> pass_track = {"total_ascent_m": 1234, "total_descent_m": 567, ...}
+        >>> img_buffer = create_elevation_profile_plot(Path("pass.gpx"), booking, pass_track)
     """
     # Daten extrahieren
     distances, elevations = extract_elevation_profile(gpx_file)
@@ -181,9 +188,13 @@ def create_elevation_profile_plot(gpx_file: Path, booking, title: str = None, fi
     ax.set_xlim(0, distances[-1])
     ax.set_ylim(min(elevations) * 0.8, max(elevations) * 1.1)
 
-    # Statistiken als Text
-    total_ascent = booking.get("total_ascent_m", "")
-    total_descent = booking.get("total_descent_m", "")
+    # Statistiken als Text - verwende pass_track falls vorhanden, sonst booking
+    if pass_track:
+        total_ascent = pass_track.get("total_ascent_m", "")
+        total_descent = pass_track.get("total_descent_m", "")
+    else:
+        total_ascent = booking.get("total_ascent_m", "")
+        total_descent = booking.get("total_descent_m", "")
 
     stats_text = (
         f"Distanz: {distances[-1]:.1f} km  |  "
@@ -262,7 +273,7 @@ def add_elevation_profiles_to_story(
         try:
             booking = gpx_to_booking.get(gpx_file.name)
 
-            # Haupt-Track Profil erstellen
+            # Haupt-Track Profil erstellen (ohne pass_track Parameter)
             img_buffer = create_elevation_profile_plot(gpx_file, booking, title=gpx_file.stem)
 
             # Als reportlab Image hinzufügen
@@ -277,9 +288,12 @@ def add_elevation_profiles_to_story(
 
                     if pass_file.exists():
                         try:
-                            # Pass-Track Profil erstellen
+                            # Pass-Track Profil erstellen (MIT pass_track Parameter)
                             pass_img_buffer = create_elevation_profile_plot(
-                                pass_file, booking, title=f"{passname} ({pass_file.stem})"
+                                pass_file,
+                                booking,
+                                pass_track=pass_track,  # Übergebe Pass-Statistiken
+                                title=f"{passname} ({pass_file.stem})",
                             )
 
                             # Als reportlab Image hinzufügen
@@ -287,7 +301,7 @@ def add_elevation_profiles_to_story(
                             story.append(pass_img)
 
                         except Exception as e:
-                            error_text = f"<i>Fehler beim Erstellen des Pass-Profils für " f"{passname}: {e}</i>"
+                            error_text = f"<i>Fehler beim Erstellen des Pass-Profils für {passname}: {e}</i>"
                             story.append(Paragraph(error_text, title_style))
 
         except Exception as e:
