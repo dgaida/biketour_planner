@@ -761,13 +761,14 @@ class TestPrivateMethodsIntegration:
         assert end_index is not None
 
         # 4. Berechne Statistiken
-        max_elev, dist, asc = manager._get_statistics4track(
+        max_elev, dist, asc, _ = manager._get_statistics4track(
             meta=meta,
             current_index=start_index,
             end_index=end_index,
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
             reversed_direction=(start_index > end_index),
         )
 

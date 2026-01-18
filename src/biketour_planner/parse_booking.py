@@ -393,6 +393,23 @@ def extract_booking_info(html_path: Path):
                 has_kitchen = "Küche" in amenities_text
                 has_washing_machine = "Waschmaschine" in amenities_text
 
+    has_breakfast = False
+    meals_header = soup.find("h5", string="Mahlzeiten")
+    if meals_header:
+        # Finde das parent <tr> oder <th> Element und dann das nächste <td>
+        meals_parent = meals_header.find_parent(["tr", "th"])
+        if meals_parent:
+            meals_td = meals_parent.find_next("td")
+            if meals_td:
+                meals_text = meals_td.get_text(" ")
+                has_breakfast = "Frühstück" in meals_text
+        else:
+            # Fallback: Suche einfach nach dem nächsten <td> nach dem Header
+            meals_td = meals_header.find_next("td")
+            if meals_td:
+                meals_text = meals_td.get_text(" ")
+                has_breakfast = "Frühstück" in meals_text
+
     # Gesamtpreis
     total_price = None
     price_elem = soup.find("div", attrs={"data-total-price": True})
@@ -434,6 +451,7 @@ def extract_booking_info(html_path: Path):
         "longitude": gps_lon,
         "has_kitchen": has_kitchen,
         "has_washing_machine": has_washing_machine,
+        "has_breakfast": has_breakfast,
         "total_price": total_price,
         "free_cancel_until": free_cancel_until,
     }

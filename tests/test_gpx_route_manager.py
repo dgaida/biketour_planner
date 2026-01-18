@@ -315,19 +315,21 @@ class TestGetStatistics4Track:
 
         meta = manager.gpx_index["test_route.gpx"]
 
-        max_elev, total_dist, total_asc = manager._get_statistics4track(
+        max_elev, total_dist, total_asc, total_desc = manager._get_statistics4track(
             meta=meta,
             current_index=0,
             end_index=2,
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
             reversed_direction=False,
         )
 
         assert max_elev == 540
         assert total_dist > 0
         assert total_asc == pytest.approx(40, abs=1)
+        assert total_desc == pytest.approx(0, abs=1)
 
     def test_statistics_backward_direction(self, simple_gpx_file, output_dir):
         """Testet Statistik-Berechnung rückwärts."""
@@ -335,14 +337,22 @@ class TestGetStatistics4Track:
 
         meta = manager.gpx_index["test_route.gpx"]
 
-        max_elev, total_dist, total_asc = manager._get_statistics4track(
-            meta=meta, current_index=2, end_index=0, max_elevation=0, total_distance=0, total_ascent=0, reversed_direction=True
+        max_elev, total_dist, total_asc, total_desc = manager._get_statistics4track(
+            meta=meta,
+            current_index=2,
+            end_index=0,
+            max_elevation=0,
+            total_distance=0,
+            total_ascent=0,
+            total_descent=0,
+            reversed_direction=True,
         )
 
         assert max_elev == 540
         assert total_dist > 0
         # Rückwärts: keine Anstiege (540 -> 520 -> 500)
         assert total_asc == pytest.approx(0, abs=1)
+        assert total_desc == pytest.approx(40, abs=1)
 
     def test_statistics_partial_track(self, simple_gpx_file, output_dir):
         """Testet Statistik-Berechnung für Teilstrecke."""
@@ -351,18 +361,20 @@ class TestGetStatistics4Track:
         meta = manager.gpx_index["test_route.gpx"]
 
         # Nur Index 0 bis 1
-        max_elev, total_dist, total_asc = manager._get_statistics4track(
+        max_elev, total_dist, total_asc, total_desc = manager._get_statistics4track(
             meta=meta,
             current_index=0,
             end_index=1,
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
             reversed_direction=False,
         )
 
         assert max_elev == 520
         assert total_asc == pytest.approx(20, abs=1)
+        assert total_desc == pytest.approx(0, abs=1)
 
 
 # ============================================================================

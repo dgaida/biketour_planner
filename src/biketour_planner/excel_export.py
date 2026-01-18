@@ -64,6 +64,8 @@ def create_accommodation_text(booking: Dict) -> str:
         amenities.append("Wasch")
     if booking.get("has_kitchen"):
         amenities.append("Küche")
+    if booking.get("has_breakfast"):
+        amenities.append("Früh")
 
     if amenities:
         text_parts.append(", ".join(amenities))
