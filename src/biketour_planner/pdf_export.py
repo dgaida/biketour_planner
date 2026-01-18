@@ -263,7 +263,7 @@ def export_bookings_to_pdf(
 
         # Pass-Tracks
         for pass_track in booking.get("paesse_tracks", []):
-            pass_file = pass_track.get("file", "")[:15]
+            pass_file = pass_track.get("file", "")[:12]
             passname = pass_track.get("passname", "")
             gpx_tracks.append(f"{pass_file}<br/>({passname})")
 
@@ -272,7 +272,7 @@ def export_bookings_to_pdf(
             if pass_gpx_path and pass_gpx_path.exists():
                 gpx = read_gpx_file(pass_gpx_path)
                 if gpx and gpx.tracks:
-                    pass_max_elevation, pass_distance, pass_ascent = get_statistics4track(gpx)
+                    pass_max_elevation, pass_distance, pass_ascent, _ = get_statistics4track(gpx)
 
                     # Füge km-Wert hinzu
                     pass_km = pass_distance / 1000
@@ -337,16 +337,16 @@ def export_bookings_to_pdf(
 
     # Tabelle erstellen
     col_widths = [
-        1.2 * cm,  # Tag
-        2.5 * cm,  # Datum
+        1.1 * cm,  # Tag
+        2.3 * cm,  # Datum
         2.2 * cm,  # Von
         2.2 * cm,  # Nach
-        1.2 * cm,  # km
-        4.5 * cm,  # Unterkunft
+        1.1 * cm,  # km
+        5.0 * cm,  # Unterkunft
         1.8 * cm,  # Hm/Max
         2.0 * cm,  # GPX
         4.0 * cm,  # Sehenswürdigkeiten
-        1.5 * cm,  # Preis
+        1.4 * cm,  # Preis
         2.0 * cm,  # Storno
     ]
 
