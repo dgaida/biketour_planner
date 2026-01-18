@@ -245,7 +245,9 @@ class TestFindStartPos:
         manager = GPXRouteManager(simple_gpx_file.parent, output_dir)
 
         # Suche Start nahe erstem Punkt
-        start_file, start_index, force_direction = manager._find_start_pos(48.05, 11.05, None)
+        start_file, start_index, force_direction = manager._find_start_pos(
+            start_lat=48.05, start_lon=11.05, target_lat=48.2, target_lon=11.2, previous_last_file=None
+        )
 
         assert start_file == "test_route.gpx"
         assert start_index is not None
@@ -257,7 +259,9 @@ class TestFindStartPos:
 
         previous_last_file = {"file": "test_route.gpx", "end_index": 1, "reversed": False}
 
-        start_file, start_index, force_direction = manager._find_start_pos(48.1, 11.1, previous_last_file)
+        start_file, start_index, force_direction = manager._find_start_pos(
+            start_lat=48.05, start_lon=11.05, target_lat=48.2, target_lon=11.2, previous_last_file=previous_last_file
+        )
 
         assert start_file == "test_route.gpx"
         assert start_index == 1
@@ -269,7 +273,9 @@ class TestFindStartPos:
 
         previous_last_file = {"file": "test_route.gpx", "end_index": 1, "reversed": True}
 
-        start_file, start_index, force_direction = manager._find_start_pos(48.1, 11.1, previous_last_file)
+        start_file, start_index, force_direction = manager._find_start_pos(
+            start_lat=48.05, start_lon=11.05, target_lat=48.2, target_lon=11.2, previous_last_file=previous_last_file
+        )
 
         assert start_file == "test_route.gpx"
         assert force_direction == "backward"
