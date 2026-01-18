@@ -138,7 +138,7 @@ class GPXRouteManager:
                         )
                         point_index += 1
 
-            max_elevation, total_distance, total_ascent = get_statistics4track(gpx)
+            max_elevation, total_distance, total_ascent, total_descent = get_statistics4track(gpx)
 
             if first_point is None or last_point is None:
                 continue
@@ -577,6 +577,7 @@ class GPXRouteManager:
         max_elevation: float,
         total_distance: float,
         total_ascent: float,
+        total_descent: float,
         reversed_direction: bool,
     ) -> TrackStats:
         """Berechnet Statistiken für einen Track-Abschnitt zwischen zwei Indizes.
@@ -608,11 +609,11 @@ class GPXRouteManager:
 
         gpx = read_gpx_file(meta["file"])
         if gpx:
-            max_elevation, total_distance, total_ascent = get_statistics4track(
-                gpx, mystart_index, myend_index, max_elevation, total_distance, total_ascent, reversed_direction
+            max_elevation, total_distance, total_ascent, total_descent = get_statistics4track(
+                gpx, mystart_index, myend_index, max_elevation, total_distance, total_ascent, total_descent, reversed_direction
             )
 
-        return max_elevation, total_distance, total_ascent
+        return max_elevation, total_distance, total_ascent, total_descent
 
     def _find_next_gpx_file(
         self,
@@ -771,7 +772,8 @@ class GPXRouteManager:
         max_elevation: float,
         total_distance: float,
         total_ascent: float,
-    ) -> tuple[bool, Optional[str], Optional[int], float, float, float, float, float]:
+        total_descent: float,
+    ) -> tuple[bool, Optional[str], Optional[int], float, float, float, float, float, float]:
         """Verarbeitet eine einzelne Iteration der Routensuche.
 
         Führt für einen einzelnen Track-Abschnitt folgende Schritte aus:
@@ -857,8 +859,8 @@ class GPXRouteManager:
         )
 
         # Berechne Statistiken
-        max_elevation, total_distance, total_ascent = self._get_statistics4track(
-            meta, current_index, end_index, max_elevation, total_distance, total_ascent, reversed_direction
+        max_elevation, total_distance, total_ascent, total_descent = self._get_statistics4track(
+            meta, current_index, end_index, max_elevation, total_distance, total_ascent, total_descent, reversed_direction
         )
 
         # Aktualisiere Position
@@ -871,7 +873,7 @@ class GPXRouteManager:
         # Prüfe ob Ziel erreicht
         if current_file == target_file:
             print("✅ Ziel erreicht!")
-            return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent
+            return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent, total_descent
 
         # Finde nächste GPX
         next_file, next_index = self._find_next_gpx_file(visited, used_base_files, current_lat, current_lon)
@@ -881,9 +883,19 @@ class GPXRouteManager:
 
             if target_file not in visited:
                 self._add_target_track_to_route(target_file, target_index, current_lat, current_lon, route_files)
-            return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent
+            return False, None, None, current_lat, current_lon, max_elevation, total_distance, total_ascent, total_descent
 
-        return True, next_file, next_index, current_lat, current_lon, max_elevation, total_distance, total_ascent
+        return (
+            True,
+            next_file,
+            next_index,
+            current_lat,
+            current_lon,
+            max_elevation,
+            total_distance,
+            total_ascent,
+            total_descent,
+        )
 
     def collect_route_between_locations(
         self,
@@ -978,27 +990,37 @@ class GPXRouteManager:
 
         total_distance = 0.0
         total_ascent = 0.0
+        total_descent = 0.0
         max_elevation = float("-inf")
 
         # Hauptschleife: Fahre von Start Richtung Ziel
         for iteration in range(self.max_chain_length):
-            should_continue, next_file, next_index, current_lat, current_lon, max_elevation, total_distance, total_ascent = (
-                self._process_route_iteration(
-                    iteration=iteration,
-                    current_file=current_file,
-                    current_index=current_index,
-                    target_file=target_file,
-                    target_index=target_index,
-                    visited=visited,
-                    used_base_files=used_base_files,
-                    route_files=route_files,
-                    force_direction=force_direction,
-                    target_side_lat=target_side_lat,
-                    target_side_lon=target_side_lon,
-                    max_elevation=max_elevation,
-                    total_distance=total_distance,
-                    total_ascent=total_ascent,
-                )
+            (
+                should_continue,
+                next_file,
+                next_index,
+                current_lat,
+                current_lon,
+                max_elevation,
+                total_distance,
+                total_ascent,
+                total_descent,
+            ) = self._process_route_iteration(
+                iteration=iteration,
+                current_file=current_file,
+                current_index=current_index,
+                target_file=target_file,
+                target_index=target_index,
+                visited=visited,
+                used_base_files=used_base_files,
+                route_files=route_files,
+                force_direction=force_direction,
+                target_side_lat=target_side_lat,
+                target_side_lon=target_side_lon,
+                max_elevation=max_elevation,
+                total_distance=total_distance,
+                total_ascent=total_ascent,
+                total_descent=total_descent,
             )
 
             if not should_continue:
@@ -1017,6 +1039,7 @@ class GPXRouteManager:
         booking["gpx_files"] = route_files
         booking["total_distance_km"] = round(total_distance / 1000, 2)
         booking["total_ascent_m"] = int(round(total_ascent))
+        booking["total_descent_m"] = int(round(total_descent))
         booking["max_elevation_m"] = int(round(max_elevation)) if max_elevation != float("-inf") else None
 
         # Speichere letzte Datei für nächste Suche

@@ -183,10 +183,7 @@ def create_elevation_profile_plot(gpx_file: Path, booking, title: str = None, fi
 
     # Statistiken als Text
     total_ascent = booking.get("total_ascent_m", "")
-
-    total_descent = sum(
-        elevations[i - 1] - elevations[i] for i in range(1, len(elevations)) if elevations[i] < elevations[i - 1]
-    )
+    total_descent = booking.get("total_descent_m", "")
 
     stats_text = (
         f"Distanz: {distances[-1]:.1f} km  |  "

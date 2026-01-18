@@ -99,25 +99,29 @@ def calculate_elevation_gain_smoothed(elevations: List[float], window_size: int 
     return total_ascent
 
 
-def calculate_elevation_gain_segment_based(elevations: List[float], min_segment_length: int = 10) -> float:
-    """Berechnet positive Höhenmeter segment-basiert (robusteste Methode).
+def calculate_elevation_gain_segment_based(
+    elevations: List[float], min_segment_length: int = 10, calculate_descent: bool = False
+) -> float:
+    """Berechnet positive oder negative Höhenmeter segment-basiert (robusteste Methode).
 
     Diese Methode identifiziert zusammenhängende Anstiegs- und Abstiegssegmente
-    und summiert nur die Netto-Anstiege jedes Segments. Dies ist die genaueste
-    Methode für reale GPS-Tracks.
+    und summiert nur die Netto-Anstiege bzw. Netto-Abstiege jedes Segments.
+    Dies ist die genaueste Methode für reale GPS-Tracks.
 
     Args:
         elevations: Liste der Höhenwerte in Metern.
         min_segment_length: Minimale Anzahl Punkte für ein gültiges Segment (Default: 10).
+        calculate_descent: Wenn True, werden Abstiege berechnet statt Anstiege (Default: False).
 
     Returns:
-        Gesamter positiver Höhenunterschied in Metern.
+        Gesamter positiver Höhenunterschied (Anstiege) oder negativer Höhenunterschied
+        (Abstiege) in Metern, je nach calculate_descent Parameter.
 
     Example:
-        >>> # Realistischer Track: 100m Start, Anstieg auf 200m, Abstieg auf 180m, Anstieg auf 250m
         >>> elevations = list(range(100, 200, 5)) + list(range(200, 180, -2)) + list(range(180, 250, 3))
-        >>> gain = calculate_elevation_gain_segment_based(elevations)
-        >>> print(f"{gain:.0f}m")  # Erwartet: ~170m (100m + 70m)
+        >>> ascent = calculate_elevation_gain_segment_based(elevations)
+        >>> descent = calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
+        >>> print(f"Anstiege: {ascent:.0f}m, Abstiege: {descent:.0f}m")
     """
     if not elevations or len(elevations) < 2:
         return 0.0
@@ -167,10 +171,15 @@ def calculate_elevation_gain_segment_based(elevations: List[float], min_segment_
             }
         )
 
-    # Summiere nur aufsteigende Segmente
-    total_ascent = sum(seg["elevation_change"] for seg in segments if seg["ascending"] and seg["elevation_change"] > 0)
+    # Summiere aufsteigende oder absteigende Segmente
+    if calculate_descent:
+        # Summiere Abstiege (negative elevation_change, als Absolutwert)
+        total = sum(abs(seg["elevation_change"]) for seg in segments if not seg["ascending"] and seg["elevation_change"] < 0)
+    else:
+        # Summiere Anstiege (positive elevation_change)
+        total = sum(seg["elevation_change"] for seg in segments if seg["ascending"] and seg["elevation_change"] > 0)
 
-    return total_ascent
+    return total
 
 
 # Beispiel-Vergleich der drei Methoden

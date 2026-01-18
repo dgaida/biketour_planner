@@ -9,7 +9,7 @@ from .logger import get_logger
 # Initialisiere Logger
 logger = get_logger()
 
-TrackStats = tuple[float, float, float]
+TrackStats = tuple[float, float, float, float]
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -164,6 +164,7 @@ def get_statistics4track(
     max_elevation: float = 0.0,
     total_distance: float = 0.0,
     total_ascent: float = 0.0,
+    total_descent: float = 0.0,
     reversed_direction: bool = False,
 ) -> TrackStats:
     """Berechnet Statistiken für einen Track-Abschnitt zwischen zwei Indizes.
@@ -172,10 +173,11 @@ def get_statistics4track(
     - Maximale Höhe
     - Distanz (aufsummiert über Punktabstände)
     - Positiver Höhenunterschied (nur Anstiege)
+    - Negativer Höhenunterschied (nur Abfahrten)
 
     Args:
-        meta: Metadaten des GPX-Tracks aus gpx_index.
-        current_index: Startindex des Abschnitts.
+        gpx: GPX-Objekt.
+        start_index: Startindex des Abschnitts.
         end_index: Endindex des Abschnitts.
         max_elevation: Bisherige maximale Höhe in Metern (wird aktualisiert).
         total_distance: Bisherige Gesamtdistanz in Metern (wird aktualisiert).
@@ -184,7 +186,8 @@ def get_statistics4track(
                            durchlaufen (Punkte in umgekehrter Reihenfolge).
 
     Returns:
-        Tuple aus (max_elevation, total_distance, total_ascent) mit aktualisierten Werten.
+        Tuple aus (max_elevation, total_distance, total_ascent, total_descent)
+        mit aktualisierten Werten.
 
     Note:
         Die Statistiken werden kumulativ berechnet, d.h. die übergebenen Werte
@@ -217,11 +220,12 @@ def get_statistics4track(
 
     elevations = [p.elevation for p in segment_points if p.elevation is not None]
     max_elevation = max(elevations)
-    total_ascent += calculate_elevation_gain_segment_based(elevations)
+    total_ascent += calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
+    total_descent += calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
 
     logger.debug(f"   Punkte: {end_index - start_index + 1}")
 
-    return max_elevation, total_distance, total_ascent
+    return max_elevation, total_distance, total_ascent, total_descent
 
 
 # def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Dict]:
