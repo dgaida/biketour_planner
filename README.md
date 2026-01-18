@@ -15,11 +15,13 @@
 
 **Bike Tour Planner** is a Python-based toolchain for planning long-distance bike tours by combining:
 
-* real-world accommodation data (Booking.com HTML confirmations),
+* real-world accommodation data (Booking.com & Airbnb HTML confirmations),
 * existing GPX tracks of your planned or ridden tour,
-* and **offline bicycle routing** using **BRouter**.
+* **offline bicycle routing** using **BRouter**,
+* tourist attractions discovery via Geoapify API,
+* and automated mountain pass detection.
 
-The main goal is to **automatically extend and connect GPX routes** so that they lead precisely to booked accommodations, while also collecting useful tour statistics such as distance, elevation gain, and highest point.
+The main goal is to **automatically extend and connect GPX routes** so that they lead precisely to booked accommodations, while also collecting useful tour statistics such as distance, elevation gain, and highest point. The planner generates professional PDF reports with elevation profiles, clickable maps, and comprehensive tour information.
 
 This project is especially useful for **multi-day bike tours**, bikepacking, or long-distance cycling trips where routes and accommodations evolve independently.
 
@@ -27,33 +29,69 @@ This project is especially useful for **multi-day bike tours**, bikepacking, or 
 
 ## Key Features
 
-* 📄 **Parse Booking.com confirmations (HTML)**
+* 📄 **Parse Booking.com & Airbnb confirmations (HTML)**
 
   * Arrival and departure dates
   * Accommodation name and address
   * Earliest check-in time
-  * Amenities (kitchen, washing machine)
+  * Amenities (kitchen, washing machine, breakfast)
   * Last date for free cancellation
+  * GPS coordinates (when available)
 
-* 🌍 **Geocode accommodation addresses**
+* 🌍 **Smart Geocoding**
 
-  * Convert postal addresses into latitude/longitude coordinates
+  * Convert postal addresses to latitude/longitude coordinates
+  * Multiple fallback strategies (Nominatim, Photon)
+  * Automatic address cleaning and validation
+  * Robust error handling for problematic addresses
 
-* 🗺️ **GPX route analysis & manipulation**
+* 🗺️ **Advanced GPX Route Management**
 
-  * Find the GPX file and exact point closest to an accommodation
-  * Chain multiple GPX files to represent multi-day routes
-  * Compute:
+  * **Intelligent Route Chaining**: Automatically connects multiple GPX tracks based on spatial proximity
+  * **Direction Detection**: Determines optimal track direction (forward/backward)
+  * **Multi-Day Tour Support**: Continues routes from previous days seamlessly
+  * **Comprehensive Statistics**:
+    * Total distance (km)
+    * Total ascent and descent (m)
+    * Maximum elevation reached (m)
+    * Segment-based elevation calculation with smoothing
 
-    * total distance (km)
-    * total ascent (positive elevation gain)
-    * highest elevation reached
+* 🚴 **Offline Bicycle Routing with BRouter**
 
-* 🚴 **Offline bicycle routing with BRouter**
+  * Compute precise routes from existing GPX tracks to accommodations
+  * Automatic route extension to hotel coordinates
+  * Trekking profile optimized for bicycle touring
+  * Preserve and intelligently merge GPX tracks
 
-  * Compute a precise route from an existing GPX track to the accommodation
-  * Insert the route at the correct position inside the GPX file
-  * Preserve and extend your original GPX tracks
+* 🏔️ **Mountain Pass Integration**
+
+  * Automatic detection of mountain passes along the route
+  * Pass-specific statistics (elevation gain, distance)
+  * Association with nearest accommodations
+  * Support for custom pass databases (JSON format)
+
+* 🎯 **Tourist Sights Discovery**
+
+  * Integration with Geoapify Places API
+  * Automatic discovery of tourist attractions near accommodations
+  * Configurable search radius
+  * Direct Google Maps links in exports
+
+* 📊 **Professional Export Options**
+
+  * **PDF Export**:
+    * Landscape format for optimal readability
+    * Clickable links to tourist sights and passes
+    * Color-coded cancellation deadlines (flexible/inflexible)
+    * Elevation profiles for all routes and passes
+    * Summary statistics (total km, elevation, costs)
+  * **Excel Export** (alternative):
+    * Pre-formatted template support
+    * Automatic gap days insertion
+    * Hyperlinks to tourist attractions
+  * **Merged GPX Files**:
+    * One GPX file per day with complete route
+    * Ready for GPS device upload
 
 ---
 
@@ -61,30 +99,38 @@ This project is especially useful for **multi-day bike tours**, bikepacking, or 
 
 ```text
 biketour_planner/
-├── main.py
-├── pyproject.toml
-├── requirements.txt
-├── environment.yml
-├── Reiseplanung_Fahrrad template.xlsx
-├── setup_precommit.sh
-├── start_biketour_planner.bat
+├── main.py                              # Main entry point
+├── pyproject.toml                       # Project configuration
+├── requirements.txt                     # Python dependencies
+├── environment.yml                      # Conda environment
+├── setup_precommit.sh                   # Pre-commit setup script
+├── start_biketour_planner.bat          # Windows launcher
 ├── src/
 │   └── biketour_planner/
-│       ├── parse_booking.py
-│       ├── geocode.py
-│       ├── gpx_utils.py
-│       ├── brouter.py
-│       ├── excel_export.py
-│       └── geoapify.py
-├── booking/          # (Optional) Directory for Booking.com HTML confirmations
-├── gpx/              # (Optional) Directory for original GPX route files
-├── brouter_docker/   # Dockerfile for BRouter setup
-├── logs/             # Log files
+│       ├── parse_booking.py            # Parse Booking.com/Airbnb HTML
+│       ├── geocode.py                  # Address geocoding with fallbacks
+│       ├── gpx_utils.py                # GPX utilities wrapper
+│       ├── gpx_route_manager.py        # Main route management class
+│       ├── gpx_route_manager_static.py # Static GPX helper functions
+│       ├── brouter.py                  # BRouter API integration
+│       ├── elevation_calc.py           # Advanced elevation calculations
+│       ├── elevation_profiles.py       # Elevation profile generation
+│       ├── pass_finder.py              # Mountain pass detection
+│       ├── geoapify.py                 # Tourist sights API
+│       ├── pdf_export.py               # PDF report generation
+│       ├── excel_export.py             # Excel export (alternative)
+│       ├── excel_hyperlinks.py         # Excel hyperlink utilities
+│       ├── excel_info_reader.py        # Read additional trip info
+│       └── logger.py                   # Centralized logging
+├── booking/                             # (Optional) Booking HTML files
+├── gpx/                                 # (Optional) Original GPX files
+├── brouter_docker/                      # Dockerfile for BRouter
+├── logs/                                # Application logs
 ├── output/
-│   ├── bookings.json
-│   └── gpx_modified/
-├── tests/            # Unit and integration tests
-└── LICENSE
+│   ├── bookings.json                   # Processed booking data
+│   ├── gpx_modified/                   # Extended GPX files
+│   └── Reiseplanung_*.pdf             # Generated PDF report
+└── tests/                               # Unit and integration tests
 ```
 
 ---
@@ -94,18 +140,44 @@ biketour_planner/
 ### Option 1: pip
 
 ```bash
+# Clone repository
+git clone https://github.com/dgaida/biketour_planner.git
+cd biketour_planner
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Install package in editable mode
 pip install -e .
 ```
 
 ### Option 2: Conda / Mamba
 
 ```bash
+# Clone repository
+git clone https://github.com/dgaida/biketour_planner.git
+cd biketour_planner
+
+# Create and activate environment
 conda env create -f environment.yml
 conda activate biketour_planner
 ```
 
+### Requirements
+
 Python **3.9 or newer** is required.
+
+### Optional: Enable Tourist Sights Discovery
+
+To use the Geoapify integration for finding tourist attractions:
+
+1. Create a free account at [https://www.geoapify.com](https://www.geoapify.com)
+2. Get your API key (free tier: 3,000 requests/day)
+3. Create a `secrets.env` file in the project root:
+
+```bash
+GEOAPIFY_API_KEY=your_api_key_here
+```
 
 ---
 
@@ -140,9 +212,19 @@ Make sure to download all tiles covering your tour area.
 
 A running BRouter HTTP server is required.
 
-Example:
+#### Using Docker (recommended):
 
 ```bash
+docker run --rm -p 17777:17777 \
+  -v C:/brouter/segments4:/segments4 \
+  brouter
+```
+
+#### Or build from provided Dockerfile:
+
+```bash
+cd brouter_docker
+docker build -t brouter .
 docker run --rm -p 17777:17777 \
   -v C:/brouter/segments4:/segments4 \
   brouter
@@ -164,31 +246,137 @@ curl "http://localhost:17777/brouter?lonlats=16.44,43.51|18.09,42.65&profile=tre
 
 ## Typical Workflow
 
-1. Place Booking.com confirmation HTML files into `booking/`
-2. Place your existing GPX route files into `gpx/`
-3. Start the BRouter Docker container
-4. Run the planner:
+### 1. Prepare Your Data
+
+```
+biketour_planner/
+├── booking/                    # Place Booking.com/Airbnb HTML files here
+│   ├── Hotel_Munich.html
+│   ├── Hotel_Garmisch.html
+│   └── Reiseplanung_Fahrrad.xlsx  # (Optional) Additional trip info
+├── gpx/                        # Place your GPX route files here
+│   ├── Day1_Munich_Tegernsee.gpx
+│   ├── Day2_Tegernsee_Achensee.gpx
+│   ├── Day3_Achensee_Garmisch.gpx
+│   └── Paesse.json            # (Optional) Mountain pass database
+```
+
+**Example `Paesse.json`:**
+```json
+[
+  {"passname": "Achenpass, Tirol, Österreich"},
+  {"passname": "Kesselberg, Bayern, Deutschland"}
+]
+```
+
+**Example `Reiseplanung_Fahrrad.xlsx` (Column B = Date, Column C = Info):**
+```
+A         B              C
+Tag       Datum          Infos
+1         2026-05-15     Markt besuchen; https://example.com/restaurant
+2         2026-05-16     Früh losfahren
+```
+
+### 2. Configure `main.py`
+
+Edit the paths in `main.py`:
+
+```python
+BOOKING_DIR = Path("../2026_Croatia/booking")
+GPX_DIR = Path("../2026_Croatia/gpx")
+OUT_DIR = Path("../2026_Croatia/gpx_modified")
+```
+
+### 3. Start BRouter
+
+```bash
+docker run --rm -p 17777:17777 \
+  -v C:/brouter/segments4:/segments4 \
+  brouter
+```
+
+### 4. Run the Planner
 
 ```bash
 python main.py
 ```
 
-5. Results:
+### 5. Results
 
-   * `output/bookings.json` – structured booking & tour metadata
-   * `output/gpx_modified/` – GPX files extended to accommodations
+The planner generates:
+
+* `output/bookings.json` – Structured booking & tour metadata
+* `output/gpx_modified/` – Extended GPX files (one per day)
+* `output/Reiseplanung_*.pdf` – Professional PDF report with:
+  * Daily itinerary table
+  * Elevation profiles for routes and passes
+  * Clickable links to tourist sights
+  * Summary statistics
 
 ---
 
-## Usage
+## Usage Examples
 
-To run the Bike Tour Planner, execute the `main.py` script from the project's root directory:
+### Basic Tour Planning
 
-```bash
-python main.py
+```python
+from pathlib import Path
+from biketour_planner.gpx_route_manager import GPXRouteManager
+
+# Initialize route manager
+manager = GPXRouteManager(
+    gpx_dir=Path("gpx/"),
+    output_path=Path("output/gpx_modified/"),
+    max_connection_distance_m=1000  # Max distance for auto-chaining
+)
+
+# Process all bookings
+bookings = [
+    {
+        "arrival_date": "2026-05-15",
+        "hotel_name": "Hotel Munich",
+        "latitude": 48.1351,
+        "longitude": 11.5820
+    },
+    {
+        "arrival_date": "2026-05-16",
+        "hotel_name": "Hotel Garmisch",
+        "latitude": 47.4917,
+        "longitude": 11.0953
+    }
+]
+
+result = manager.process_all_bookings(bookings, Path("output/gpx_modified/"))
 ```
 
-This will process your booking confirmations and GPX files, generating extended routes and tour data in the `output/` directory.
+### Custom Pass Detection
+
+```python
+from biketour_planner.pass_finder import process_passes
+
+bookings = process_passes(
+    passes_json_path=Path("gpx/Paesse.json"),
+    gpx_dir=Path("gpx/"),
+    bookings=bookings,
+    hotel_radius_km=5.0,  # Search radius around hotels
+    pass_radius_km=5.0    # Search radius around passes
+)
+```
+
+### Generate PDF Report
+
+```python
+from biketour_planner.pdf_export import export_bookings_to_pdf
+
+export_bookings_to_pdf(
+    json_path=Path("output/bookings.json"),
+    output_path=Path("output/Tour_Report.pdf"),
+    output_dir=Path("output/gpx_modified/"),
+    gpx_dir=Path("gpx/"),
+    title="Croatia Bike Tour 2026",
+    excel_info_path=Path("booking/Reiseplanung_Fahrrad.xlsx")
+)
+```
 
 ---
 
@@ -196,35 +384,256 @@ This will process your booking confirmations and GPX files, generating extended 
 
 For each accommodation/day, the planner records:
 
-* accommodation name & address
-* arrival / departure dates
-* coordinates (lat/lon)
-* list of GPX files used for that day
-* total distance (km)
-* total ascent (m)
-* maximum elevation (m)
+* **Accommodation Details:**
+  * Name, address, phone
+  * Arrival/departure dates
+  * Check-in time
+  * Amenities (kitchen, washing machine, breakfast)
+  * Cancellation deadline
+  * Total price
+  * GPS coordinates
+
+* **Route Information:**
+  * List of GPX files used
+  * Total distance (km)
+  * Total ascent and descent (m)
+  * Maximum elevation (m)
+  * Final merged GPX file name
+
+* **Mountain Passes:**
+  * Pass name and coordinates
+  * Distance to pass
+  * Elevation gain to summit
+  * Associated GPX track
+
+* **Tourist Attractions:**
+  * Names and coordinates
+  * Google Maps links
+
+---
+
+## Advanced Features
+
+### Intelligent Route Chaining
+
+The planner uses a sophisticated algorithm to connect multiple GPX tracks:
+
+1. **Target Side Determination**: Identifies which end of the destination track is closer to the start
+2. **Start Point Optimization**: Navigates to the relevant side of the destination, not just the nearest point
+3. **Automatic Direction Detection**: Determines whether to traverse tracks forward or backward
+4. **Multi-Day Continuity**: Seamlessly continues routes from previous days
+
+### Elevation Calculation Methods
+
+Three elevation calculation methods are available:
+
+1. **Simple with Threshold** (`calculate_elevation_gain_simple`):
+   - Fast, ignores GPS noise under threshold
+
+2. **Smoothed** (`calculate_elevation_gain_smoothed`):
+   - Moving average smoothing + threshold
+   - Recommended for most use cases
+
+3. **Segment-Based** (`calculate_elevation_gain_segment_based`):
+   - Most accurate, identifies continuous climbs/descents
+   - Used by default in the planner
+
+### Color-Coded Cancellation Deadlines
+
+In PDF reports, cancellation dates are color-coded:
+
+* 🟢 **Green**: < 7 days before arrival (flexible)
+* ⚫ **Black**: 7-30 days before arrival (moderate)
+* 🔴 **Red**: > 30 days before arrival (inflexible)
+
+---
+
+## Configuration Options
+
+### Route Manager Parameters
+
+```python
+GPXRouteManager(
+    gpx_dir=Path("gpx/"),
+    output_path=Path("output/"),
+    max_connection_distance_m=1000,  # Max auto-chain distance
+    max_chain_length=20              # Max tracks per route
+)
+```
+
+### Pass Finder Parameters
+
+```python
+process_passes(
+    passes_json_path=Path("gpx/Paesse.json"),
+    gpx_dir=Path("gpx/"),
+    bookings=bookings,
+    hotel_radius_km=5.0,    # Search radius around hotels
+    pass_radius_km=5.0      # Search radius around pass summit
+)
+```
+
+### Tourist Sights Parameters
+
+```python
+find_top_tourist_sights(
+    lat=43.5081,
+    lon=16.4402,
+    radius=5000,  # Search radius in meters
+    limit=2       # Max number of POIs
+)
+```
+
+---
+
+## Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/test_gpx_route_manager.py -v
+```
+
+**Test Coverage:**
+- `test_brouter.py`: BRouter API integration
+- `test_geoapify.py`: Tourist sights discovery
+- `test_parse_booking.py`: HTML parsing (Booking.com/Airbnb)
+- `test_gpx_route_manager.py`: Route management core
+- `test_gpx_route_manager_static.py`: GPX utilities
+- `test_excel_export.py`: Excel export functionality
 
 ---
 
 ## Limitations & Assumptions
 
-* GPX files are assumed to be ordered in riding direction
+* GPX files are assumed to be ordered chronologically
 * Route chaining is based on spatial proximity of track endpoints
 * Elevation data must be present in GPX files
-* BRouter must be running locally
+* BRouter must be running locally on port 17777
+* First booking in the list receives no route (no start point)
+* Geocoding relies on external services (Nominatim, Photon)
+
+---
+
+## Troubleshooting
+
+### BRouter Connection Issues
+
+**Problem:** `ConnectionError: BRouter Server nicht erreichbar`
+
+**Solutions:**
+1. Check if Docker container is running: `docker ps`
+2. Verify port 17777 is accessible: `curl http://localhost:17777`
+3. Ensure routing data is mounted correctly
+
+### Geocoding Failures
+
+**Problem:** `ValueError: Adresse konnte nicht geocodiert werden`
+
+**Solutions:**
+1. Check internet connection (Nominatim/Photon require internet)
+2. Simplify address (remove apartment numbers, floor info)
+3. Manually add coordinates to booking JSON
+
+### Missing Elevation Data
+
+**Problem:** `max_elevation_m: None` in output
+
+**Solutions:**
+1. Ensure GPX files contain `<ele>` tags
+2. Use tools like GPSBabel to add elevation data
+3. Download elevation-enriched tracks from sources like Komoot
+
+### Pass Detection Failures
+
+**Problem:** No passes detected despite having `Paesse.json`
+
+**Solutions:**
+1. Increase `hotel_radius_km` and `pass_radius_km`
+2. Verify pass names can be geocoded (test manually)
+3. Check that GPX tracks actually pass near the summit
+
+---
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests (`pytest`)
+4. Run code quality checks (`ruff check .`, `black --check .`)
+5. Commit changes (`git commit -m 'Add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Code Quality Standards
+
+This project uses:
+- **Black** for code formatting (line length: 127)
+- **Ruff** for linting
+- **MyPy** for type checking (relaxed mode)
+- **Pytest** for testing
+- **Pre-commit hooks** for automated checks
+
+Install pre-commit hooks:
+```bash
+./setup_precommit.sh
+```
 
 ---
 
 ## Acknowledgements
 
-* **BRouter** – offline routing engine
-
+* **BRouter** – Offline routing engine
   * [https://github.com/abrensch/brouter](https://github.com/abrensch/brouter)
-* **OpenStreetMap contributors** – underlying map data
-* **Booking.com** – data source for accommodation confirmations
+  * Developed by Arne Brenschede
+* **OpenStreetMap contributors** – Underlying map data
+* **Geoapify** – Places API for tourist attractions
+  * [https://www.geoapify.com](https://www.geoapify.com)
+* **Booking.com & Airbnb** – Data source for accommodation confirmations
+
+---
+
+## Roadmap
+
+Planned features:
+
+- [ ] Web UI for easier configuration
+- [ ] Support for more booking platforms (hotels.com, etc.)
+- [ ] Interactive map visualization
+- [ ] Weather forecast integration
+- [ ] Bike shop finder along the route
+- [ ] Automatic backup/sync to cloud storage
+- [ ] Mobile app for on-tour navigation
 
 ---
 
 ## License
 
 This project is licensed under the **MIT License**. See `LICENSE` for details.
+
+---
+
+## Contact
+
+**Daniel Gaida**  
+📧 daniel.gaida@th-koeln.de  
+🔗 [GitHub](https://github.com/dgaida/biketour_planner)
+
+---
+
+## Screenshots
+
+*Coming soon: PDF report preview, elevation profiles, route visualization*
+
+---
+
+**Happy Touring! 🚴‍♂️🏔️**

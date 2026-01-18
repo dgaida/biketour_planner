@@ -3,7 +3,7 @@ import math
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
-from .elevation_calc import calculate_elevation_gain_segment_based
+from .elevation_calc import calculate_elevation_gain_segment_based, calculate_elevation_gain_smoothed
 from .logger import get_logger
 
 # Initialisiere Logger
@@ -220,7 +220,12 @@ def get_statistics4track(
 
     elevations = [p.elevation for p in segment_points if p.elevation is not None]
     max_elevation = max(max(elevations), max_elevation)
-    total_ascent += calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
+
+    # take mean of elevation calculations as both are not accurate, maybe one over- the other undershooting
+    mean_ascent = calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
+    mean_ascent += calculate_elevation_gain_smoothed(elevations)
+    total_ascent += mean_ascent / 2
+
     total_descent += calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
 
     logger.debug(f"   Punkte: {end_index - start_index + 1}")
