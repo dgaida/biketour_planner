@@ -408,6 +408,60 @@ def export_bookings_to_pdf(
         previous_departure_date = booking.get("departure_date")
         day_counter += 1
 
+    # Checkout-Zeile und Zwischentage für letzte Unterkunft hinzufügen
+    if bookings_sorted and previous_departure_date:
+        last_booking = bookings_sorted[-1]
+        last_departure_date = last_booking.get("departure_date")
+        last_city = extract_city_name(last_booking.get("address", ""))
+
+        if last_departure_date:
+            try:
+                last_arrival = datetime.fromisoformat(last_booking.get("arrival_date", ""))
+                last_checkout = datetime.fromisoformat(last_departure_date)
+
+                # Berechne Anzahl Tage zwischen Check-in und Check-out
+                days_staying = (last_checkout - last_arrival).days
+
+                # Füge Leerzeilen für Zwischentage ein (falls mehr als 1 Nacht)
+                if days_staying > 1:
+                    for day_offset in range(1, days_staying):
+                        intermediate_date = last_arrival + timedelta(days=day_offset)
+                        row = [
+                            Paragraph(str(day_counter), cell_style),
+                            Paragraph(intermediate_date.strftime("%a, %d.%m.%Y"), cell_style),
+                            Paragraph(last_city, cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                            Paragraph("", cell_style),
+                        ]
+                        table_data.append(row)
+                        day_counter += 1
+
+                # Checkout-Zeile hinzufügen
+                checkout_row = [
+                    Paragraph(str(day_counter), cell_style),
+                    Paragraph(last_checkout.strftime("%a, %d.%m.%Y"), cell_style),
+                    Paragraph(last_city, cell_style),
+                    Paragraph("Checkout", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                    Paragraph("", cell_style),
+                ]
+                table_data.append(checkout_row)
+
+            except ValueError:
+                # Falls Datum nicht geparst werden kann, überspringe
+                pass
+
     # Tabelle erstellen
     col_widths = [
         1.0 * cm,  # Tag
