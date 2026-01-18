@@ -21,6 +21,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from .excel_export import extract_city_name, create_accommodation_text
 from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
 from .gpx_route_manager_static import get_statistics4track, read_gpx_file
+from .excel_info_reader import read_daily_info_from_excel
 
 
 def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
@@ -128,6 +129,7 @@ def export_bookings_to_pdf(
     output_dir: Path = None,  # Pfad zu gemergten GPX-Dateien
     gpx_dir: Path = None,  # NEU: Pfad zu Original-GPX-Dateien (für Pass-Tracks)
     title: str = "Reiseplanung Kroatien 2026",
+    excel_info_path: Path = None,  # NEU: Pfad zur Excel-Datei mit Zusatzinfos
 ) -> None:
     """Exportiert Buchungsinformationen in eine PDF-Datei mit klickbaren Links.
 
@@ -141,6 +143,7 @@ def export_bookings_to_pdf(
         output_dir: Pfad zum Verzeichnis mit gemergten GPX-Dateien (Default: None).
         gpx_dir: Pfad zum Verzeichnis mit Original-GPX-Dateien für Pässe (Default: None).
         title: Titel des Dokuments (wird auf jeder Seite angezeigt).
+        excel_info_path: Pfad zur Excel-Datei mit zusätzlichen Tagesinfos (Default: None).
     """
     # Registriere Unicode-Schriftarten (für kroatische Zeichen wie č, ć, ž, š, đ)
     try:
@@ -169,6 +172,10 @@ def export_bookings_to_pdf(
 
     # Nach Anreisedatum sortieren
     bookings_sorted = sorted(bookings, key=lambda x: x.get("arrival_date", "9999-12-31"))
+
+    daily_info = {}
+    if excel_info_path and excel_info_path.exists():
+        daily_info = read_daily_info_from_excel(excel_info_path)
 
     # PDF erstellen
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -230,7 +237,7 @@ def export_bookings_to_pdf(
         Paragraph("<b>Unterkunft</b>", cell_style),
         Paragraph("<b>Hm/Max</b>", cell_style),
         Paragraph("<b>GPX</b>", cell_style),
-        Paragraph("<b>Sehenswürdigkeiten</b>", cell_style),
+        Paragraph("<b>Infos, Berge und Site Seeing</b>", cell_style),
         Paragraph("<b>Preis</b>", cell_style),
         Paragraph("<b>Storno</b>", cell_style),
     ]
@@ -367,6 +374,11 @@ def export_bookings_to_pdf(
                 html_link = f'<a href="{google_maps_url}" color="blue"><u>{passname}</u></a>'
                 sights_links.append(html_link)
 
+        # NEU: Füge Excel-Infos für diesen Tag hinzu
+        if arrival_date in daily_info:
+            for info_item in daily_info[arrival_date]:
+                sights_links.append(info_item)
+
         sights_html = "<br/>".join(sights_links) if sights_links else ""
 
         # In der for-Schleife bei der Zeilenerstellung:
@@ -399,13 +411,13 @@ def export_bookings_to_pdf(
     # Tabelle erstellen
     col_widths = [
         1.0 * cm,  # Tag
-        2.3 * cm,  # Datum
+        2.1 * cm,  # Datum
         2.2 * cm,  # Von
         2.2 * cm,  # Nach
         1.0 * cm,  # km
         5.3 * cm,  # Unterkunft
         1.8 * cm,  # Hm/Max
-        2.0 * cm,  # GPX
+        2.2 * cm,  # GPX
         4.1 * cm,  # Sehenswürdigkeiten
         1.2 * cm,  # Preis
         2.0 * cm,  # Storno

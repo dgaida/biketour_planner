@@ -447,7 +447,7 @@ class TestProcessRouteIteration:
         used_base_files = set()
         route_files = []
 
-        should_continue, next_file, next_index, lat, lon, max_elev, dist, asc = manager._process_route_iteration(
+        should_continue, next_file, next_index, lat, lon, max_elev, dist, asc, desc = manager._process_route_iteration(
             iteration=0,
             current_file="test_track.gpx",
             current_index=0,
@@ -462,6 +462,7 @@ class TestProcessRouteIteration:
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
         )
 
         # Sollte Ziel erreicht haben
@@ -492,6 +493,7 @@ class TestProcessRouteIteration:
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
         )
 
         assert should_continue is False
@@ -520,6 +522,7 @@ class TestProcessRouteIteration:
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
         )
 
         assert should_continue is False
@@ -532,7 +535,7 @@ class TestProcessRouteIteration:
         used_base_files = set()
         route_files = []
 
-        _, _, _, _, _, max_elev, dist, asc = manager._process_route_iteration(
+        _, _, _, _, _, max_elev, dist, asc, desc = manager._process_route_iteration(
             iteration=0,
             current_file="test_track.gpx",
             current_index=0,
@@ -547,11 +550,13 @@ class TestProcessRouteIteration:
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
         )
 
         assert max_elev == 580  # Höchster Punkt
         assert dist > 0  # Distanz sollte berechnet sein
         assert asc == pytest.approx(80, abs=5)  # 500->580 = 80m Anstieg
+        assert desc == pytest.approx(0, abs=1)  # Keine Abstiege bei Vorwärtsfahrt
 
     def test_process_route_iteration_marks_visited(self, manager_with_test_track):
         """Testet dass Datei als besucht markiert wird."""
@@ -576,6 +581,7 @@ class TestProcessRouteIteration:
             max_elevation=0,
             total_distance=0,
             total_ascent=0,
+            total_descent=0,
         )
 
         assert "test_track.gpx" in visited

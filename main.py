@@ -67,6 +67,7 @@ if __name__ == "__main__":
         output_dir=OUT_DIR,
         gpx_dir=GPX_DIR,  # NEU!
         title="Reiseplanung Kroatien 2026",
+        excel_info_path=BOOKING_DIR / "Reiseplanung_Fahrrad.xlsx",  # NEU
     )
 
     # export_bookings_to_excel(
