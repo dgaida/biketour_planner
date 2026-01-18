@@ -3,9 +3,15 @@ from pathlib import Path
 
 # from itertools import chain
 from typing import Optional
-from .gpx_route_manager_static import haversine, read_gpx_file, find_closest_point_in_track, get_base_filename
+from .gpx_route_manager_static import (
+    haversine,
+    read_gpx_file,
+    find_closest_point_in_track,
+    get_base_filename,
+    get_statistics4track,
+    TrackStats,
+)
 from .brouter import get_route2address_as_points
-
 from .logger import get_logger
 
 # Initialisiere Logger
@@ -15,7 +21,6 @@ GPXIndex = dict[str, dict]
 PointDict = dict[str, float]
 StartPosResult = tuple[Optional[str], Optional[int], Optional[str]]
 TargetPosResult = tuple[Optional[str], Optional[int], Optional[float], Optional[float]]
-TrackStats = tuple[float, float, float]
 
 
 class GPXRouteManager:
@@ -122,7 +127,6 @@ class GPXRouteManager:
             point_index = 0
             for track in gpx.tracks:
                 for seg in track.segments:
-                    prev = None
                     for p in seg.points:
                         if first_point is None:
                             first_point = p
@@ -134,16 +138,7 @@ class GPXRouteManager:
                         )
                         point_index += 1
 
-                        if p.elevation is not None:
-                            max_elevation = max(max_elevation, p.elevation)
-
-                        if prev:
-                            d = haversine(prev.latitude, prev.longitude, p.latitude, p.longitude)
-                            total_distance += d
-
-                            if prev.elevation is not None and p.elevation is not None and p.elevation > prev.elevation:
-                                total_ascent += p.elevation - prev.elevation
-                        prev = p
+            max_elevation, total_distance, total_ascent = get_statistics4track(gpx)
 
             if first_point is None or last_point is None:
                 continue
@@ -613,35 +608,9 @@ class GPXRouteManager:
 
         gpx = read_gpx_file(meta["file"])
         if gpx:
-            segment_points = []
-            point_counter = 0
-            for track in gpx.tracks:
-                for seg in track.segments:
-                    if reversed_direction:
-                        for p in seg.points[::-1]:
-                            if mystart_index <= point_counter <= myend_index:
-                                segment_points.append(p)
-                            point_counter += 1
-                    else:
-                        for p in seg.points:
-                            if mystart_index <= point_counter <= myend_index:
-                                segment_points.append(p)
-                            point_counter += 1
-
-            prev = None
-            for p in segment_points:
-                if p.elevation is not None:
-                    max_elevation = max(max_elevation, p.elevation)
-
-                if prev:
-                    d = haversine(prev.latitude, prev.longitude, p.latitude, p.longitude)
-                    total_distance += d
-
-                    if prev.elevation is not None and p.elevation is not None and p.elevation > prev.elevation:
-                        total_ascent += p.elevation - prev.elevation
-                prev = p
-
-        logger.debug(f"   Punkte: {myend_index - mystart_index + 1}")
+            max_elevation, total_distance, total_ascent = get_statistics4track(
+                gpx, mystart_index, myend_index, max_elevation, total_distance, total_ascent, reversed_direction
+            )
 
         return max_elevation, total_distance, total_ascent
 

@@ -20,6 +20,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from .excel_export import extract_city_name, create_accommodation_text
 from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
+from .gpx_route_manager_static import get_statistics4track, read_gpx_file
 
 
 def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
@@ -236,40 +237,94 @@ def export_bookings_to_pdf(
 
         accommodation_text = create_accommodation_text(booking)
 
-        # Sehenswürdigkeiten mit Links
-        sights_links = create_tourist_sights_links(booking.get("tourist_sights"))
-        sights_html = "<br/>".join(sights_links) if sights_links else ""
-
-        # Summierung
-        if booking.get("total_distance_km"):
-            total_km += float(booking.get("total_distance_km", 0))
-        if booking.get("total_ascent_m"):
-            total_ascent += int(booking.get("total_ascent_m", 0))
-        if booking.get("total_price"):
-            total_price += float(booking.get("total_price", 0))
-
-        # GPX-Spalte: Haupt-Track + Pass-Tracks
+        # Berechne Statistiken für alle Tracks (Haupt-Track + Pass-Tracks)
+        km_values = []
+        hm_max_values = []
         gpx_tracks = []
+
+        # Haupt-Track
         if booking.get("gpx_track_final"):
             gpx_tracks.append(str(booking.get("gpx_track_final", ""))[:12])
 
-        # Füge Pass-Tracks hinzu
+            # km-Wert für Haupt-Track
+            km_val = booking.get("total_distance_km", "")
+            km_values.append(str(km_val) if km_val else "")
+
+            # Hm/Max für Haupt-Track
+            hm = booking.get("total_ascent_m", "")
+            max_elev = booking.get("max_elevation_m", "")
+            hm_max_values.append(f"{hm} / {max_elev}" if hm or max_elev else "")
+
+            # Summierung Haupt-Track
+            if km_val:
+                total_km += float(km_val)
+            if hm:
+                total_ascent += int(hm)
+
+        # Pass-Tracks
         for pass_track in booking.get("paesse_tracks", []):
             pass_file = pass_track.get("file", "")[:15]
             passname = pass_track.get("passname", "")
             gpx_tracks.append(f"{pass_file}<br/>({passname})")
 
+            # Lade Statistiken für Pass-Track aus GPX-Datei
+            pass_gpx_path = gpx_dir / pass_track.get("file", "") if gpx_dir else None
+            if pass_gpx_path and pass_gpx_path.exists():
+                gpx = read_gpx_file(pass_gpx_path)
+                if gpx and gpx.tracks:
+                    pass_max_elevation, pass_distance, pass_ascent = get_statistics4track(gpx)
+
+                    # Füge km-Wert hinzu
+                    pass_km = pass_distance / 1000
+                    km_values.append(f"{pass_km:.2f}")
+                    total_km += pass_km
+
+                    # Füge Hm/Max hinzu
+                    pass_hm = int(round(pass_ascent))
+                    pass_max = int(round(pass_max_elevation)) if pass_max_elevation != float("-inf") else ""
+                    hm_max_values.append(f"{pass_hm} / {pass_max}" if pass_max else f"{pass_hm} / ")
+                    total_ascent += pass_hm
+                else:
+                    km_values.append("")
+                    hm_max_values.append("")
+            else:
+                km_values.append("")
+                hm_max_values.append("")
+
+        # Erstelle mehrzeilige Strings
         gpx_text = "<br/>".join(gpx_tracks) if gpx_tracks else ""
+        km_text = "<br/>".join(km_values) if km_values else ""
+        hm_max_text = "<br/>".join(hm_max_values) if hm_max_values else ""
+
+        # Summierung Preis
+        if booking.get("total_price"):
+            total_price += float(booking.get("total_price", 0))
+
+        # Sehenswürdigkeiten mit Links + Pass-Namen
+        sights_links = create_tourist_sights_links(booking.get("tourist_sights"))
+
+        # Füge Pass-Namen als Links hinzu
+        for pass_track in booking.get("paesse_tracks", []):
+            passname = pass_track.get("passname", "")
+            pass_lat = pass_track.get("latitude")
+            pass_lon = pass_track.get("longitude")
+
+            if passname and pass_lat is not None and pass_lon is not None:
+                google_maps_url = f"https://www.google.com/maps/search/?api=1&query={pass_lat},{pass_lon}"
+                html_link = f'<a href="{google_maps_url}" color="blue"><u>{passname}</u></a>'
+                sights_links.append(html_link)
+
+        sights_html = "<br/>".join(sights_links) if sights_links else ""
 
         row = [
             Paragraph(str(day_counter), cell_style),
             Paragraph(date_str, cell_style),
             Paragraph(previous_city or "", cell_style),
             Paragraph(current_city, cell_style),
-            Paragraph(str(booking.get("total_distance_km", "")), cell_style),
+            Paragraph(km_text, cell_style),
             Paragraph(accommodation_text.replace("\n", "<br/>"), cell_style),
-            Paragraph(f"{booking.get('total_ascent_m', '')} / {booking.get('max_elevation_m', '')}", cell_style),
-            Paragraph(gpx_text, cell_style),  # Geändert!
+            Paragraph(hm_max_text, cell_style),
+            Paragraph(gpx_text, cell_style),
             Paragraph(sights_html, link_style),
             Paragraph(str(booking.get("total_price", "")), cell_style),
             Paragraph(f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "", cell_style),

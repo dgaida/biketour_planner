@@ -3,10 +3,13 @@ import math
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 
+from .elevation_calc import calculate_elevation_gain_segment_based
 from .logger import get_logger
 
 # Initialisiere Logger
 logger = get_logger()
+
+TrackStats = tuple[float, float, float]
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -152,6 +155,73 @@ def find_closest_point_in_track(points: List[Dict], target_lat: float, target_lo
             best_idx = point["index"]
 
     return best_idx, best_dist
+
+
+def get_statistics4track(
+    gpx,
+    start_index: int = 0,
+    end_index: int = None,
+    max_elevation: float = 0.0,
+    total_distance: float = 0.0,
+    total_ascent: float = 0.0,
+    reversed_direction: bool = False,
+) -> TrackStats:
+    """Berechnet Statistiken für einen Track-Abschnitt zwischen zwei Indizes.
+
+    Lädt die GPX-Datei, extrahiert den relevanten Abschnitt und berechnet:
+    - Maximale Höhe
+    - Distanz (aufsummiert über Punktabstände)
+    - Positiver Höhenunterschied (nur Anstiege)
+
+    Args:
+        meta: Metadaten des GPX-Tracks aus gpx_index.
+        current_index: Startindex des Abschnitts.
+        end_index: Endindex des Abschnitts.
+        max_elevation: Bisherige maximale Höhe in Metern (wird aktualisiert).
+        total_distance: Bisherige Gesamtdistanz in Metern (wird aktualisiert).
+        total_ascent: Bisheriger Gesamtanstieg in Metern (wird aktualisiert).
+        reversed_direction: Wenn True, wird der Track-Abschnitt rückwärts
+                           durchlaufen (Punkte in umgekehrter Reihenfolge).
+
+    Returns:
+        Tuple aus (max_elevation, total_distance, total_ascent) mit aktualisierten Werten.
+
+    Note:
+        Die Statistiken werden kumulativ berechnet, d.h. die übergebenen Werte
+        werden mit den Werten des aktuellen Abschnitts erweitert.
+    """
+    if not end_index:
+        end_index = float("inf")
+
+    segment_points = []
+    point_counter = 0
+    for track in gpx.tracks:
+        for seg in track.segments:
+            if reversed_direction:
+                for p in seg.points[::-1]:
+                    if start_index <= point_counter <= end_index:
+                        segment_points.append(p)
+                    point_counter += 1
+            else:
+                for p in seg.points:
+                    if start_index <= point_counter <= end_index:
+                        segment_points.append(p)
+                    point_counter += 1
+
+    prev = None
+    for p in segment_points:
+        if prev:
+            d = haversine(prev.latitude, prev.longitude, p.latitude, p.longitude)
+            total_distance += d
+        prev = p
+
+    elevations = [p.elevation for p in segment_points if p.elevation is not None]
+    max_elevation = max(elevations)
+    total_ascent += calculate_elevation_gain_segment_based(elevations)
+
+    logger.debug(f"   Punkte: {end_index - start_index + 1}")
+
+    return max_elevation, total_distance, total_ascent
 
 
 # def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Dict]:
