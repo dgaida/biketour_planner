@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
-# import math
+from .config import get_config
 from .geocode import geocode_address
 from .gpx_route_manager_static import get_statistics4track, haversine, read_gpx_file
 from .logger import get_logger
@@ -123,8 +123,8 @@ def find_pass_track(
     pass_lat: float,
     pass_lon: float,
     gpx_dir: Path,
-    hotel_radius_km: float = 5.0,
-    pass_radius_km: float = 5.0,
+    hotel_radius_km: float = None,
+    pass_radius_km: float = None,
 ) -> Optional[Path]:
     """Findet einen GPS-Track der vom Hotel zum Pass führt.
 
@@ -138,12 +138,21 @@ def find_pass_track(
         pass_lat: Breitengrad des Passes.
         pass_lon: Längengrad des Passes.
         gpx_dir: Verzeichnis mit GPX-Dateien.
-        hotel_radius_km: Suchradius um Hotel in Kilometern (Default: 5 km).
-        pass_radius_km: Suchradius um Pass in Kilometern (Default: 5 km).
+        hotel_radius_km: Suchradius um Hotel in Kilometern. Falls None, wird config.passes.hotel_radius_km verwendet.
+        pass_radius_km: Suchradius um Pass in Kilometern. Falls None, wird config.passes.pass_radius_km verwendet.
 
     Returns:
         Pfad zur GPX-Datei oder None wenn keine passende Datei gefunden.
     """
+    # Lade Config für Defaults
+    config = get_config()
+
+    if hotel_radius_km is None:
+        hotel_radius_km = config.passes.hotel_radius_km
+
+    if pass_radius_km is None:
+        pass_radius_km = config.passes.pass_radius_km
+
     hotel_radius_m = hotel_radius_km * 1000
     pass_radius_m = pass_radius_km * 1000
 
@@ -196,7 +205,11 @@ def find_pass_track(
 
 
 def process_passes(
-    passes_json_path: Path, gpx_dir: Path, bookings: list[dict], hotel_radius_km: float = 5.0, pass_radius_km: float = 5.0
+    passes_json_path: Path,
+    gpx_dir: Path,
+    bookings: list[dict],
+    hotel_radius_km: float = None,
+    pass_radius_km: float = None,
 ) -> list[dict]:
     """Verarbeitet alle Pässe und ordnet GPS-Tracks zu Hotels zu.
 
@@ -211,8 +224,8 @@ def process_passes(
         passes_json_path: Pfad zur passes.json Datei.
         gpx_dir: Verzeichnis mit GPX-Dateien.
         bookings: Liste mit Buchungs-Dictionaries (wird modifiziert).
-        hotel_radius_km: Suchradius um Hotel in Kilometern (Default: 5 km).
-        pass_radius_km: Suchradius um Pass in Kilometern (Default: 5 km).
+        hotel_radius_km: Suchradius um Hotel in Kilometern. Falls None, wird config.passes.hotel_radius_km verwendet.
+        pass_radius_km: Suchradius um Pass in Kilometern. Falls None, wird config.passes.pass_radius_km verwendet.
 
     Returns:
         Modifizierte bookings-Liste mit "paesse_tracks" Keys.
@@ -226,6 +239,15 @@ def process_passes(
         >>> print(bookings[0].get("paesse_tracks"))
         [{"file": "Sveti_Jure.gpx", "passname": "Sveti Jure", "total_ascent_m": 1234, "total_descent_m": 567}]
     """
+    # Lade Config für Defaults
+    config = get_config()
+
+    if hotel_radius_km is None:
+        hotel_radius_km = config.passes.hotel_radius_km
+
+    if pass_radius_km is None:
+        pass_radius_km = config.passes.pass_radius_km
+
     if not passes_json_path.exists():
         logger.warning(f"Keine Pässe-Datei gefunden: {passes_json_path}")
         return bookings
@@ -323,15 +345,18 @@ if __name__ == "__main__":
     # Beispielaufruf
     from pathlib import Path
 
-    passes_json = Path("../2026_Kroatien/gpx/Paesse.json")
-    gpx_directory = Path("../2026_Kroatien/gpx")
+    config = get_config()
+
+    # Verwende Config-Werte für Pfade
+    passes_json = config.directories.gpx / config.passes.passes_file
+    gpx_directory = config.directories.gpx
     bookings_json = Path("output/bookings.json")
 
     # Lade Buchungen
     with open(bookings_json, encoding="utf-8") as f:
         bookings = json.load(f)
 
-    # Verarbeite Pässe
+    # Verarbeite Pässe (verwendet Config-Defaults für Radien)
     bookings = process_passes(passes_json, gpx_directory, bookings)
 
     # Speichere aktualisierte Buchungen

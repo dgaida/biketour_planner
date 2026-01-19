@@ -16,6 +16,7 @@ from typing import Optional
 import requests
 from dotenv import load_dotenv
 
+from .config import get_config
 from .logger import get_logger
 
 # Initialisiere Logger
@@ -75,7 +76,7 @@ def _make_cache_key(lat: float, lon: float, radius: int, limit: int) -> str:
     return f"{lat_rounded}_{lon_rounded}_{radius}_{limit}"
 
 
-def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: int = 2) -> Optional[dict]:
+def find_top_tourist_sights(lat: float, lon: float, radius: int = None, limit: int = None) -> Optional[dict]:
     """Findet touristische Sehenswürdigkeiten in der Nähe einer Koordinate.
 
     Nutzt die Geoapify Places API um Sehenswürdigkeiten (POIs der Kategorie
@@ -84,8 +85,8 @@ def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: i
     Args:
         lat: Breitengrad in Dezimalgrad.
         lon: Längengrad in Dezimalgrad.
-        radius: Suchradius in Metern (Default: 5000m = 5km).
-        limit: Maximale Anzahl zurückzugebender Ergebnisse (Default: 2).
+        radius: Suchradius in Metern. Falls None, wird config.geoapify.search_radius_m verwendet.
+        limit: Maximale Anzahl zurückzugebender Ergebnisse. Falls None, wird config.geoapify.max_pois verwendet.
 
     Returns:
         Dictionary mit GeoJSON-Features der gefundenen Sehenswürdigkeiten
@@ -111,10 +112,22 @@ def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: i
         >>> if data:
         ...     for poi in data.get("features", []):
         ...         print(poi["properties"]["name"])
+        >>>
+        >>> # Mit benutzerdefinierten Parametern
+        >>> data = find_top_tourist_sights(43.5081, 16.4402, radius=10000, limit=5)
 
     Note:
         Benötigt einen gültigen GEOAPIFY_API_KEY in der secrets.env Datei.
     """
+    # Lade Config für Defaults
+    config = get_config()
+
+    if radius is None:
+        radius = config.geoapify.search_radius_m
+
+    if limit is None:
+        limit = config.geoapify.max_pois
+
     # Cache-Lookup
     cache_key = _make_cache_key(lat, lon, radius, limit)
 
@@ -208,8 +221,6 @@ def get_names_as_comma_separated_string(data: Optional[dict]) -> str:
             names.append(coord_str)
 
     result = ", ".join(names)
-    # if result:
-    #     result += ", "  # Trailing comma für Konsistenz
 
     logger.debug(f"Extrahierte {len(names)} POI-Namen")
 

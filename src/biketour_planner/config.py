@@ -101,6 +101,26 @@ class Config:
         """Zugriff auf Routing-Konfiguration."""
         return RoutingConfig(self._config["routing"])
 
+    @property
+    def passes(self) -> "PassesConfig":
+        """Zugriff auf Pass-Finder-Konfiguration."""
+        return PassesConfig(self._config["passes"])
+
+    @property
+    def geoapify(self) -> "GeoapifyConfig":
+        """Zugriff auf Geoapify-Konfiguration."""
+        return GeoapifyConfig(self._config["geoapify"])
+
+    @property
+    def export(self) -> "ExportConfig":
+        """Zugriff auf Export-Konfiguration."""
+        return ExportConfig(self._config["export"])
+
+    @property
+    def logging(self) -> "LoggingConfig":
+        """Zugriff auf Logging-Konfiguration."""
+        return LoggingConfig(self._config["logging"])
+
 
 class DirectoriesConfig:
     """Helper-Klasse für Verzeichnis-Zugriffe."""
@@ -138,6 +158,74 @@ class RoutingConfig:
     @property
     def max_chain_length(self) -> int:
         return int(self._config["max_chain_length"])
+
+    @property
+    def start_search_radius_km(self) -> float:
+        return float(self._config["start_search_radius_km"])
+
+
+class PassesConfig:
+    """Helper-Klasse für Pass-Finder-Parameter."""
+
+    def __init__(self, config: dict):
+        self._config = config
+
+    @property
+    def hotel_radius_km(self) -> float:
+        return float(self._config["hotel_radius_km"])
+
+    @property
+    def pass_radius_km(self) -> float:
+        return float(self._config["pass_radius_km"])
+
+    @property
+    def passes_file(self) -> str:
+        return self._config["passes_file"]
+
+
+class GeoapifyConfig:
+    """Helper-Klasse für Geoapify-Parameter."""
+
+    def __init__(self, config: dict):
+        self._config = config
+
+    @property
+    def search_radius_m(self) -> int:
+        return int(self._config["search_radius_m"])
+
+    @property
+    def max_pois(self) -> int:
+        return int(self._config["max_pois"])
+
+
+class ExportConfig:
+    """Helper-Klasse für Export-Parameter."""
+
+    def __init__(self, config: dict):
+        self._config = config
+
+    @property
+    def title(self) -> str:
+        return self._config["title"]
+
+    @property
+    def excel_info_file(self) -> str:
+        return self._config["excel_info_file"]
+
+
+class LoggingConfig:
+    """Helper-Klasse für Logging-Parameter."""
+
+    def __init__(self, config: dict):
+        self._config = config
+
+    @property
+    def level(self) -> str:
+        return self._config["level"]
+
+    @property
+    def file(self) -> str:
+        return self._config["file"]
 
 
 # Globale Config-Instanz

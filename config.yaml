@@ -23,7 +23,7 @@ passes:
 # Geoapify (Sehenswürdigkeiten)
 geoapify:
   search_radius_m: 5000
-  max_pois: 2
+  max_pois: 3
 
 # Export
 export:

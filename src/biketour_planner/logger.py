@@ -6,17 +6,19 @@ auf die Konsole als auch in Dateien schreiben kann.
 
 import logging
 import sys
-import os
+
+# import os
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
-LOG_FILE = Path(os.path.join("logs", f"app_{datetime.now().strftime('%Y%m%d_%H%M')}.log"))
+# Entferne die hartcodierte LOG_FILE Konstante
+# LOG_FILE = Path(os.path.join("logs", f"app_{datetime.now().strftime('%Y%m%d_%H%M')}.log"))
 
 
 def setup_logger(
     name: str = "biketour_planner",
-    level: int = logging.INFO,
+    level: int = None,  # Geändert von logging.INFO
     log_file: Optional[Path] = None,
     console_output: bool = True,
 ) -> logging.Logger:
@@ -24,11 +26,11 @@ def setup_logger(
 
     Args:
         name: Name des Loggers (Default: "biketour_planner").
-        level: Logging-Level (Default: logging.INFO).
+        level: Logging-Level. Falls None, wird config.logging.level verwendet.
                Mögliche Werte: logging.DEBUG, logging.INFO, logging.WARNING,
                logging.ERROR, logging.CRITICAL.
-        log_file: Optional. Pfad zur Log-Datei. Wenn None, wird nur auf
-                 die Konsole geloggt.
+        log_file: Optional. Pfad zur Log-Datei. Falls None, wird
+                 config.logging.file verwendet.
         console_output: Wenn True, wird zusätzlich auf die Konsole geloggt.
 
     Returns:
@@ -42,8 +44,22 @@ def setup_logger(
         >>> logger = setup_logger(log_file=Path("logs/app.log"))
         >>> logger.debug("Debug-Information")
     """
-    if log_file is None:
-        log_file = LOG_FILE
+    # Lade Config für Defaults (nur wenn benötigt)
+    if level is None or log_file is None:
+        from .config import get_config
+
+        config = get_config()
+
+        if level is None:
+            # Konvertiere String zu logging Level
+            level_str = config.logging.level.upper()
+            level = getattr(logging, level_str, logging.INFO)
+
+        if log_file is None:
+            # Verwende Config-Pfad mit Timestamp
+            base_log_path = Path(config.logging.file)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            log_file = base_log_path.parent / f"{base_log_path.stem}_{timestamp}.log"
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -61,7 +77,7 @@ def setup_logger(
     # Console Handler
     if console_output:
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.WARNING)  # (level)
+        console_handler.setLevel(logging.WARNING)
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
@@ -97,8 +113,8 @@ def get_logger(name: str = "biketour_planner") -> logging.Logger:
     """
     logger = logging.getLogger(name)
 
-    # Wenn Logger noch keine Handler hat, initialisiere mit Standardwerten
+    # Wenn Logger noch keine Handler hat, initialisiere mit Config-Werten
     if not logger.handlers:
-        logger = setup_logger(name, level=logging.DEBUG)
+        logger = setup_logger(name)  # level und log_file werden aus Config geladen
 
     return logger

@@ -1,11 +1,14 @@
 from pathlib import Path
 
+from concurrent.futures import ThreadPoolExecutor
+
 # from itertools import chain
 from typing import Optional
 
 import gpxpy
 from tqdm import tqdm
 
+from .config import get_config
 from .brouter import get_route2address_as_points
 from .gpx_route_manager_static import (
     TrackStats,
@@ -69,16 +72,13 @@ class GPXRouteManager:
         >>> print(f"Route: {booking['total_distance_km']} km")
     """
 
-    DEFAULT_MAX_CONNECTION_DISTANCE_M = 1000.0
-    DEFAULT_MAX_CHAIN_LENGTH = 20
-    DEFAULT_START_RADIUS_KM = 3.0  # Für _find_optimal_start_track
-
     def __init__(
         self,
         gpx_dir: Path,
         output_path: Path,
-        max_connection_distance_m: float = DEFAULT_MAX_CONNECTION_DISTANCE_M,
-        max_chain_length: int = DEFAULT_MAX_CHAIN_LENGTH,
+        max_connection_distance_m: float = None,
+        max_chain_length: int = None,
+        start_search_radius_km: float = None,
     ):
         """Initialisiert den GPXRouteManager und lädt alle GPX-Dateien.
 
@@ -89,11 +89,23 @@ class GPXRouteManager:
                                        automatisch verbunden. Default: 1000m.
             max_chain_length: Maximale Anzahl zu verkettender Tracks. Verhindert
                              Endlosschleifen. Default: 20.
+            start_search_radius_km: Suchradius für Start-Track in km.
+                                   Falls None, wird config.routing.start_search_radius_km verwendet.
         """
+        # Lade Config für Defaults
+        config = get_config()
+
         self.gpx_dir = gpx_dir
         self.output_path = output_path
-        self.max_connection_distance_m = max_connection_distance_m
-        self.max_chain_length = max_chain_length
+
+        self.max_connection_distance_m = (
+            max_connection_distance_m if max_connection_distance_m is not None else config.routing.max_connection_distance_m
+        )
+        self.max_chain_length = max_chain_length if max_chain_length is not None else config.routing.max_chain_length
+        self.start_search_radius_km = (
+            start_search_radius_km if start_search_radius_km is not None else config.routing.start_search_radius_km
+        )
+
         self._preprocess_gpx_directory()
 
     def _preprocess_gpx_directory(self) -> GPXIndex:
@@ -116,12 +128,12 @@ class GPXRouteManager:
             Dateien die nicht geparst werden können werden stillschweigend übersprungen.
         """
         self.gpx_index: GPXIndex = {}
+        gpx_files = list(Path(self.gpx_dir).glob("*.gpx"))
 
-        # for gpx_file in chain(Path(self.gpx_dir).glob("*.gpx"), Path(self.output_path).glob("*.gpx")):
-        for gpx_file in Path(self.gpx_dir).glob("*.gpx"):
+        def process_file(gpx_file: Path) -> Optional[tuple[str, dict]]:
             gpx = read_gpx_file(gpx_file)
             if gpx is None or not gpx.tracks:
-                continue
+                return None
 
             total_distance = 0.0
             total_ascent = 0.0
@@ -148,9 +160,9 @@ class GPXRouteManager:
             max_elevation, total_distance, total_ascent, total_descent = get_statistics4track(gpx)
 
             if first_point is None or last_point is None:
-                continue
+                return None
 
-            self.gpx_index[gpx_file.name] = {
+            return gpx_file.name, {
                 "file": gpx_file,
                 "start_lat": first_point.latitude,
                 "start_lon": first_point.longitude,
@@ -161,6 +173,15 @@ class GPXRouteManager:
                 "max_elevation_m": (int(round(max_elevation)) if max_elevation != float("-inf") else None),
                 "points": all_points,
             }
+
+        # Parallel processing
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = executor.map(process_file, gpx_files)
+
+        for result in results:
+            if result:
+                filename, metadata = result
+                self.gpx_index[filename] = metadata
 
     def _find_start_pos(
         self,
@@ -211,7 +232,7 @@ class GPXRouteManager:
         target_lat: float,
         target_lon: float,
         previous_last_file: Optional[dict] = None,
-        start_radius_km: float = DEFAULT_START_RADIUS_KM,
+        start_radius_km: float = None,
     ) -> tuple[Optional[str], Optional[int], Optional[str]]:
         """Findet den optimalen Start-Track basierend auf Nähe zu Start UND Ziel.
 
@@ -253,6 +274,10 @@ class GPXRouteManager:
             >>> print(f"Gewählter Start-Track: {start_file}")
             # Wählt Track dessen Ende/Anfang Richtung Garmisch zeigt
         """
+        # Verwende übergebenen Wert oder self.start_search_radius_km
+        if start_radius_km is None:
+            start_radius_km = self.start_search_radius_km
+
         start_radius_m = start_radius_km * 1000
 
         # 1. Prüfe ob Fortsetzung vom Vortag
