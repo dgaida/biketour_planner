@@ -6,18 +6,19 @@ sie den nächstgelegenen Hotels zu.
 
 import json
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 # import math
-
 from .geocode import geocode_address
-from .gpx_route_manager_static import read_gpx_file, haversine, get_statistics4track
+from .gpx_route_manager_static import get_statistics4track, haversine, read_gpx_file
 from .logger import get_logger
 
 logger = get_logger()
 
+JsonData = Union[dict[str, Any], list[dict[str, Any]]]
 
-def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
+
+def load_json(file_path: Union[Path, str]) -> JsonData:
     """Lädt eine JSON-Datei mit Error-Handling.
 
     Die Funktion sucht die Datei relativ zum 'src/data/' Verzeichnis.
@@ -39,7 +40,7 @@ def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
         <class 'list'>
     """
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
         print(f"Loaded JSON from {file_path.name}")
         return data
@@ -48,7 +49,7 @@ def load_json(file_path: Union[Path, str]) -> Union[Dict, List[Dict]]:
         raise
 
 
-def get_gpx_endpoints(gpx_file: Path) -> Optional[Tuple[float, float, float, float]]:
+def get_gpx_endpoints(gpx_file: Path) -> Optional[tuple[float, float, float, float]]:
     """Extrahiert Start- und Endpunkt aus einer GPX-Datei.
 
     Args:
@@ -83,7 +84,7 @@ def get_gpx_endpoints(gpx_file: Path) -> Optional[Tuple[float, float, float, flo
     )
 
 
-def find_nearest_hotel(pass_lat: float, pass_lon: float, bookings: List[Dict]) -> Optional[Dict]:
+def find_nearest_hotel(pass_lat: float, pass_lon: float, bookings: list[dict]) -> Optional[dict]:
     """Findet das nächstgelegene Hotel zu einem Pass.
 
     Args:
@@ -195,8 +196,8 @@ def find_pass_track(
 
 
 def process_passes(
-    passes_json_path: Path, gpx_dir: Path, bookings: List[Dict], hotel_radius_km: float = 5.0, pass_radius_km: float = 5.0
-) -> List[Dict]:
+    passes_json_path: Path, gpx_dir: Path, bookings: list[dict], hotel_radius_km: float = 5.0, pass_radius_km: float = 5.0
+) -> list[dict]:
     """Verarbeitet alle Pässe und ordnet GPS-Tracks zu Hotels zu.
 
     Für jeden Pass in passes.json:
@@ -327,7 +328,7 @@ if __name__ == "__main__":
     bookings_json = Path("output/bookings.json")
 
     # Lade Buchungen
-    with open(bookings_json, "r", encoding="utf-8") as f:
+    with open(bookings_json, encoding="utf-8") as f:
         bookings = json.load(f)
 
     # Verarbeite Pässe

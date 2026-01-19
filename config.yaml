@@ -1,0 +1,36 @@
+# Bike Tour Planner Configuration
+# Kopiere diese Datei zu 'config.yaml' und passe die Werte an
+
+# Verzeichnisse
+directories:
+  booking: "../2026_Kroatien/booking"
+  gpx: "../2026_Kroatien/gpx"
+  output: "../2026_Kroatien/gpx_modified"
+
+# Routing
+routing:
+  brouter_url: "http://localhost:17777"
+  max_connection_distance_m: 1000
+  max_chain_length: 20
+  start_search_radius_km: 3.0
+
+# Pass-Finder
+passes:
+  hotel_radius_km: 5.0
+  pass_radius_km: 5.0
+  passes_file: "Paesse.json"  # Relativ zu gpx_dir
+
+# Geoapify (Sehenswürdigkeiten)
+geoapify:
+  search_radius_m: 5000
+  max_pois: 2
+
+# Export
+export:
+  title: "Reiseplanung Kroatien 2026"
+  excel_info_file: "Reiseplanung_Fahrrad.xlsx"  # Relativ zu booking_dir
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/app.log"

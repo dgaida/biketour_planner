@@ -1,17 +1,20 @@
-import gpxpy
 from pathlib import Path
 
 # from itertools import chain
 from typing import Optional
+
+import gpxpy
+from tqdm import tqdm
+
+from .brouter import get_route2address_as_points
 from .gpx_route_manager_static import (
-    haversine,
-    read_gpx_file,
+    TrackStats,
     find_closest_point_in_track,
     get_base_filename,
     get_statistics4track,
-    TrackStats,
+    haversine,
+    read_gpx_file,
 )
-from .brouter import get_route2address_as_points
 from .logger import get_logger
 
 # Initialisiere Logger
@@ -66,12 +69,16 @@ class GPXRouteManager:
         >>> print(f"Route: {booking['total_distance_km']} km")
     """
 
+    DEFAULT_MAX_CONNECTION_DISTANCE_M = 1000.0
+    DEFAULT_MAX_CHAIN_LENGTH = 20
+    DEFAULT_START_RADIUS_KM = 3.0  # Für _find_optimal_start_track
+
     def __init__(
         self,
         gpx_dir: Path,
         output_path: Path,
-        max_connection_distance_m: float = 1000.0,
-        max_chain_length: int = 20,
+        max_connection_distance_m: float = DEFAULT_MAX_CONNECTION_DISTANCE_M,
+        max_chain_length: int = DEFAULT_MAX_CHAIN_LENGTH,
     ):
         """Initialisiert den GPXRouteManager und lädt alle GPX-Dateien.
 
@@ -204,7 +211,7 @@ class GPXRouteManager:
         target_lat: float,
         target_lon: float,
         previous_last_file: Optional[dict] = None,
-        start_radius_km: float = 3.0,
+        start_radius_km: float = DEFAULT_START_RADIUS_KM,
     ) -> tuple[Optional[str], Optional[int], Optional[str]]:
         """Findet den optimalen Start-Track basierend auf Nähe zu Start UND Ziel.
 
@@ -1199,7 +1206,7 @@ class GPXRouteManager:
         prev_lat = prev_lon = None
         previous_last_file = None
 
-        for booking in bookings_sorted:
+        for booking in tqdm(bookings_sorted, desc="Verarbeite Buchungen"):
             logger.debug(booking.get("hotel_name"))
 
             lat = booking.get("latitude", None)

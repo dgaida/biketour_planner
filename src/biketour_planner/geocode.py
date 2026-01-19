@@ -1,9 +1,10 @@
+import json
 import re
+from pathlib import Path
 from time import sleep
-from typing import Tuple
 
+from geopy.exc import GeocoderServiceError, GeocoderTimedOut
 from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 # Photon als Alternative zu Nominatim (nutzt auch OpenStreetMap)
 try:
@@ -23,6 +24,25 @@ except ImportError:
 
 geolocator_nominatim = Nominatim(user_agent="booking-gpx-project")
 geolocator_photon = Photon(user_agent="booking-gpx-project") if PHOTON_AVAILABLE else None
+
+
+GEOCODE_CACHE_FILE = Path("output/geocode_cache.json")
+
+
+def load_geocode_cache() -> dict:
+    """Lädt Geocoding-Cache von Disk."""
+    if GEOCODE_CACHE_FILE.exists():
+        return json.loads(GEOCODE_CACHE_FILE.read_text(encoding="utf-8"))
+    return {}
+
+
+def save_geocode_cache(cache: dict) -> None:
+    """Speichert Geocoding-Cache auf Disk."""
+    GEOCODE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    GEOCODE_CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+_geocode_cache = load_geocode_cache()
 
 
 def clean_address(address: str) -> str:
@@ -64,7 +84,7 @@ def extract_city_country(address: str) -> str:
     return address
 
 
-def geocode_with_nominatim(address: str, retries: int = 3) -> Tuple[float, float]:
+def geocode_with_nominatim(address: str, retries: int = 3) -> tuple[float, float]:
     """Geocoding mit Nominatim/OSM.
 
     Args:
@@ -94,7 +114,7 @@ def geocode_with_nominatim(address: str, retries: int = 3) -> Tuple[float, float
     raise ValueError(f"Adresse nicht gefunden: {address}")
 
 
-def geocode_with_photon(address: str) -> Tuple[float, float]:
+def geocode_with_photon(address: str) -> tuple[float, float]:
     """Geocoding mit Photon (alternative OSM-basierte API).
 
     Args:
@@ -116,7 +136,7 @@ def geocode_with_photon(address: str) -> Tuple[float, float]:
     raise ValueError(f"Adresse nicht gefunden: {address}")
 
 
-def geocode_address(address: str) -> Tuple[float, float]:
+def geocode_address(address: str) -> tuple[float, float]:
     """Geocodiert eine Adresse mit mehreren Fallback-Strategien.
 
     Probiert verschiedene Geocoding-Dienste und Adressformate:
@@ -134,6 +154,11 @@ def geocode_address(address: str) -> Tuple[float, float]:
     Raises:
         ValueError: Wenn keine Geocoding-Methode erfolgreich war
     """
+    # Cache-Lookup
+    if address in _geocode_cache:
+        cached = _geocode_cache[address]
+        return cached["lat"], cached["lon"]
+
     errors = []
 
     # Bereinigte Adresse
@@ -161,8 +186,14 @@ def geocode_address(address: str) -> Tuple[float, float]:
                 # wenn weit auseinander, dann nehme nur die Stadt, s.u.
                 # hinweis dafür, dass adresse gar nicht verstanden wurde
                 if abs(lat1 - lat2) < 1.2 and abs(lon1 - lon2) < 0.6:
+                    _geocode_cache[address] = {"lat": lat1, "lon": lon1}
+                    save_geocode_cache(_geocode_cache)
+
                     return lat1, lon1
             else:
+                _geocode_cache[address] = {"lat": lat2, "lon": lon2}
+                save_geocode_cache(_geocode_cache)
+
                 return lat2, lon2
         except ValueError as e:
             errors.append(f"Photon (bereinigt): {e}")

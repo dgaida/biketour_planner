@@ -5,26 +5,26 @@ Dieses Modul erstellt farbcodierte Höhenprofile aus GPX-Dateien:
 - Grün für Abfahrten (desto steiler, desto kräftiger)
 """
 
-import numpy as np
-from pathlib import Path
-from typing import List, Tuple
-
 # import gpxpy
 from io import BytesIO
-from reportlab.platypus import Image, PageBreak, Paragraph
+from pathlib import Path
+
+import matplotlib
+import numpy as np
 from reportlab.lib.styles import ParagraphStyle
 
 # from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.units import cm
+from reportlab.platypus import Image, PageBreak, Paragraph
+from tqdm import tqdm
 
 from .gpx_route_manager_static import haversine, read_gpx_file
-import matplotlib
 
 matplotlib.use("Agg")  # Backend für Nicht-GUI-Umgebungen
 import matplotlib.pyplot as plt  # noqa: E402
 
 
-def extract_elevation_profile(gpx_file: Path) -> Tuple[np.ndarray, np.ndarray]:
+def extract_elevation_profile(gpx_file: Path) -> tuple[np.ndarray, np.ndarray]:
     """Extrahiert Distanz und Höhenprofil aus einer GPX-Datei.
 
     Args:
@@ -137,7 +137,7 @@ def get_color_for_gradient(gradient: float) -> str:
 
 
 def create_elevation_profile_plot(
-    gpx_file: Path, booking: dict, pass_track: dict = None, title: str = None, figsize: Tuple[int, int] = (12, 4)
+    gpx_file: Path, booking: dict, pass_track: dict = None, title: str = None, figsize: tuple[int, int] = (12, 4)
 ) -> BytesIO:
     """Erstellt ein farbcodiertes Höhenprofil aus einer GPX-Datei.
 
@@ -225,9 +225,9 @@ def create_elevation_profile_plot(
 
 
 def add_elevation_profiles_to_story(
-    story: List,
-    gpx_files: List[Path],
-    bookings: List[dict],
+    story: list,
+    gpx_files: list[Path],
+    bookings: list[dict],
     gpx_dir: Path,
     title_style: ParagraphStyle,
     page_width_cm: float = 25.0,
@@ -269,7 +269,7 @@ def add_elevation_profiles_to_story(
             gpx_to_booking[gpx_track] = booking
 
     # Für jede GPX-Datei ein Profil erstellen
-    for gpx_file in gpx_files:
+    for gpx_file in tqdm(gpx_files, desc="Erstelle Höhenprofile"):
         try:
             booking = gpx_to_booking.get(gpx_file.name)
 
@@ -313,7 +313,7 @@ def add_elevation_profiles_to_story(
     print(f"✅ {total_profiles} Höhenprofile erstellt")
 
 
-def get_merged_gpx_files_from_bookings(bookings: List[dict], output_dir: Path) -> List[Path]:
+def get_merged_gpx_files_from_bookings(bookings: list[dict], output_dir: Path) -> list[Path]:
     """Extrahiert die Pfade zu den gemergten GPX-Dateien aus den Buchungen.
 
     Args:

@@ -19,9 +19,21 @@ Example:
     <?xml version="1.0" encoding="UTF-8"?>...
 """
 
-import requests
 import gpxpy
-from typing import List
+import requests
+
+
+def check_brouter_availability() -> bool:
+    """Prüft ob BRouter-Server erreichbar ist.
+
+    Returns:
+        True wenn Server erreichbar, sonst False.
+    """
+    try:
+        response = requests.get("http://localhost:17777", timeout=2)
+        return response.status_code in [200, 404]  # 404 ist ok (keine Route angegeben)
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        return False
 
 
 def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: float) -> str:
@@ -76,6 +88,12 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
         - Für andere Routing-Profile siehe BRouter-Dokumentation:
           https://github.com/abrensch/brouter/tree/master/misc/profiles2
     """
+    if not check_brouter_availability():
+        raise ConnectionError(
+            "BRouter Server nicht erreichbar unter http://localhost:17777. "
+            "Bitte starte BRouter mit: docker run -p 17777:17777 -v /path/to/segments4:/segments4 brouter"
+        )
+
     url = "http://localhost:17777/brouter"
     # FIX: Formatiere Koordinaten ohne trailing zeros
     lonlats = f"{lon_from:g},{lat_from:g}|{lon_to:g},{lat_to:g}"
@@ -87,7 +105,7 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
 
 def get_route2address_as_points(
     start_lat: float, start_lon: float, target_lat: float, target_lon: float
-) -> List[gpxpy.gpx.GPXTrackPoint]:
+) -> list[gpxpy.gpx.GPXTrackPoint]:
     """Berechnet eine Route zwischen zwei Koordinaten und gibt die Trackpunkte zurück.
 
     Diese Funktion nutzt BRouter um eine Fahrradroute zu berechnen und extrahiert

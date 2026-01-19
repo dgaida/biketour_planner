@@ -8,8 +8,10 @@ API-Dokumentation:
     - https://apidocs.geoapify.com/docs/places/
 """
 
+import json
 import os
-from typing import Dict, Optional
+from pathlib import Path
+from typing import Optional
 
 import requests
 from dotenv import load_dotenv
@@ -26,7 +28,54 @@ load_dotenv("secrets.env")
 geoapify_api_key = os.getenv("GEOAPIFY_API_KEY")
 
 
-def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: int = 2) -> Optional[Dict]:
+GEOAPIFY_CACHE_FILE = Path("output/geoapify_cache.json")
+
+
+def load_geoapify_cache() -> dict:
+    """Lädt Geoapify-Cache von Disk."""
+    if GEOAPIFY_CACHE_FILE.exists():
+        return json.loads(GEOAPIFY_CACHE_FILE.read_text(encoding="utf-8"))
+    return {}
+
+
+def save_geoapify_cache(cache: dict) -> None:
+    """Speichert Geoapify-Cache auf Disk."""
+    GEOAPIFY_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    GEOAPIFY_CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+_geoapify_cache = load_geoapify_cache()
+
+
+def _make_cache_key(lat: float, lon: float, radius: int, limit: int) -> str:
+    """Erstellt Cache-Key aus Suchparametern.
+
+    Rundet Koordinaten auf 4 Dezimalstellen (~11m Genauigkeit), damit
+    minimal unterschiedliche Koordinaten den gleichen Cache-Eintrag nutzen.
+
+    Args:
+        lat: Breitengrad in Dezimalgrad.
+        lon: Längengrad in Dezimalgrad.
+        radius: Suchradius in Metern.
+        limit: Maximale Anzahl Ergebnisse.
+
+    Returns:
+        Cache-Key als String im Format "lat_lon_radius_limit".
+
+    Example:
+        >>> _make_cache_key(43.508134, 16.440235, 5000, 2)
+        '43.5081_16.4402_5000_2'
+    """
+    # Runde auf 4 Dezimalstellen (~11m Genauigkeit)
+    # Das verhindert, dass minimal unterschiedliche Hotel-Koordinaten
+    # zu separaten API-Calls führen
+    lat_rounded = round(lat, 4)
+    lon_rounded = round(lon, 4)
+
+    return f"{lat_rounded}_{lon_rounded}_{radius}_{limit}"
+
+
+def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: int = 2) -> Optional[dict]:
     """Findet touristische Sehenswürdigkeiten in der Nähe einer Koordinate.
 
     Nutzt die Geoapify Places API um Sehenswürdigkeiten (POIs der Kategorie
@@ -66,9 +115,16 @@ def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: i
     Note:
         Benötigt einen gültigen GEOAPIFY_API_KEY in der secrets.env Datei.
     """
+    # Cache-Lookup
+    cache_key = _make_cache_key(lat, lon, radius, limit)
+
+    if cache_key in _geoapify_cache:
+        logger.info(f"Cache-Hit für Koordinaten ({lat:.4f}, {lon:.4f})")
+        return _geoapify_cache[cache_key]
+
     if not geoapify_api_key:
-        logger.error("GEOAPIFY_API_KEY nicht in Umgebungsvariablen gefunden")
-        return None
+        logger.warning("GEOAPIFY_API_KEY nicht gesetzt - überspringe Sehenswürdigkeiten-Suche")
+        return {"features": []}  # Statt None, damit Code nicht crasht
 
     url = "https://api.geoapify.com/v2/places"
     params = {
@@ -94,6 +150,11 @@ def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: i
             poi_name = props.get("name", f"({props.get('lat')}, {props.get('lon')})")
             logger.debug(f"  - {poi_name}")
 
+        # Speichere im Cache
+        _geoapify_cache[cache_key] = data
+        save_geoapify_cache(_geoapify_cache)
+        logger.debug(f"Cache gespeichert für Key: {cache_key}")
+
         return data
 
     except requests.exceptions.Timeout:
@@ -107,7 +168,7 @@ def find_top_tourist_sights(lat: float, lon: float, radius: int = 5000, limit: i
         return None
 
 
-def get_names_as_comma_separated_string(data: Optional[Dict]) -> str:
+def get_names_as_comma_separated_string(data: Optional[dict]) -> str:
     """Extrahiert POI-Namen aus Geoapify-Daten als Komma-separierte Liste.
 
     Args:
