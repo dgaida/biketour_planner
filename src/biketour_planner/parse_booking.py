@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 from .logger import get_logger
+from .geoapify import find_top_tourist_sights
+from .geocode import geocode_address
 
 # Initialisiere Logger
 logger = get_logger()
@@ -459,3 +461,37 @@ def extract_booking_info(html_path: Path):
     logger.debug(f"booking: {booking}")
 
     return booking
+
+
+def create_all_bookings(booking_dir, search_radius_m, max_pois):
+    all_bookings = []
+
+    for html_file in booking_dir.glob("*.htm"):
+        booking = extract_booking_info(html_file)
+
+        if booking.get("latitude") is not None:
+            lat = booking.get("latitude")
+            lon = booking.get("longitude")
+        else:
+            try:
+                lat, lon = geocode_address(booking["address"])
+            except ValueError as e:
+                print(e)
+                all_bookings.append(booking)
+                continue
+
+            booking["latitude"] = lat
+            booking["longitude"] = lon
+
+        # Verwende Config-Werte für Geoapify
+        data_sights = find_top_tourist_sights(
+            lat,
+            lon,
+            radius=search_radius_m,
+            limit=max_pois,
+        )
+        booking["tourist_sights"] = data_sights
+
+        all_bookings.append(booking)
+
+    return all_bookings

@@ -4,10 +4,8 @@ import shutil
 from pathlib import Path
 
 from biketour_planner.config import get_config
-from biketour_planner.geoapify import find_top_tourist_sights
-from biketour_planner.geocode import geocode_address
 from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
-from biketour_planner.parse_booking import extract_booking_info
+from biketour_planner.parse_booking import create_all_bookings
 from biketour_planner.pass_finder import load_json, process_passes
 from biketour_planner.pdf_export import export_bookings_to_pdf
 
@@ -53,35 +51,7 @@ if __name__ == "__main__":
     validate_directories()
 
     if create_bookings_json:
-        all_bookings = []
-
-        for html_file in BOOKING_DIR.glob("*.htm"):
-            booking = extract_booking_info(html_file)
-
-            if booking.get("latitude") is not None:
-                lat = booking.get("latitude")
-                lon = booking.get("longitude")
-            else:
-                try:
-                    lat, lon = geocode_address(booking["address"])
-                except ValueError as e:
-                    print(e)
-                    all_bookings.append(booking)
-                    continue
-
-                booking["latitude"] = lat
-                booking["longitude"] = lon
-
-            # Verwende Config-Werte für Geoapify
-            data_sights = find_top_tourist_sights(
-                lat,
-                lon,
-                radius=config.geoapify.search_radius_m,
-                limit=config.geoapify.max_pois,
-            )
-            booking["tourist_sights"] = data_sights
-
-            all_bookings.append(booking)
+        all_bookings = create_all_bookings(BOOKING_DIR, config.geoapify.search_radius_m, config.geoapify.max_pois)
     else:
         all_bookings = load_json(Path("output/bookings.json"))
 
