@@ -466,6 +466,8 @@ def extract_booking_info(html_path: Path):
 def create_all_bookings(booking_dir, search_radius_m, max_pois):
     all_bookings = []
 
+    logger.debug("Start create_all_bookings")
+
     for html_file in booking_dir.glob("*.htm"):
         booking = extract_booking_info(html_file)
 
@@ -493,5 +495,7 @@ def create_all_bookings(booking_dir, search_radius_m, max_pois):
         booking["tourist_sights"] = data_sights
 
         all_bookings.append(booking)
+
+    logger.debug("End create_all_bookings")
 
     return all_bookings

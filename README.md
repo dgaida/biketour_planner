@@ -163,84 +163,7 @@ conda env create -f environment.yml
 conda activate biketour_planner
 ```
 
-### Requirements
-
-Python **3.9 or newer** is required.
-
-### Optional: Enable Tourist Sights Discovery
-
-To use the Geoapify integration for finding tourist attractions:
-
-1. Create a free account at [https://www.geoapify.com](https://www.geoapify.com)
-2. Get your API key (free tier: 3,000 requests/day)
-3. Create a `secrets.env` file in the project root:
-
-```bash
-GEOAPIFY_API_KEY=your_api_key_here
-```
-
----
-
-## BRouter Setup (Required)
-
-Bike Tour Planner relies on **BRouter** for offline bicycle routing.
-
-BRouter is an open-source routing engine developed by Arne Brenschede:
-👉 [https://github.com/abrensch/brouter](https://github.com/abrensch/brouter)
-
-### 1. Download routing data (`.rd5` files)
-
-BRouter uses preprocessed OpenStreetMap data split into **5° × 5° tiles**.
-
-Download the required `.rd5` files from:
-
-```
-https://brouter.de/brouter/segments4/
-```
-
-Place them in a local directory, for example:
-
-```text
-C:/brouter/segments4/
-```
-
-Make sure to download all tiles covering your tour area.
-
----
-
-### 2. Start BRouter via Docker
-
-A running BRouter HTTP server is required.
-
-#### Using Docker (recommended):
-
-```bash
-docker run --rm -p 17777:17777 \
-  -v C:/brouter/segments4:/segments4 \
-  brouter
-```
-
-#### Or build from provided Dockerfile:
-
-```bash
-cd brouter_docker
-docker build -t brouter .
-docker run --rm -p 17777:17777 \
-  -v C:/brouter/segments4:/segments4 \
-  brouter
-```
-
-The service will be available at:
-
-```
-http://localhost:17777
-```
-
-You can test it with:
-
-```bash
-curl "http://localhost:17777/brouter?lonlats=16.44,43.51|18.09,42.65&profile=trekking&format=gpx"
-```
+For detailed installation instructions see (docs/Installation.md)[docs/Installation.md].
 
 ---
 
@@ -488,26 +411,7 @@ find_top_tourist_sights(
 
 ## Testing
 
-Run the test suite:
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/test_gpx_route_manager.py -v
-```
-
-**Test Coverage:**
-- `test_brouter.py`: BRouter API integration
-- `test_geoapify.py`: Tourist sights discovery
-- `test_parse_booking.py`: HTML parsing (Booking.com/Airbnb)
-- `test_gpx_route_manager.py`: Route management core
-- `test_gpx_route_manager_static.py`: GPX utilities
-- `test_excel_export.py`: Excel export functionality
+See [docs/TESTING.md](docs/TESTING.md)
 
 ---
 
@@ -524,69 +428,13 @@ pytest tests/test_gpx_route_manager.py -v
 
 ## Troubleshooting
 
-### BRouter Connection Issues
-
-**Problem:** `ConnectionError: BRouter Server nicht erreichbar`
-
-**Solutions:**
-1. Check if Docker container is running: `docker ps`
-2. Verify port 17777 is accessible: `curl http://localhost:17777`
-3. Ensure routing data is mounted correctly
-
-### Geocoding Failures
-
-**Problem:** `ValueError: Adresse konnte nicht geocodiert werden`
-
-**Solutions:**
-1. Check internet connection (Nominatim/Photon require internet)
-2. Simplify address (remove apartment numbers, floor info)
-3. Manually add coordinates to booking JSON
-
-### Missing Elevation Data
-
-**Problem:** `max_elevation_m: None` in output
-
-**Solutions:**
-1. Ensure GPX files contain `<ele>` tags
-2. Use tools like GPSBabel to add elevation data
-3. Download elevation-enriched tracks from sources like Komoot
-
-### Pass Detection Failures
-
-**Problem:** No passes detected despite having `Paesse.json`
-
-**Solutions:**
-1. Increase `hotel_radius_km` and `pass_radius_km`
-2. Verify pass names can be geocoded (test manually)
-3. Check that GPX tracks actually pass near the summit
+See [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Run tests (`pytest`)
-4. Run code quality checks (`ruff check .`, `black --check .`)
-5. Commit changes (`git commit -m 'Add amazing feature'`)
-6. Push to branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Code Quality Standards
-
-This project uses:
-- **Black** for code formatting (line length: 127)
-- **Ruff** for linting
-- **MyPy** for type checking (relaxed mode)
-- **Pytest** for testing
-- **Pre-commit hooks** for automated checks
-
-Install pre-commit hooks:
-```bash
-./setup_precommit.sh
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 

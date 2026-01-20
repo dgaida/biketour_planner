@@ -298,6 +298,14 @@ def create_elevation_profile_plot(
     t8 = time.time()
     logger.debug(f"  └─ close(): {t8-t7:.2f}s")
 
+    # NEU: Validiere dass tatsächlich Daten im Buffer sind
+    buffer_size = img_buffer.tell()
+    if buffer_size == 0:
+        raise ValueError("savefig() hat keine Daten in den Buffer geschrieben")
+
+    # WICHTIG: Zurück zum Anfang für späteres Lesen
+    img_buffer.seek(0)
+
     total_time = time.time() - start_time
     logger.debug(f"Höhenprofil-Plot erstellt in: {total_time:.2f}s")
 
@@ -335,6 +343,9 @@ def _create_single_profile(
         # WICHTIG: Lese die Bytes aus dem Buffer BEVOR er zurückgegeben wird
         # BytesIO-Objekte können nicht sicher zwischen Threads übergeben werden
         img_bytes = img_buffer.getvalue()
+
+        # Schließe Buffer explizit
+        img_buffer.close()
 
         logger.debug(f"🔧 img_bytes extrahiert für {gpx_file.name}: {len(img_bytes)} bytes")
 
@@ -463,6 +474,9 @@ def add_elevation_profiles_to_story(
     added_count = 0
     error_count = 0
 
+    # Speichere Buffer um sie offen zu halten bis PDF fertig ist
+    buffer_references = []
+
     for gpx_file in gpx_files:
         # Haupt-Track
         main_key = (gpx_file.name, "main")
@@ -475,19 +489,28 @@ def add_elevation_profiles_to_story(
             )
 
             if is_error:
-                error_text = f"<i>{img_bytes}</i>"
+                error_text = f"<i>{img_bytes.decode('utf-8', errors='ignore')}</i>"
                 story.append(Paragraph(error_text, title_style))
                 error_count += 1
                 logger.warning(f"⚠️  Fehler bei {filename}")
             else:
                 # WICHTIG: Erstelle neuen BytesIO-Buffer aus den gespeicherten Bytes
                 img_buffer = BytesIO(img_bytes)
-                logger.debug(f"📝 BytesIO erstellt, Position: {img_buffer.tell()}, seekable: {img_buffer.seekable()}")
+                img_buffer.seek(0)  # Stelle sicher dass am Anfang
+
+                # Validiere Buffer-Inhalt
+                if len(img_bytes) == 0:
+                    logger.error(f"❌ Leerer Buffer für {filename}")
+                    error_count += 1
+                    continue
+
+                logger.debug(f"📝 BytesIO erstellt, Größe: {len(img_bytes)} bytes, Position: {img_buffer.tell()}")
 
                 img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
                 logger.debug(f"📝 Image-Objekt erstellt: {type(img)}, width={img.drawWidth}, height={img.drawHeight}")
 
                 story.append(img)
+                buffer_references.append(img_buffer)  # Halte Buffer offen
                 added_count += 1
                 logger.debug(f"✅ Haupt-Track hinzugefügt: {filename}")
 
