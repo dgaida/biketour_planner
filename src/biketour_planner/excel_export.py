@@ -1,7 +1,6 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from datetime import datetime, timedelta
@@ -39,7 +38,7 @@ def extract_city_name(address: str) -> str:
     return address
 
 
-def create_accommodation_text(booking: Dict) -> str:
+def create_accommodation_text(booking: dict) -> str:
     """Erstellt den Unterkunftstext mit Name, Adresse und Ausstattung.
 
     Args:

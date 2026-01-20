@@ -1,10 +1,9 @@
 """Verbesserte Höhenmeterberechnung mit Glättung und Schwellwert."""
 
-from typing import List
 import numpy as np
 
 
-def calculate_elevation_gain_simple(elevations: List[float], threshold: float = 3.0) -> float:
+def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 3.0) -> float:
     """Berechnet positive Höhenmeter mit Schwellwert (einfache Methode).
 
     Diese Methode ignoriert kleine Schwankungen unter dem Schwellwert und
@@ -48,7 +47,7 @@ def calculate_elevation_gain_simple(elevations: List[float], threshold: float = 
     return total_ascent
 
 
-def calculate_elevation_gain_smoothed(elevations: List[float], window_size: int = 5, threshold: float = 3.0) -> float:
+def calculate_elevation_gain_smoothed(elevations: list[float], window_size: int = 5, threshold: float = 3.0) -> float:
     """Berechnet positive Höhenmeter mit Glättung (empfohlene Methode).
 
     Diese Methode glättet zuerst die Höhendaten mit einem gleitenden Durchschnitt
@@ -100,7 +99,7 @@ def calculate_elevation_gain_smoothed(elevations: List[float], window_size: int 
 
 
 def calculate_elevation_gain_segment_based(
-    elevations: List[float], min_segment_length: int = 10, calculate_descent: bool = False
+    elevations: list[float], min_segment_length: int = 10, calculate_descent: bool = False
 ) -> float:
     """Berechnet positive oder negative Höhenmeter segment-basiert (robusteste Methode).
 

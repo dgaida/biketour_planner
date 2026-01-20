@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import Dict, List
 from .gpx_route_manager import GPXRouteManager
 
 
-def get_gps_tracks4day_4alldays(gpx_dir: Path, bookings: List[Dict], output_path: Path) -> List[Dict]:
+def get_gps_tracks4day_4alldays(gpx_dir: Path, bookings: list[dict], output_path: Path) -> list[dict]:
     """Verarbeitet alle Buchungen und sammelt GPS-Tracks für jeden Tag.
 
     Diese Funktion ist ein Wrapper um GPXRouteManager.process_all_bookings()

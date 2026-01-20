@@ -5,12 +5,11 @@ und bereitet diese für den PDF-Export auf.
 """
 
 from pathlib import Path
-from typing import Dict, List
 from datetime import datetime
 from openpyxl import load_workbook
 
 
-def read_daily_info_from_excel(excel_path: Path, start_row: int = 2) -> Dict[str, List[str]]:
+def read_daily_info_from_excel(excel_path: Path, start_row: int = 2) -> dict[str, list[str]]:
     """Liest zusätzliche Tagesinformationen aus Excel-Datei.
 
     Die Funktion liest Spalte B (Datum) und Spalte C (Infos) aus der Excel-Datei.

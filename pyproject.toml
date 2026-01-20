@@ -24,6 +24,7 @@ dependencies = [
     "python-dotenv",
     "reportlab",
     "matplotlib",
+    "PyYAML>=6.0",
     "tqdm",
 ]
 
