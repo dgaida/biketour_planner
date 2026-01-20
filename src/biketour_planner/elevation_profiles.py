@@ -177,20 +177,67 @@ def create_elevation_profile_plot(
     logger.debug(f"Erstelle Höhenprofil-Plot für {gpx_file.name}")
     start_time = time.time()
 
+    # Timing für einzelne Schritte
+    t0 = time.time()
+
     # Daten extrahieren
     distances, elevations = extract_elevation_profile(gpx_file)
+    t1 = time.time()
+    logger.debug(f"  └─ Datenextraktion: {t1-t0:.2f}s")
+
     gradients = calculate_gradient(distances, elevations)
+    t2 = time.time()
+    logger.debug(f"  └─ Gradientberechnung: {t2-t1:.2f}s")
 
     # Plot erstellen
     fig, ax = plt.subplots(figsize=figsize, dpi=100)
+    t3 = time.time()
+    logger.debug(f"  └─ Figure erstellen: {t3-t2:.2f}s")
 
-    # Zeichne farbcodierte Segmente
-    for i in range(1, len(distances)):
-        color = get_color_for_gradient(gradients[i])
-        ax.fill_between(distances[i - 1 : i + 1], 0, elevations[i - 1 : i + 1], color=color, alpha=0.7, linewidth=0)
+    # OPTIMIERUNG: Reduziere Anzahl der Segmente durch Downsampling bei vielen Punkten
+    max_segments = 5000  # Maximal 500 farbige Segmente für bessere Performance
+    if len(distances) > max_segments:
+        # Downsample: Nimm nur jeden n-ten Punkt
+        step = len(distances) // max_segments
+        distances_plot = distances[::step]
+        elevations_plot = elevations[::step]
+        gradients_plot = gradients[::step]
+        logger.debug(f"  └─ Downsampling: {len(distances)} -> {len(distances_plot)} Punkte")
+    else:
+        distances_plot = distances
+        elevations_plot = elevations
+        gradients_plot = gradients
+
+    # OPTIMIERUNG: Batch die fill_between Aufrufe
+    # Statt jeden Punkt einzeln zu zeichnen, gruppiere nach Farbe
+    from collections import defaultdict
+
+    color_segments = defaultdict(list)
+
+    for i in range(1, len(distances_plot)):
+        color = get_color_for_gradient(gradients_plot[i])
+        color_segments[color].append((i - 1, i))
+
+    # Zeichne alle Segmente einer Farbe auf einmal
+    for color, segments in color_segments.items():
+        for start_idx, end_idx in segments:
+            ax.fill_between(
+                distances_plot[start_idx : end_idx + 1],
+                0,
+                elevations_plot[start_idx : end_idx + 1],
+                color=color,
+                alpha=0.7,
+                linewidth=0,
+                edgecolor="none",  # Wichtig: keine Kanten für bessere Performance
+            )
+
+    t4 = time.time()
+    logger.debug(f"  └─ Farbsegmente zeichnen ({len(distances_plot)-1} Segmente, {len(color_segments)} Farben): {t4-t3:.2f}s")
 
     # Schwarze Konturlinie oben
     ax.plot(distances, elevations, color="black", linewidth=1.5, zorder=10)
+    t5 = time.time()
+    logger.debug(f"  └─ Konturlinie zeichnen: {t5-t4:.2f}s")
 
     # Beschriftungen
     if title is None:
@@ -199,10 +246,10 @@ def create_elevation_profile_plot(
     ax.set_xlabel("Distanz (km)", fontsize=11)
     ax.set_ylabel("Höhe (m)", fontsize=11)
 
-    # Grid
+    # Grid (vor tight_layout um Performance zu verbessern)
     ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
 
-    # Achsenlimits
+    # Achsenlimits (vor tight_layout)
     ax.set_xlim(0, distances[-1])
     ax.set_ylim(min(elevations) * 0.8, max(elevations) * 1.1)
 
@@ -231,15 +278,32 @@ def create_elevation_profile_plot(
         bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
     )
 
+    # WICHTIG: tight_layout weglassen - ist sehr langsam bei vielen Plots
     plt.tight_layout()
-
-    logger.debug(f"Höhenprofil-Plot erstellt in: {time.time() - start_time} Sekunden")
+    t6 = time.time()
+    logger.debug(f"  └─ Layout & Beschriftungen: {t6-t5:.2f}s")
 
     # In BytesIO speichern
     img_buffer = BytesIO()
+
+    # KRITISCHER SCHRITT: Dieser ist oft der Flaschenhals
     plt.savefig(img_buffer, format="png", dpi=100, bbox_inches="tight")
+    t7 = time.time()
+    logger.debug(f"  └─ savefig() (KRITISCH): {t7-t6:.2f}s")
+
+    # WICHTIG: Buffer zurücksetzen damit er gelesen werden kann!
     img_buffer.seek(0)
+
     plt.close(fig)
+    t8 = time.time()
+    logger.debug(f"  └─ close(): {t8-t7:.2f}s")
+
+    total_time = time.time() - start_time
+    logger.debug(f"Höhenprofil-Plot erstellt in: {total_time:.2f}s")
+
+    # Warnung bei langsamen Plots
+    if total_time > 5.0:
+        logger.warning(f"⚠️  Plot für {gpx_file.name} war langsam ({total_time:.1f}s) - savefig benötigte {t7-t6:.1f}s")
 
     return img_buffer
 
@@ -249,7 +313,7 @@ def _create_single_profile(
     booking: dict,
     pass_track: dict = None,
     title: str = None,
-) -> tuple[BytesIO, str, bool]:
+) -> tuple[bytes, str, bool]:
     """Worker-Funktion für parallele Profil-Erstellung.
 
     Args:
@@ -259,13 +323,33 @@ def _create_single_profile(
         title: Optional Titel des Plots.
 
     Returns:
-        Tuple aus (img_buffer, filename, is_error)
+        Tuple aus (img_bytes, filename, is_error)
     """
     try:
+        logger.debug(f"🔧 _create_single_profile START: {gpx_file.name}")
+
         img_buffer = create_elevation_profile_plot(gpx_file, booking, pass_track, title)
-        return (img_buffer, gpx_file.name, False)
+
+        logger.debug(f"🔧 img_buffer erstellt für {gpx_file.name}, type={type(img_buffer)}")
+
+        # WICHTIG: Lese die Bytes aus dem Buffer BEVOR er zurückgegeben wird
+        # BytesIO-Objekte können nicht sicher zwischen Threads übergeben werden
+        img_bytes = img_buffer.getvalue()
+
+        logger.debug(f"🔧 img_bytes extrahiert für {gpx_file.name}: {len(img_bytes)} bytes")
+
+        # Validierung: Prüfe ob tatsächlich Daten vorhanden sind
+        if len(img_bytes) == 0:
+            raise ValueError(f"BytesIO-Buffer ist leer für {gpx_file.name}")
+
+        logger.debug(f"✅ _create_single_profile SUCCESS: {gpx_file.name}")
+
+        return (img_bytes, gpx_file.name, False)
     except Exception as e:
-        error_msg = f"Fehler beim Erstellen des Profils für {gpx_file.name}: {e}"
+        import traceback
+
+        error_msg = f"Fehler beim Erstellen des Profils für {gpx_file.name}: {e}\n{traceback.format_exc()}"
+        logger.error(f"❌ _create_single_profile ERROR: {error_msg}")
         return (error_msg, gpx_file.name, True)
 
 
@@ -291,7 +375,7 @@ def add_elevation_profiles_to_story(
         gpx_dir: Verzeichnis mit Original-GPX-Dateien (für Pass-Tracks).
         title_style: ParagraphStyle für Überschriften.
         page_width_cm: Verfügbare Seitenbreite in cm für Skalierung.
-        max_workers: Maximale Anzahl paralleler Worker-Threads (Default: 4).
+        max_workers: Maximale Anzahl paralleler Worker-Threads (Default: 14).
 
     Example:
         >>> story = []
@@ -374,19 +458,38 @@ def add_elevation_profiles_to_story(
                 pbar.update(1)
 
     # Füge Profile in der richtigen Reihenfolge zur Story hinzu
+    logger.debug(f"📝 Füge {len(profile_results)} Profile zur Story hinzu")
+
+    added_count = 0
+    error_count = 0
+
     for gpx_file in gpx_files:
         # Haupt-Track
         main_key = (gpx_file.name, "main")
         if main_key in profile_results:
             result, task = profile_results[main_key]
-            img_buffer, filename, is_error = result
+            img_bytes, filename, is_error = result
+
+            logger.debug(
+                f"📝 Verarbeite Haupt-Track: {filename}, is_error={is_error}, bytes_len={len(img_bytes) if not is_error else 'N/A'}"
+            )
 
             if is_error:
-                error_text = f"<i>{img_buffer}</i>"
+                error_text = f"<i>{img_bytes}</i>"
                 story.append(Paragraph(error_text, title_style))
+                error_count += 1
+                logger.warning(f"⚠️  Fehler bei {filename}")
             else:
+                # WICHTIG: Erstelle neuen BytesIO-Buffer aus den gespeicherten Bytes
+                img_buffer = BytesIO(img_bytes)
+                logger.debug(f"📝 BytesIO erstellt, Position: {img_buffer.tell()}, seekable: {img_buffer.seekable()}")
+
                 img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
+                logger.debug(f"📝 Image-Objekt erstellt: {type(img)}, width={img.drawWidth}, height={img.drawHeight}")
+
                 story.append(img)
+                added_count += 1
+                logger.debug(f"✅ Haupt-Track hinzugefügt: {filename}")
 
         # Pass-Tracks für diesen Tag
         booking = gpx_to_booking.get(gpx_file.name)
@@ -397,17 +500,114 @@ def add_elevation_profiles_to_story(
 
                 if pass_key in profile_results:
                     result, task = profile_results[pass_key]
-                    img_buffer, filename, is_error = result
+                    img_bytes, filename, is_error = result
+
+                    logger.debug(f"📝 Verarbeite Pass-Track: {filename}, is_error={is_error}")
 
                     if is_error:
-                        error_text = f"<i>{img_buffer}</i>"
+                        error_text = f"<i>{img_bytes}</i>"
                         story.append(Paragraph(error_text, title_style))
+                        error_count += 1
                     else:
+                        # WICHTIG: Erstelle neuen BytesIO-Buffer aus den gespeicherten Bytes
+                        img_buffer = BytesIO(img_bytes)
                         img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
                         story.append(img)
+                        added_count += 1
+                        logger.debug(f"✅ Pass-Track hinzugefügt: {filename}")
 
     total_profiles = len(profile_tasks)
+    logger.info(f"📊 Zusammenfassung: {added_count} erfolgreich, {error_count} Fehler, {total_profiles} gesamt")
     print(f"✅ {total_profiles} Höhenprofile erstellt (parallel mit {max_workers} Threads)")
+
+
+def add_elevation_profiles_to_story_seq(
+    story: list,
+    gpx_files: list[Path],
+    bookings: list[dict],
+    gpx_dir: Path,
+    title_style: ParagraphStyle,
+    page_width_cm: float = 25.0,
+) -> None:
+    """Fügt Höhenprofile für alle GPX-Dateien zur PDF-Story hinzu.
+
+    Erstellt Höhenprofile für:
+    1. Haupt-Tracks (merged GPX zu Hotels)
+    2. Pass-Tracks (direkt nach dem zugehörigen Haupt-Track)
+
+    Args:
+        story: reportlab Story-Liste (wird in-place modifiziert).
+        gpx_files: Liste von Pfaden zu gemergten GPX-Dateien.
+        bookings: Liste mit Buchungs-Dictionaries (für Pass-Zuordnung).
+        gpx_dir: Verzeichnis mit Original-GPX-Dateien (für Pass-Tracks).
+        title_style: ParagraphStyle für Überschriften.
+        page_width_cm: Verfügbare Seitenbreite in cm für Skalierung.
+
+    Example:
+        >>> story = []
+        >>> gpx_files = [Path("day1.gpx"), Path("day2.gpx")]
+        >>> add_elevation_profiles_to_story(story, gpx_files, bookings, gpx_dir, title_style)
+    """
+    if not gpx_files and not any(b.get("paesse_tracks") for b in bookings):
+        return
+
+    # Neue Seite für Höhenprofile
+    story.append(PageBreak())
+
+    # Überschrift
+    heading = Paragraph("<b>Höhenprofile</b>", title_style)
+    story.append(heading)
+
+    # Erstelle Mapping: GPX-Dateiname -> Booking (für Pass-Zuordnung)
+    gpx_to_booking = {}
+    for booking in bookings:
+        gpx_track = booking.get("gpx_track_final")
+        if gpx_track:
+            gpx_to_booking[gpx_track] = booking
+
+    # Für jede GPX-Datei ein Profil erstellen
+    for gpx_file in tqdm(gpx_files, desc="Erstelle Höhenprofile"):
+        try:
+            booking = gpx_to_booking.get(gpx_file.name)
+
+            # Haupt-Track Profil erstellen (ohne pass_track Parameter)
+            img_buffer = create_elevation_profile_plot(gpx_file, booking, title=gpx_file.stem)
+
+            # Als reportlab Image hinzufügen
+            img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
+            story.append(img)
+
+            # Prüfe ob es Pass-Tracks für diesen Tag gibt
+            if booking and booking.get("paesse_tracks"):
+                for pass_track in booking["paesse_tracks"]:
+                    pass_file = gpx_dir / pass_track["file"]
+                    passname = pass_track.get("passname", "Pass")
+
+                    if pass_file.exists():
+                        try:
+                            # Pass-Track Profil erstellen (MIT pass_track Parameter)
+                            pass_img_buffer = create_elevation_profile_plot(
+                                pass_file,
+                                booking,
+                                pass_track=pass_track,  # Übergebe Pass-Statistiken
+                                title=f"{passname} ({pass_file.stem})",
+                            )
+
+                            # Als reportlab Image hinzufügen
+                            pass_img = Image(pass_img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
+                            story.append(pass_img)
+
+                        except Exception as e:
+                            error_text = f"<i>Fehler beim Erstellen des Pass-Profils für {passname}: {e}</i>"
+                            story.append(Paragraph(error_text, title_style))
+
+        except Exception as e:
+            # Fehler-Nachricht bei Problemen
+            error_text = f"<i>Fehler beim Erstellen des Profils für {gpx_file.name}: {e}</i>"
+            story.append(Paragraph(error_text, title_style))
+
+    total_profiles = len(gpx_files) + sum(len(b.get("paesse_tracks", [])) for b in bookings)
+    print(f"✅ {total_profiles} Höhenprofile erstellt")
 
 
 def get_merged_gpx_files_from_bookings(bookings: list[dict], output_dir: Path) -> list[Path]:

@@ -19,7 +19,7 @@ from reportlab.lib.enums import TA_CENTER  # TA_LEFT
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from .excel_export import extract_city_name, create_accommodation_text
-from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
+from .elevation_profiles import add_elevation_profiles_to_story_seq, get_merged_gpx_files_from_bookings
 from .gpx_route_manager_static import get_statistics4track, read_gpx_file
 from .excel_info_reader import read_daily_info_from_excel
 
@@ -525,7 +525,7 @@ def export_bookings_to_pdf(
     # Höhenprofile hinzufügen
     if output_dir:
         gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)
-        add_elevation_profiles_to_story(
+        add_elevation_profiles_to_story_seq(
             story, gpx_files, bookings_sorted, gpx_dir or output_dir, title_style, page_width_cm=25.0  # NEU!  # NEU!
         )
 
