@@ -65,9 +65,13 @@ class TestRouteToAddress:
         assert call_args[1]["params"]["profile"] == "trekking"
         assert call_args[1]["params"]["format"] == "gpx"
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_coordinate_order(self, mock_get):
+    def test_route_to_address_coordinate_order(self, mock_get, mock_check):
         """Testet korrekte Koordinatenreihenfolge (lon,lat)."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx></gpx>"
         mock_get.return_value = mock_response
@@ -78,11 +82,15 @@ class TestRouteToAddress:
         lonlats = call_args[1]["params"]["lonlats"]
 
         # Koordinatenreihenfolge: lon,lat|lon,lat
-        assert lonlats == "13.4050,52.5200|13.0645,52.3906"
+        assert lonlats == "13.405,52.52|13.0645,52.3906"
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_negative_coordinates(self, mock_get):
+    def test_route_to_address_negative_coordinates(self, mock_get, mock_check):
         """Testet Routing mit negativen Koordinaten."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx></gpx>"
         mock_get.return_value = mock_response
@@ -93,11 +101,15 @@ class TestRouteToAddress:
         lonlats = call_args[1]["params"]["lonlats"]
 
         assert "151.2093,-33.8688" in lonlats
-        assert "151.0000,-34.0000" in lonlats
+        assert "151,-34" in lonlats
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_http_error_404(self, mock_get):
+    def test_route_to_address_http_error_404(self, mock_get, mock_check):
         """Testet Verhalten bei HTTP 404 (Server nicht erreichbar)."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
@@ -105,9 +117,13 @@ class TestRouteToAddress:
         with pytest.raises(requests.exceptions.HTTPError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_http_error_400(self, mock_get):
+    def test_route_to_address_http_error_400(self, mock_get, mock_check):
         """Testet Verhalten bei HTTP 400 (fehlende Routing-Daten)."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("400 Bad Request - No data available")
         mock_get.return_value = mock_response
@@ -115,25 +131,37 @@ class TestRouteToAddress:
         with pytest.raises(requests.exceptions.HTTPError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_connection_error(self, mock_get):
+    def test_route_to_address_connection_error(self, mock_get, mock_check):
         """Testet Verhalten bei Verbindungsfehler."""
+        # Mock BRouter als verfügbar (aber dann schlägt die Verbindung fehl)
+        mock_check.return_value = True
+
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused - BRouter Server nicht erreichbar")
 
         with pytest.raises(requests.exceptions.ConnectionError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_timeout(self, mock_get):
+    def test_route_to_address_timeout(self, mock_get, mock_check):
         """Testet Verhalten bei Timeout."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_get.side_effect = requests.exceptions.Timeout("Request timeout - Routenberechnung dauert zu lange")
 
         with pytest.raises(requests.exceptions.Timeout):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_empty_response(self, mock_get):
+    def test_route_to_address_empty_response(self, mock_get, mock_check):
         """Testet Verhalten bei leerer Response."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.text = ""
@@ -143,9 +171,13 @@ class TestRouteToAddress:
 
         assert result == ""
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_uses_trekking_profile(self, mock_get):
+    def test_route_to_address_uses_trekking_profile(self, mock_get, mock_check):
         """Testet dass das 'trekking' Profil verwendet wird."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx></gpx>"
         mock_get.return_value = mock_response
@@ -155,9 +187,13 @@ class TestRouteToAddress:
         call_args = mock_get.call_args
         assert call_args[1]["params"]["profile"] == "trekking"
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_gpx_format(self, mock_get):
+    def test_route_to_address_gpx_format(self, mock_get, mock_check):
         """Testet dass GPX-Format angefordert wird."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx></gpx>"
         mock_get.return_value = mock_response
@@ -167,9 +203,13 @@ class TestRouteToAddress:
         call_args = mock_get.call_args
         assert call_args[1]["params"]["format"] == "gpx"
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_same_start_end(self, mock_get):
+    def test_route_to_address_same_start_end(self, mock_get, mock_check):
         """Testet Routing mit identischen Start- und Endkoordinaten."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx><trk><trkseg><trkpt lat='48.1351' lon='11.5820'/></trkseg></trk></gpx>"
         mock_get.return_value = mock_response
@@ -178,9 +218,13 @@ class TestRouteToAddress:
 
         assert "<gpx>" in result
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_high_precision_coordinates(self, mock_get):
+    def test_route_to_address_high_precision_coordinates(self, mock_get, mock_check):
         """Testet Routing mit hochpräzisen Koordinaten."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         mock_response = Mock()
         mock_response.text = "<gpx></gpx>"
         mock_get.return_value = mock_response
