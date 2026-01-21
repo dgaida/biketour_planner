@@ -20,9 +20,13 @@ from biketour_planner.brouter import (
 class TestRouteToAddress:
     """Tests für die route_to_address Funktion."""
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_route_to_address_success(self, mock_get):
+    def test_route_to_address_success(self, mock_get, mock_check):
         """Testet erfolgreiche Routenberechnung."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         # Mock GPX-Response
         gpx_response = """<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="BRouter">
@@ -57,7 +61,7 @@ class TestRouteToAddress:
         mock_get.assert_called_once()
         call_args = mock_get.call_args
         assert call_args[0][0] == "http://localhost:17777/brouter"
-        assert call_args[1]["params"]["lonlats"] == "11.5820,48.1351|11.0953,47.4917"
+        assert call_args[1]["params"]["lonlats"] == "11.582,48.1351|11.0953,47.4917"
         assert call_args[1]["params"]["profile"] == "trekking"
         assert call_args[1]["params"]["format"] == "gpx"
 

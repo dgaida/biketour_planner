@@ -163,7 +163,7 @@ conda env create -f environment.yml
 conda activate biketour_planner
 ```
 
-For detailed installation instructions see (docs/Installation.md)[docs/Installation.md].
+For detailed installation instructions see [docs/Installation.md](docs/Installation.md).
 
 ---
 
