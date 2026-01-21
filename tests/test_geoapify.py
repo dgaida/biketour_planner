@@ -19,6 +19,7 @@ from biketour_planner.geoapify import (
 class TestFindTopTouristSights:
     """Tests für die find_top_tourist_sights Funktion."""
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key_12345")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_success(self, mock_get):
@@ -48,6 +49,7 @@ class TestFindTopTouristSights:
         assert call_args[1]["params"]["categories"] == "tourism.sights"
         assert call_args[1]["params"]["apiKey"] == "test_key_12345"
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_custom_radius(self, mock_get):
@@ -61,6 +63,7 @@ class TestFindTopTouristSights:
         call_args = mock_get.call_args
         assert "circle:16.4402,43.5081,10000" in call_args[1]["params"]["filter"]
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_custom_limit(self, mock_get):
@@ -74,13 +77,16 @@ class TestFindTopTouristSights:
         call_args = mock_get.call_args
         assert call_args[1]["params"]["limit"] == 5
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", None)
     def test_find_sights_missing_api_key(self):
         """Testet Verhalten bei fehlendem API-Key."""
         result = find_top_tourist_sights(43.5081, 16.4402)
 
-        assert result is None
+        # Sollte leeres Dict zurückgeben, nicht None
+        assert result == {"features": []}
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_timeout(self, mock_get):
@@ -91,6 +97,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_http_error(self, mock_get):
@@ -103,6 +110,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_connection_error(self, mock_get):
@@ -113,6 +121,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_empty_response(self, mock_get):
@@ -126,6 +135,7 @@ class TestFindTopTouristSights:
         assert result is not None
         assert result["features"] == []
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_malformed_json(self, mock_get):
@@ -138,6 +148,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_unexpected_error(self, mock_get):
@@ -148,6 +159,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_coordinate_format(self, mock_get):
@@ -164,6 +176,7 @@ class TestFindTopTouristSights:
         # Prüfe dass Koordinaten im richtigen Format sind (lon,lat,radius)
         assert "circle:16.440235,43.508134,5000" == filter_param
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_negative_coordinates(self, mock_get):
@@ -333,6 +346,7 @@ class TestGetNamesAsCommaSeparatedString:
 class TestGeoapifyIntegration:
     """Integrationstests für die Geoapify-Module."""
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_full_workflow(self, mock_get):
@@ -355,17 +369,19 @@ class TestGeoapifyIntegration:
         assert "Sehenswürdigkeit 1" in names
         assert "Sehenswürdigkeit 2" in names
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", None)
     def test_workflow_missing_api_key(self):
         """Testet Workflow bei fehlendem API-Key."""
-        # 1. Suche schlägt fehl
+        # 1. Suche schlägt fehl (gibt leeres Dict zurück)
         data = find_top_tourist_sights(43.5081, 16.4402)
-        assert data is None
+        assert data == {"features": []}
 
-        # 2. Namen-Extraktion mit None sollte leeren String geben
+        # 2. Namen-Extraktion mit leerem Dict sollte leeren String geben
         names = get_names_as_comma_separated_string(data)
         assert names == ""
 
+    @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_workflow_no_results(self, mock_get):
