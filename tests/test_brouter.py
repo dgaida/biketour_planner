@@ -530,9 +530,14 @@ class TestBRouterIntegration:
         assert points[0].latitude == 48.1351
         assert points[-1].latitude == 47.4917
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_workflow_server_down(self, mock_get):
+    def test_workflow_server_down(self, mock_get, mock_check):
         """Testet Workflow wenn BRouter-Server nicht erreichbar ist."""
+        # Mock BRouter als verfügbar (damit check_brouter_availability() nicht abbricht)
+        mock_check.return_value = True
+
+        # Dann schlägt der requests.get() Aufruf fehl
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
         # route_to_address sollte Exception werfen
@@ -543,9 +548,13 @@ class TestBRouterIntegration:
         with pytest.raises(requests.exceptions.ConnectionError):
             get_route2address_as_points(48.1351, 11.5820, 47.4917, 11.0953)
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_workflow_coordinates_validation(self, mock_get):
+    def test_workflow_coordinates_validation(self, mock_get, mock_check):
         """Testet dass Koordinaten korrekt durch beide Funktionen gehen."""
+        # Mock BRouter als verfügbar
+        mock_check.return_value = True
+
         gpx_response = """<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1">
   <trk>
