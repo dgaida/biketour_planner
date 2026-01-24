@@ -484,7 +484,7 @@ class TestCollectRouteBetweenLocations:
         booking = {"arrival_date": "2026-05-15", "hotel_name": "Test Hotel"}
 
         manager.collect_route_between_locations(
-            start_lat=48.05, start_lon=11.05, target_lat=48.15, target_lon=11.15, booking=booking
+            start_lat=48.01, start_lon=11.01, target_lat=48.19, target_lon=11.19, booking=booking
         )
 
         assert "gpx_files" in booking
@@ -503,8 +503,8 @@ class TestCollectRouteBetweenLocations:
         manager.collect_route_between_locations(
             start_lat=48.1,
             start_lon=11.1,
-            target_lat=48.2,
-            target_lon=11.2,
+            target_lat=48.19,
+            target_lon=11.19,
             booking=booking,
             previous_last_file=previous_last_file,
         )
@@ -519,7 +519,7 @@ class TestCollectRouteBetweenLocations:
         booking = {}
 
         manager.collect_route_between_locations(
-            start_lat=48.0, start_lon=11.0, target_lat=48.2, target_lon=11.2, booking=booking
+            start_lat=48.01, start_lon=11.01, target_lat=48.19, target_lon=11.19, booking=booking
         )
 
         assert "total_distance_km" in booking
@@ -603,6 +603,10 @@ class TestEdgeCases:
         # Sollte trotzdem Werte setzen
         assert "gpx_files" in booking
         assert "total_distance_km" in booking
+
+        # Sollte leer sein wegen zu großer Distanz
+        assert booking["gpx_files"] == []
+        assert booking["total_distance_km"] == 0
 
     def test_max_chain_length_limit(self, multiple_gpx_files, output_dir):
         """Testet dass max_chain_length respektiert wird."""
