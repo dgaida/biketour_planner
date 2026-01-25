@@ -54,7 +54,7 @@ class TestEndToEndWorkflow:
     <trkseg>
       <trkpt lat="48.0" lon="11.0"><ele>500</ele></trkpt>
       <trkpt lat="48.1" lon="11.5"><ele>520</ele></trkpt>
-      <trkpt lat="48.135, lon="11.582"><ele>540</ele></trkpt>
+      <trkpt lat="48.135" lon="11.582"><ele>540</ele></trkpt>
     </trkseg>
   </trk>
 </gpx>"""
