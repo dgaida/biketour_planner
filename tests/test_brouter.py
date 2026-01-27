@@ -582,9 +582,9 @@ class TestBRouterIntegration:
             call_args = mock_get.call_args
             lonlats = call_args[1]["params"]["lonlats"]
 
-            # FIX: Verwende :g Formatierung wie in route_to_address
-            expected_start = f"{lon1:g},{lat1:g}"
-            expected_end = f"{lon2:g},{lat2:g}"
+            # FIX: Verwende :.15g Formatierung wie in route_to_address
+            expected_start = f"{lon1:.15g},{lat1:.15g}"
+            expected_end = f"{lon2:.15g},{lat2:.15g}"
 
             # Prüfe dass Koordinaten im richtigen Format übergeben werden
             assert expected_start in lonlats
