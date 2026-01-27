@@ -95,8 +95,8 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
         )
 
     url = "http://localhost:17777/brouter"
-    # FIX: Formatiere Koordinaten ohne trailing zeros
-    lonlats = f"{lon_from:g},{lat_from:g}|{lon_to:g},{lat_to:g}"
+    # FIX: Formatiere Koordinaten ohne trailing zeros, aber mit ausreichender Präzision
+    lonlats = f"{lon_from:.15g},{lat_from:.15g}|{lon_to:.15g},{lat_to:.15g}"
     params = {"lonlats": lonlats, "profile": "trekking", "format": "gpx"}
     r = requests.get(url, params=params)
     r.raise_for_status()
