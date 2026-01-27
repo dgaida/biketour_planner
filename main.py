@@ -8,6 +8,7 @@ from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
 from biketour_planner.parse_booking import create_all_bookings
 from biketour_planner.pass_finder import load_json, process_passes
 from biketour_planner.pdf_export import export_bookings_to_pdf
+from biketour_planner.ics_export import export_bookings_to_ics
 
 # Lade Konfiguration
 config = get_config()
@@ -79,4 +80,10 @@ if __name__ == "__main__":
         gpx_dir=GPX_DIR,
         title=config.export.title,
         excel_info_path=excel_info_path if excel_info_path.exists() else None,
+    )
+
+    # ICS-Kalender exportieren
+    export_bookings_to_ics(
+        bookings=all_bookings,
+        output_path=Path("output/Reiseplanung_Kroatien_2026.ics"),
     )
