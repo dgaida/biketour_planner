@@ -222,11 +222,13 @@ def get_statistics4track(
     max_elevation = max(max(elevations), max_elevation)
 
     # take mean of elevation calculations as both are not accurate, maybe one over- the other undershooting
-    mean_ascent = calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
-    mean_ascent += calculate_elevation_gain_smoothed(elevations)
-    total_ascent += mean_ascent / 2
+    ascent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
+    ascent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=False)
+    total_ascent += (ascent_segment + ascent_smoothed) / 2
 
-    total_descent += calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
+    descent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
+    descent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=True)
+    total_descent += (descent_segment + descent_smoothed) / 2
 
     logger.debug(f"   Punkte: {end_index - start_index + 1}")
 
