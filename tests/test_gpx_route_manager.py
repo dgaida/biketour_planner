@@ -244,9 +244,9 @@ class TestFindStartPos:
         """Testet Start-Suche ohne vorherige Route."""
         manager = GPXRouteManager(simple_gpx_file.parent, output_dir)
 
-        # Suche Start nahe erstem Punkt
+        # Suche Start nahe erstem Punkt (innerhalb 3km Radius)
         start_file, start_index, force_direction = manager._find_start_pos(
-            start_lat=48.05, start_lon=11.05, target_lat=48.2, target_lon=11.2, previous_last_file=None
+            start_lat=48.01, start_lon=11.01, target_lat=48.2, target_lon=11.2, previous_last_file=None
         )
 
         assert start_file == "test_route.gpx"

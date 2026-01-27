@@ -105,6 +105,7 @@ class GPXRouteManager:
         self.start_search_radius_km = (
             start_search_radius_km if start_search_radius_km is not None else config.routing.start_search_radius_km
         )
+        self.target_search_radius_km = config.routing.target_search_radius_km
 
         self._preprocess_gpx_directory()
 
@@ -421,7 +422,7 @@ class GPXRouteManager:
 
         Diese Methode implementiert die zentrale Logik für effizientes Routing:
 
-        1. Findet den Track der dem Ziel am nächsten liegt
+        1. Findet den Track der dem Ziel am nächsten liegt (innerhalb target_search_radius_km)
         2. Bestimmt, welche Seite dieses Tracks (Anfang oder Ende) näher am Start ist
         3. Diese "Ziel-Seite" wird zur Referenz für alle Zwischenschritte
 
@@ -458,16 +459,21 @@ class GPXRouteManager:
         target_distance = float("inf")
         start_point = None
         end_point = None
+        target_radius_m = self.target_search_radius_km * 1000
 
         for filename, meta in self.gpx_index.items():
             idx, dist = find_closest_point_in_track(meta["points"], target_lat, target_lon)
-            if dist < target_distance:
+            if dist < target_distance and dist <= target_radius_m:
                 target_distance = dist
                 target_file = filename
                 target_index = idx
 
                 start_point = meta["points"][0]
                 end_point = meta["points"][-1]
+
+        if target_file is None:
+            logger.warning(f"⚠️  Kein Ziel-Track im Umkreis von {self.target_search_radius_km}km gefunden!")
+            return None, None, None, None
 
         dist_to_start = haversine(start_lat, start_lon, start_point["lat"], start_point["lon"])
         dist_to_end = haversine(start_lat, start_lon, end_point["lat"], end_point["lon"])
