@@ -3,7 +3,9 @@
 import numpy as np
 
 
-def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 3.0) -> float:
+def calculate_elevation_gain_simple(
+    elevations: list[float], threshold: float = 3.0, calculate_descent: bool = False
+) -> float:
     """Berechnet positive Höhenmeter mit Schwellwert (einfache Methode).
 
     Diese Methode ignoriert kleine Schwankungen unter dem Schwellwert und
@@ -12,6 +14,7 @@ def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 
     Args:
         elevations: Liste der Höhenwerte in Metern.
         threshold: Minimaler Höhenunterschied in Metern der gezählt wird (Default: 3m).
+        calculate_descent: Wenn True, werden Abstiege berechnet statt Anstiege.
 
     Returns:
         Gesamter positiver Höhenunterschied in Metern.
@@ -24,7 +27,7 @@ def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 
     if not elevations or len(elevations) < 2:
         return 0.0
 
-    total_ascent = 0.0
+    total_gain = 0.0
     accumulated_diff = 0.0
 
     for i in range(1, len(elevations)):
@@ -32,22 +35,26 @@ def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 
             continue
 
         diff = elevations[i] - elevations[i - 1]
+        if calculate_descent:
+            diff = -diff
 
         if diff > 0:
             accumulated_diff += diff
 
             # Wenn akkumulierter Anstieg über Schwellwert, zähle ihn
             if accumulated_diff >= threshold:
-                total_ascent += accumulated_diff
+                total_gain += accumulated_diff
                 accumulated_diff = 0.0
         else:
             # Bei Abstieg: Reset der Akkumulation
             accumulated_diff = 0.0
 
-    return total_ascent
+    return total_gain
 
 
-def calculate_elevation_gain_smoothed(elevations: list[float], window_size: int = 5, threshold: float = 3.0) -> float:
+def calculate_elevation_gain_smoothed(
+    elevations: list[float], window_size: int = 5, threshold: float = 3.0, calculate_descent: bool = False
+) -> float:
     """Berechnet positive Höhenmeter mit Glättung (empfohlene Methode).
 
     Diese Methode glättet zuerst die Höhendaten mit einem gleitenden Durchschnitt
@@ -57,6 +64,7 @@ def calculate_elevation_gain_smoothed(elevations: list[float], window_size: int 
         elevations: Liste der Höhenwerte in Metern.
         window_size: Fenstergröße für gleitenden Durchschnitt (Default: 5 Punkte).
         threshold: Minimaler Höhenunterschied in Metern der gezählt wird (Default: 3m).
+        calculate_descent: Wenn True, werden Abstiege berechnet statt Anstiege.
 
     Returns:
         Gesamter positiver Höhenunterschied in Metern.
@@ -72,30 +80,15 @@ def calculate_elevation_gain_smoothed(elevations: list[float], window_size: int 
     # Filtere None-Werte
     valid_elevations = [e for e in elevations if e is not None]
 
-    if len(valid_elevations) < window_size:
+    if len(valid_elevations) < window_size + 1:
         # Fallback auf einfache Methode bei zu wenig Punkten
-        return calculate_elevation_gain_simple(valid_elevations, threshold)
+        return calculate_elevation_gain_simple(valid_elevations, threshold, calculate_descent)
 
     # Glättung mit gleitendem Durchschnitt
     smoothed = np.convolve(valid_elevations, np.ones(window_size) / window_size, mode="valid")
 
-    # Berechne Anstiege mit Schwellwert
-    total_ascent = 0.0
-    accumulated_diff = 0.0
-
-    for i in range(1, len(smoothed)):
-        diff = smoothed[i] - smoothed[i - 1]
-
-        if diff > 0:
-            accumulated_diff += diff
-
-            if accumulated_diff >= threshold:
-                total_ascent += accumulated_diff
-                accumulated_diff = 0.0
-        else:
-            accumulated_diff = 0.0
-
-    return total_ascent
+    # Berechne Anstiege mit Schwellwert über die einfache Methode
+    return calculate_elevation_gain_simple(smoothed.tolist(), threshold, calculate_descent)
 
 
 def calculate_elevation_gain_segment_based(
@@ -129,7 +122,8 @@ def calculate_elevation_gain_segment_based(
     valid_elevations = [e for e in elevations if e is not None]
 
     if len(valid_elevations) < min_segment_length:
-        return 0.0
+        # Fallback auf einfache Methode (ohne Schwellwert) für sehr kurze Tracks
+        return calculate_elevation_gain_simple(valid_elevations, threshold=0.0, calculate_descent=calculate_descent)
 
     # Glättung (kleines Fenster um nur Rauschen zu entfernen)
     window = 3

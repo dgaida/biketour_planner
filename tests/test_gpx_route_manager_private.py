@@ -349,7 +349,7 @@ class TestFindNextGPXFile:
         manager = GPXRouteManager(gpx_dir, output_dir)
 
         visited = set()
-        used_base_files = {"route"}  # route bereits verwendet
+        used_base_files = {"route.gpx"}  # route bereits verwendet
 
         next_file, next_index = manager._find_next_gpx_file(
             visited=visited, used_base_files=used_base_files, current_lat=48.0, current_lon=11.0
@@ -738,7 +738,7 @@ class TestPrivateMethodsIntegration:
         manager = manager_with_multiple_tracks
 
         # 1. Finde Start
-        start_file, start_index, force_dir = manager._find_start_pos(48.5, 11.5, None)
+        start_file, start_index, force_dir = manager._find_start_pos(48.5, 11.5, 47.9, 10.9, None)
 
         assert start_file is not None
 

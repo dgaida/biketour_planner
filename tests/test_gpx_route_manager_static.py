@@ -29,13 +29,13 @@ class TestHaversine:
         assert distance == pytest.approx(0.0, abs=0.1)
 
     def test_haversine_munich_to_garmisch(self):
-        """Testet Distanz München -> Garmisch (~90km)."""
+        """Testet Distanz München -> Garmisch (~80km Luftlinie)."""
         # München: 48.1351, 11.5820
         # Garmisch: 47.4917, 11.0953
         distance = haversine(48.1351, 11.5820, 47.4917, 11.0953)
 
-        # Erwartete Distanz ca. 89-90km
-        assert distance == pytest.approx(89000, rel=0.02)  # ±2%
+        # Erwartete Distanz ca. 80km (Luftlinie)
+        assert distance == pytest.approx(80244, rel=0.01)
 
     def test_haversine_berlin_to_munich(self):
         """Testet Distanz Berlin -> München (~504km)."""

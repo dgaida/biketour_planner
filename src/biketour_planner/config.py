@@ -29,6 +29,7 @@ class Config:
             "max_connection_distance_m": 1000,
             "max_chain_length": 20,
             "start_search_radius_km": 3.0,
+            "target_search_radius_km": 10.0,
         },
         "passes": {"hotel_radius_km": 5.0, "pass_radius_km": 5.0, "passes_file": "Paesse.json"},
         "geoapify": {"search_radius_m": 5000, "max_pois": 2},
@@ -162,6 +163,10 @@ class RoutingConfig:
     @property
     def start_search_radius_km(self) -> float:
         return float(self._config["start_search_radius_km"])
+
+    @property
+    def target_search_radius_km(self) -> float:
+        return float(self._config.get("target_search_radius_km", 10.0))
 
 
 class PassesConfig:

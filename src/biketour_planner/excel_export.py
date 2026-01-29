@@ -18,24 +18,30 @@ def extract_city_name(address: str) -> str:
     Returns:
         Nur der Ortsname, z.B. "Split"
     """
+    if not address:
+        return ""
+
     # Format: "Straße, PLZ Stadt, Land"
     # Wir wollen nur "Stadt"
 
     # Entferne Land am Ende (nach letztem Komma)
     parts = address.split(",")
+
+    # Bestimme den Teil, der die Stadt enthalten könnte
     if len(parts) >= 2:
         # Nimm den vorletzten Teil (sollte "PLZ Stadt" sein)
         city_part = parts[-2].strip()
+    else:
+        # Falls keine Kommas vorhanden, nimm den ganzen String
+        city_part = address.strip()
 
-        # Entferne PLZ (führende Zahlen und Leerzeichen)
-        city_match = re.search(r"^\d+\s+(.+)$", city_part)
-        if city_match:
-            return city_match.group(1).strip()
+    # Entferne PLZ (führende Zahlen und Leerzeichen)
+    city_match = re.search(r"^\d+\s+(.+)$", city_part)
+    if city_match:
+        return city_match.group(1).strip()
 
-        # Falls kein PLZ-Muster, gib den ganzen Teil zurück
-        return city_part
-
-    return address
+    # Falls kein PLZ-Muster, gib den bereinigten Stadtteil zurück
+    return city_part
 
 
 def create_accommodation_text(booking: dict) -> str:

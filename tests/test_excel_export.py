@@ -44,14 +44,10 @@ class TestExcelExport(unittest.TestCase):
         booking_empty = {}
         self.assertEqual(create_accommodation_text(booking_empty), "")
 
-    @patch("biketour_planner.excel_export.get_names_as_comma_separated_string")
-    def test_export_bookings_to_excel(self, mock_get_names):
+    def test_export_bookings_to_excel(self):
         # Create a temporary directory for test files
         test_dir = Path("test_excel_export_temp")
         test_dir.mkdir(exist_ok=True)
-
-        # Mock setup
-        mock_get_names.return_value = "Sight 1, Sight 2"
 
         # Create a dummy JSON file
         bookings_data = [
@@ -65,7 +61,12 @@ class TestExcelExport(unittest.TestCase):
                 "has_kitchen": False,
                 "total_ascent_m": 500,
                 "max_elevation_m": 600,
-                "tourist_sights": [{"name": "Sight 1"}, {"name": "Sight 2"}],
+                "tourist_sights": {
+                    "features": [
+                        {"properties": {"name": "Sight 1", "lat": 43.5, "lon": 16.4}},
+                        {"properties": {"name": "Sight 2", "lat": 43.6, "lon": 16.5}},
+                    ]
+                },
                 "total_price": 100,
                 "free_cancel_until": "2026-07-15",
             },
@@ -120,7 +121,9 @@ class TestExcelExport(unittest.TestCase):
         self.assertEqual(ws_out["E2"].value, 50)
         self.assertEqual(ws_out["F2"].value, "Hotel A\nStreet 1, 12345 CityA, Country\nWasch")
         self.assertEqual(ws_out["G2"].value, "500 / 600")
-        self.assertEqual(ws_out["I2"].value, "Sight 1, Sight 2")
+        # Column I now contains a HYPERLINK formula
+        self.assertIn("HYPERLINK", ws_out["I2"].value)
+        self.assertIn("Sight 1", ws_out["I2"].value)
         self.assertEqual(ws_out["J2"].value, 100)
         self.assertEqual(ws_out["K2"].value, "Stornierung bis: 2026-07-15")
 
@@ -140,7 +143,6 @@ class TestExcelExport(unittest.TestCase):
         self.assertEqual(ws_out["E5"].value, 75)
         self.assertEqual(ws_out["F5"].value, "Hotel B\nAvenue 2, 54321 CityB, Country\nKüche")
         self.assertEqual(ws_out["G5"].value, "300 / 400")
-        mock_get_names.assert_called()  # Should be called
         self.assertEqual(ws_out["J5"].value, 150)
         self.assertEqual(ws_out["K5"].value, "Stornierung bis: 2026-07-20")
 
