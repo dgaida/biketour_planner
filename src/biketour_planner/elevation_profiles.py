@@ -291,15 +291,15 @@ def create_elevation_profile_plot(
     t7 = time.time()
     logger.debug(f"  └─ savefig() (KRITISCH): {t7-t6:.2f}s")
 
+    # NEU: Validiere dass tatsächlich Daten im Buffer sind
+    buffer_size = img_buffer.tell()
+
     # WICHTIG: Buffer zurücksetzen damit er gelesen werden kann!
     img_buffer.seek(0)
 
     plt.close(fig)
     t8 = time.time()
     logger.debug(f"  └─ close(): {t8-t7:.2f}s")
-
-    # NEU: Validiere dass tatsächlich Daten im Buffer sind
-    buffer_size = img_buffer.tell()
     if buffer_size == 0:
         raise ValueError("savefig() hat keine Daten in den Buffer geschrieben")
 
@@ -489,7 +489,8 @@ def add_elevation_profiles_to_story(
             )
 
             if is_error:
-                error_text = f"<i>{img_bytes.decode('utf-8', errors='ignore')}</i>"
+                # img_bytes contains error message string in this case
+                error_text = f"<i>{img_bytes}</i>"
                 story.append(Paragraph(error_text, title_style))
                 error_count += 1
                 logger.warning(f"⚠️  Fehler bei {filename}")

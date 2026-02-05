@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 import numpy as np
 from io import BytesIO
+from reportlab.lib.styles import ParagraphStyle
 from biketour_planner.elevation_profiles import (
     extract_elevation_profile,
     calculate_gradient,
@@ -345,6 +346,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         img_buffer = create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -359,6 +361,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         pass_track = {
             "total_ascent_m": 500,
@@ -375,6 +378,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats, title="Custom Title")
 
@@ -389,6 +393,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats, figsize=(16, 6))
 
@@ -401,6 +406,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -413,6 +419,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -425,6 +432,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -438,6 +446,7 @@ class TestCreateElevationProfilePlot:
         mock_fig = Mock()
         mock_ax = Mock()
         mock_plt.subplots.return_value = (mock_fig, mock_ax)
+        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -461,29 +470,34 @@ class TestCreateElevationProfilePlot:
 class TestAddElevationProfilesToStory:
     """Tests für die add_elevation_profiles_to_story Funktion."""
 
+    @patch("biketour_planner.elevation_profiles.Paragraph")
+    @patch("biketour_planner.elevation_profiles.PageBreak")
+    @patch("biketour_planner.elevation_profiles.Image")
     @patch("biketour_planner.elevation_profiles.create_elevation_profile_plot")
-    def test_add_profiles_basic(self, mock_create_plot, simple_gpx_file, tmp_path):
+    def test_add_profiles_basic(self, mock_create_plot, mock_image, mock_pb, mock_para, simple_gpx_file, tmp_path):
         """Testet grundlegendes Hinzufügen von Profilen."""
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
-        # Mock Plot-Erstellung
-        mock_buffer = BytesIO(b"fake image data")
-        mock_create_plot.return_value = mock_buffer
+        # Mock Plot-Erstellung - return new buffer each time
+        mock_create_plot.side_effect = lambda *args, **kwargs: BytesIO(b"fake image data")
 
         story = []
         gpx_files = [simple_gpx_file]
         bookings = [{"gpx_track_final": simple_gpx_file.name}]
 
-        title_style = MagicMock()
+        title_style = ParagraphStyle("Title")
 
         add_elevation_profiles_to_story(story, gpx_files, bookings, output_dir, title_style)
 
         # Story sollte Elemente enthalten
         assert len(story) > 0
 
+    @patch("biketour_planner.elevation_profiles.Paragraph")
+    @patch("biketour_planner.elevation_profiles.PageBreak")
+    @patch("biketour_planner.elevation_profiles.Image")
     @patch("biketour_planner.elevation_profiles.create_elevation_profile_plot")
-    def test_add_profiles_multiple_files(self, mock_create_plot, tmp_path):
+    def test_add_profiles_multiple_files(self, mock_create_plot, mock_image, mock_pb, mock_para, tmp_path):
         """Testet Hinzufügen mehrerer Profile."""
         # Erstelle mehrere GPX-Dateien
         gpx_files = []
@@ -501,12 +515,11 @@ class TestAddElevationProfilesToStory:
             gpx_file.write_text(gpx_content, encoding="utf-8")
             gpx_files.append(gpx_file)
 
-        mock_buffer = BytesIO(b"fake image")
-        mock_create_plot.return_value = mock_buffer
+        mock_create_plot.side_effect = lambda *args, **kwargs: BytesIO(b"fake image")
 
         story = []
         bookings = [{"gpx_track_final": f.name} for f in gpx_files]
-        title_style = MagicMock()
+        title_style = ParagraphStyle("Title")
 
         add_elevation_profiles_to_story(story, gpx_files, bookings, tmp_path, title_style)
 
@@ -516,18 +529,20 @@ class TestAddElevationProfilesToStory:
     def test_add_profiles_empty_files_list(self, tmp_path):
         """Testet Verhalten bei leerer Dateiliste."""
         story = []
-        title_style = MagicMock()
+        title_style = ParagraphStyle("Title")
 
         add_elevation_profiles_to_story(story, [], [], tmp_path, title_style)
 
         # Story sollte leer bleiben oder nur PageBreak enthalten
         assert len(story) <= 1
 
+    @patch("biketour_planner.elevation_profiles.Paragraph")
+    @patch("biketour_planner.elevation_profiles.PageBreak")
+    @patch("biketour_planner.elevation_profiles.Image")
     @patch("biketour_planner.elevation_profiles.create_elevation_profile_plot")
-    def test_add_profiles_with_pass_tracks(self, mock_create_plot, simple_gpx_file, tmp_path):
+    def test_add_profiles_with_pass_tracks(self, mock_create_plot, mock_image, mock_pb, mock_para, simple_gpx_file, tmp_path):
         """Testet Hinzufügen mit Pass-Tracks."""
-        mock_buffer = BytesIO(b"fake image")
-        mock_create_plot.return_value = mock_buffer
+        mock_create_plot.side_effect = lambda *args, **kwargs: BytesIO(b"fake image")
 
         # Booking mit Pass-Tracks
         bookings = [
@@ -558,22 +573,24 @@ class TestAddElevationProfilesToStory:
         pass_file.write_text(pass_content, encoding="utf-8")
 
         story = []
-        title_style = MagicMock()
+        title_style = ParagraphStyle("Title")
 
         add_elevation_profiles_to_story(story, [simple_gpx_file], bookings, tmp_path, title_style)
 
         # Sollte sowohl Haupt-Track als auch Pass-Track erstellen
         assert mock_create_plot.call_count >= 2
 
+    @patch("biketour_planner.elevation_profiles.Paragraph")
+    @patch("biketour_planner.elevation_profiles.PageBreak")
     @patch("biketour_planner.elevation_profiles.create_elevation_profile_plot")
-    def test_add_profiles_handles_errors(self, mock_create_plot, simple_gpx_file, tmp_path):
+    def test_add_profiles_handles_errors(self, mock_create_plot, mock_pagebreak, mock_paragraph, simple_gpx_file, tmp_path):
         """Testet Fehlerbehandlung bei Plot-Erstellung."""
         # Simuliere Fehler bei Plot-Erstellung
         mock_create_plot.side_effect = Exception("Plot error")
 
         story = []
         bookings = [{"gpx_track_final": simple_gpx_file.name}]
-        title_style = MagicMock()
+        title_style = ParagraphStyle("Title")
 
         # Sollte nicht crashen
         add_elevation_profiles_to_story(story, [simple_gpx_file], bookings, tmp_path, title_style)

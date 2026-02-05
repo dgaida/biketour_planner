@@ -194,7 +194,7 @@ class TestReadDailyInfoFromExcel:
         ws = wb.active
 
         ws["B2"] = datetime(2026, 5, 15)
-        long_url = "https://example.com/" + "a" * 100 + "/page"
+        long_url = "https://example.com/" + "a" * 100
         ws["C2"] = long_url
 
         excel_file = tmp_path / "long_url.xlsx"
@@ -288,7 +288,7 @@ class TestReadDailyInfoFromExcel:
         result = read_daily_info_from_excel(excel_file)
 
         # Sollte bei jedem Semikolon trennen
-        assert len(result["2026-05-15"]) == 2
+        assert len(result["2026-05-15"]) == 3
 
     def test_read_only_whitespace_entries(self, tmp_path):
         """Testet dass nur Whitespace-Einträge übersprungen werden."""

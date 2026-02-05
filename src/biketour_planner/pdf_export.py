@@ -1,37 +1,36 @@
-"""PDF-Export-Modul für Reiseplanung mit klickbaren Hyperlinks.
+"""PDF export module for travel planning with clickable hyperlinks.
 
-Dieses Modul erstellt PDFs direkt aus den Buchungsdaten mit klickbaren
-Google Maps Links für Sehenswürdigkeiten.
+This module creates PDFs directly from booking data with clickable
+Google Maps links for tourist sights and elevation profiles.
 """
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer  # , PageBreak
-
-# from reportlab.platypus.flowables import HRFlowable
-from reportlab.lib.enums import TA_CENTER  # TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.enums import TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from .excel_export import extract_city_name, create_accommodation_text
-from .elevation_profiles import add_elevation_profiles_to_story_seq, get_merged_gpx_files_from_bookings
+from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
 from .gpx_route_manager_static import get_statistics4track, read_gpx_file
 from .excel_info_reader import read_daily_info_from_excel
+from .constants import PDF_PAGE_WIDTH_CM
 
 
 def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
-    """Erstellt HTML-Links für Sehenswürdigkeiten.
+    """Creates HTML links for tourist sights.
 
     Args:
-        tourist_sights: Geoapify-Response-Dictionary mit "features" Key oder None.
+        tourist_sights: Geoapify response dictionary or None.
 
     Returns:
-        Liste von HTML-formatierten Links für reportlab Paragraph.
+        List of HTML formatted links for reportlab Paragraph.
     """
     if not tourist_sights or "features" not in tourist_sights:
         return []
@@ -45,7 +44,7 @@ def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
 
         props = poi["properties"]
 
-        # Bestimme Namen (mit Fallbacks)
+        # Determine name (with fallbacks)
         if "name" in props:
             display_name = props["name"]
         elif "street" in props:
@@ -53,17 +52,15 @@ def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
         else:
             display_name = f"({props.get('lat')}, {props.get('lon')})"
 
-        # GPS-Koordinaten extrahieren
-        lat = props.get("lat")
-        lon = props.get("lon")
-
+        # Extract GPS coordinates
+        lat, lon = props.get("lat"), props.get("lon")
         if lat is None or lon is None:
             continue
 
-        # Google Maps URL erstellen
+        # Create Google Maps URL
         google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
 
-        # HTML-Link für reportlab
+        # HTML link for reportlab
         html_link = f'<a href="{google_maps_url}" color="blue"><u>{display_name}</u></a>'
         links.append(html_link)
 
@@ -73,111 +70,76 @@ def create_tourist_sights_links(tourist_sights: Optional[Dict]) -> List[str]:
 def get_cancellation_cell_style(
     free_cancel_until: Optional[str], arrival_date: str, base_cell_style: ParagraphStyle
 ) -> ParagraphStyle:
-    """Erstellt einen ParagraphStyle für Stornierungszellen basierend auf dem Zeitraum.
+    """Creates a ParagraphStyle for cancellation cells based on the timeframe.
 
     Args:
-        free_cancel_until: ISO-Datum der kostenlosen Stornierungsfrist (YYYY-MM-DD) oder None.
-        arrival_date: ISO-Datum der Anreise (YYYY-MM-DD).
-        base_cell_style: Basis-ParagraphStyle der kopiert wird.
+        free_cancel_until: ISO date of cancellation deadline or None.
+        arrival_date: ISO date of arrival.
+        base_cell_style: Base ParagraphStyle to copy.
 
     Returns:
-        ParagraphStyle mit angepasster Textfarbe:
-        - Grün: Stornierungsfrist < 7 Tage vor Anreise (flexibel)
-        - Rot: Stornierungsfrist > 30 Tage vor Anreise (unflexibel)
-        - Schwarz: Dazwischen oder keine Stornierungsfrist
-
-    Example:
-        >>> style = get_cancellation_cell_style("2026-05-01", "2026-05-15", cell_style)
-        >>> # Differenz: 14 Tage -> schwarzer Text
-        >>> style = get_cancellation_cell_style("2026-05-10", "2026-05-15", cell_style)
-        >>> # Differenz: 5 Tage -> grüner Text
-        >>> style = get_cancellation_cell_style("2026-04-10", "2026-05-15", cell_style)
-        >>> # Differenz: 35 Tage -> roter Text
+        ParagraphStyle with adjusted text color.
     """
-    # Standardfarbe (schwarz)
     text_color = colors.black
 
     if free_cancel_until and arrival_date:
         try:
             cancel_date = datetime.fromisoformat(free_cancel_until)
             arrival = datetime.fromisoformat(arrival_date)
-
-            # Berechne Differenz in Tagen
             days_diff = (arrival - cancel_date).days
 
             if days_diff < 7:
-                # Flexible Stornierung: Grün
-                text_color = colors.HexColor("#008000")  # Grün
+                text_color = colors.HexColor("#008000")  # Green
             elif days_diff > 30:
-                # Unflexible Stornierung: Rot
                 text_color = colors.HexColor("#DC143C")  # Crimson Red
-            # else: bleibt schwarz (7-30 Tage)
-
         except ValueError:
-            # Bei Parsing-Fehler: Standardfarbe
             pass
 
-    # Erstelle neuen Style basierend auf base_cell_style
-    colored_style = ParagraphStyle(f"CancellationStyle_{id(free_cancel_until)}", parent=base_cell_style, textColor=text_color)
-
-    return colored_style
+    return ParagraphStyle(f"CancellationStyle_{id(free_cancel_until)}", parent=base_cell_style, textColor=text_color)
 
 
 def export_bookings_to_pdf(
     json_path: Path,
     output_path: Path,
-    output_dir: Path = None,  # Pfad zu gemergten GPX-Dateien
-    gpx_dir: Path = None,  # NEU: Pfad zu Original-GPX-Dateien (für Pass-Tracks)
-    title: str = "Reiseplanung Kroatien 2026",
-    excel_info_path: Path = None,  # NEU: Pfad zur Excel-Datei mit Zusatzinfos
+    output_dir: Path = None,
+    gpx_dir: Path = None,
+    title: str = "Bike Tour Planning",
+    excel_info_path: Path = None,
 ) -> None:
-    """Exportiert Buchungsinformationen in eine PDF-Datei mit klickbaren Links.
-
-    Erstellt ein PDF im Querformat mit einer Tabelle ähnlich dem Excel-Template.
-    Sehenswürdigkeiten werden als klickbare Google Maps Links eingefügt.
-    Am Ende werden Höhenprofile für alle Tage und Pässe hinzugefügt.
+    """Exports booking info to a PDF file with clickable links and elevation profiles.
 
     Args:
-        json_path: Pfad zur JSON-Datei mit Buchungen.
-        output_path: Pfad für die Ausgabe-PDF-Datei.
-        output_dir: Pfad zum Verzeichnis mit gemergten GPX-Dateien (Default: None).
-        gpx_dir: Pfad zum Verzeichnis mit Original-GPX-Dateien für Pässe (Default: None).
-        title: Titel des Dokuments (wird auf jeder Seite angezeigt).
-        excel_info_path: Pfad zur Excel-Datei mit zusätzlichen Tagesinfos (Default: None).
+        json_path: Path to JSON file with bookings.
+        output_path: Path for the output PDF file.
+        output_dir: Path to directory with merged GPX files.
+        gpx_dir: Path to directory with original GPX files for passes.
+        title: Document title.
+        excel_info_path: Path to Excel file with additional daily info.
     """
-    # Registriere Unicode-Schriftarten (für kroatische Zeichen wie č, ć, ž, š, đ)
+    # Register Unicode fonts
     try:
-        # Versuche DejaVu Sans (häufig verfügbar auf Linux/Mac)
         pdfmetrics.registerFont(TTFont("DejaVuSans", "DejaVuSans.ttf"))
         pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "DejaVuSans-Bold.ttf"))
-        default_font = "DejaVuSans"
-        bold_font = "DejaVuSans-Bold"
+        default_font, bold_font = "DejaVuSans", "DejaVuSans-Bold"
     except Exception:
         try:
-            # Fallback: Arial Unicode (Windows)
             pdfmetrics.registerFont(TTFont("ArialUnicode", "ARIALUNI.TTF"))
-            default_font = "ArialUnicode"
-            bold_font = "ArialUnicode"
+            default_font, bold_font = "ArialUnicode", "ArialUnicode"
         except Exception:
-            # Letzter Fallback: Standard Helvetica (kann einige Zeichen nicht darstellen)
-            print(
-                "⚠️  Warnung: Keine Unicode-Schriftart gefunden. Sonderzeichen werden möglicherweise nicht korrekt dargestellt."
-            )
-            default_font = "Helvetica"
-            bold_font = "Helvetica-Bold"
+            print("⚠️ Warning: No Unicode font found. Special characters might not be displayed correctly.")
+            default_font, bold_font = "Helvetica", "Helvetica-Bold"
 
-    # JSON laden
+    # Load JSON
     with open(json_path, "r", encoding="utf-8") as f:
         bookings = json.load(f)
 
-    # Nach Anreisedatum sortieren
     bookings_sorted = sorted(bookings, key=lambda x: x.get("arrival_date", "9999-12-31"))
 
     daily_info = {}
     if excel_info_path and excel_info_path.exists():
         daily_info = read_daily_info_from_excel(excel_info_path)
 
-    # PDF erstellen
+    # Create PDF
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(
         str(output_path),
@@ -188,78 +150,32 @@ def export_bookings_to_pdf(
         bottomMargin=1.5 * cm,
     )
 
-    # Styles
     styles = getSampleStyleSheet()
-
-    title_style = ParagraphStyle(
-        "CustomTitle",
-        parent=styles["Heading1"],
-        fontSize=16,
-        textColor=colors.HexColor("#1f4788"),
-        spaceAfter=12,
-        alignment=TA_CENTER,
-        fontName=bold_font,
-    )
-
+    title_style = ParagraphStyle("CustomTitle", parent=styles["Heading1"], fontSize=16, textColor=colors.HexColor("#1f4788"), alignment=TA_CENTER, fontName=bold_font, spaceAfter=12)
     cell_style = ParagraphStyle("CellStyle", parent=styles["Normal"], fontSize=9, leading=11, fontName=default_font)
+    link_style = ParagraphStyle("LinkStyle", parent=styles["Normal"], fontSize=8, leading=10, textColor=colors.blue, fontName=default_font)
+    summary_style = ParagraphStyle("SummaryStyle", parent=styles["Normal"], fontSize=11, leading=14, fontName=bold_font, textColor=colors.HexColor("#1f4788"), spaceAfter=6)
 
-    link_style = ParagraphStyle(
-        "LinkStyle", parent=styles["Normal"], fontSize=8, leading=10, textColor=colors.blue, fontName=default_font
-    )
-
-    summary_style = ParagraphStyle(
-        "SummaryStyle",
-        parent=styles["Normal"],
-        fontSize=11,
-        leading=14,
-        fontName=bold_font,
-        textColor=colors.HexColor("#1f4788"),
-        spaceAfter=6,
-    )
-
-    # Story (Inhalt) aufbauen
-    story = []
-
-    # Titel
-    story.append(Paragraph(title, title_style))
-    story.append(Spacer(1, 0.5 * cm))
-
-    # Tabellendaten vorbereiten
-    table_data = []
-
-    # Header
-    header = [
-        Paragraph("<b>Tag</b>", cell_style),
-        Paragraph("<b>Datum</b>", cell_style),
-        Paragraph("<b>Von</b>", cell_style),
-        Paragraph("<b>Nach</b>", cell_style),
-        Paragraph("<b>km</b>", cell_style),
-        Paragraph("<b>Unterkunft</b>", cell_style),
-        Paragraph("<b>Hm/Max</b>", cell_style),
-        Paragraph("<b>GPX</b>", cell_style),
+    story = [Paragraph(title, title_style), Spacer(1, 0.5 * cm)]
+    table_data = [[
+        Paragraph("<b>Tag</b>", cell_style), Paragraph("<b>Datum</b>", cell_style),
+        Paragraph("<b>Von</b>", cell_style), Paragraph("<b>Nach</b>", cell_style),
+        Paragraph("<b>km</b>", cell_style), Paragraph("<b>Unterkunft</b>", cell_style),
+        Paragraph("<b>Hm/Max</b>", cell_style), Paragraph("<b>GPX</b>", cell_style),
         Paragraph("<b>Infos, Berge und Site Seeing</b>", cell_style),
-        Paragraph("<b>Preis</b>", cell_style),
-        Paragraph("<b>Storno</b>", cell_style),
-    ]
-    table_data.append(header)
+        Paragraph("<b>Preis</b>", cell_style), Paragraph("<b>Storno</b>", cell_style),
+    ]]
 
-    # Daten + Summen
-    previous_city = None
-    previous_departure_date = None
-    day_counter = 1
-
-    total_km = 0.0
-    total_ascent = 0
-    total_price = 0.0
+    previous_city = previous_departure_date = None
+    day_counter, total_km, total_ascent, total_price = 1, 0.0, 0, 0.0
 
     for booking in bookings_sorted:
-        # Prüfe ob Leerzeilen für Zwischentage eingefügt werden müssen
+        # Check for intermediate days
         if previous_departure_date and booking.get("arrival_date"):
             try:
                 prev_departure = datetime.fromisoformat(previous_departure_date)
                 current_arrival = datetime.fromisoformat(booking["arrival_date"])
                 days_between = (current_arrival - prev_departure).days
-
                 if days_between > 0:
                     for day_offset in range(days_between):
                         intermediate_date = prev_departure + timedelta(days=day_offset)
@@ -267,22 +183,13 @@ def export_bookings_to_pdf(
                             Paragraph(str(day_counter), cell_style),
                             Paragraph(intermediate_date.strftime("%a, %d.%m.%Y"), cell_style),
                             Paragraph(previous_city or "", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
+                            "", "", "", "", "", "", "", ""
                         ]
                         table_data.append(row)
                         day_counter += 1
-
             except ValueError:
                 pass
 
-        # Normale Buchungszeile
         arrival_date = booking.get("arrival_date", "")
         if arrival_date:
             try:
@@ -294,56 +201,35 @@ def export_bookings_to_pdf(
             date_str = ""
 
         current_city = extract_city_name(booking.get("address", ""))
-
         accommodation_text = create_accommodation_text(booking)
 
-        # Berechne Statistiken für alle Tracks (Haupt-Track + Pass-Tracks)
-        km_values = []
-        hm_max_values = []
-        gpx_tracks = []
+        km_values, hm_max_values, gpx_tracks = [], [], []
 
-        # Haupt-Track
+        # Main track stats
         if booking.get("gpx_track_final"):
             gpx_tracks.append(str(booking.get("gpx_track_final", ""))[:12])
-
-            # km-Wert für Haupt-Track
-            km_val = booking.get("total_distance_km", "")
+            km_val = booking.get("total_distance_km")
             km_values.append(f"{km_val:.0f}" if km_val else "")
-
-            # Hm/Max für Haupt-Track
-            hm = booking.get("total_ascent_m", "")
-            max_elev = booking.get("max_elevation_m", "")
+            hm = booking.get("total_ascent_m")
+            max_elev = booking.get("max_elevation_m")
             hm_max_values.append(f"{hm} / {max_elev}" if hm or max_elev else "")
+            if km_val: total_km += float(km_val)
+            if hm: total_ascent += int(hm)
 
-            # Summierung Haupt-Track
-            if km_val:
-                total_km += float(km_val)
-            if hm:
-                total_ascent += int(hm)
-
-        # Pass-Tracks
+        # Pass tracks stats
         for pass_track in booking.get("paesse_tracks", []):
             pass_file = pass_track.get("file", "")[:12]
-            passname = pass_track.get("passname", "")
-            gpx_tracks.append(f"{pass_file}<br/>({passname})")
-
-            # Lade Statistiken für Pass-Track aus GPX-Datei
+            gpx_tracks.append(f"{pass_file}<br/>({pass_track.get('passname', '')})")
             pass_gpx_path = gpx_dir / pass_track.get("file", "") if gpx_dir else None
             if pass_gpx_path and pass_gpx_path.exists():
                 gpx = read_gpx_file(pass_gpx_path)
                 if gpx and gpx.tracks:
-                    pass_max_elevation, pass_distance, pass_ascent, _ = get_statistics4track(gpx)
-
-                    # Füge km-Wert hinzu
-                    pass_km = pass_distance / 1000
+                    p_max, p_dist, p_asc, _ = get_statistics4track(gpx)
+                    pass_km = p_dist / 1000
                     km_values.append(f"{pass_km:.0f}")
                     total_km += pass_km
-
-                    # Füge Hm/Max hinzu
-                    pass_hm = int(round(pass_ascent))
-                    pass_max = int(round(pass_max_elevation)) if pass_max_elevation != float("-inf") else ""
-                    hm_max_values.append(f"{pass_hm} / {pass_max}" if pass_max else f"{pass_hm} / ")
-                    total_ascent += pass_hm
+                    hm_max_values.append(f"{int(round(p_asc))} / {int(round(p_max)) if p_max != float('-inf') else ''}")
+                    total_ascent += int(round(p_asc))
                 else:
                     km_values.append("")
                     hm_max_values.append("")
@@ -351,170 +237,87 @@ def export_bookings_to_pdf(
                 km_values.append("")
                 hm_max_values.append("")
 
-        # Erstelle mehrzeilige Strings
-        gpx_text = "<br/>".join(gpx_tracks) if gpx_tracks else ""
-        km_text = "<br/>".join(km_values) if km_values else ""
-        hm_max_text = "<br/>".join(hm_max_values) if hm_max_values else ""
-
-        # Summierung Preis
         if booking.get("total_price"):
             total_price += float(booking.get("total_price", 0))
 
-        # Sehenswürdigkeiten mit Links + Pass-Namen
         sights_links = create_tourist_sights_links(booking.get("tourist_sights"))
-
-        # Füge Pass-Namen als Links hinzu
         for pass_track in booking.get("paesse_tracks", []):
-            passname = pass_track.get("passname", "")
-            pass_lat = pass_track.get("latitude")
-            pass_lon = pass_track.get("longitude")
+            p_lat, p_lon = pass_track.get("latitude"), pass_track.get("longitude")
+            if pass_track.get("passname") and p_lat is not None and p_lon is not None:
+                google_maps_url = f"https://www.google.com/maps/search/?api=1&query={p_lat},{p_lon}"
+                sights_links.append(f'<a href="{google_maps_url}" color="blue"><u>{pass_track["passname"]}</u></a>')
 
-            if passname and pass_lat is not None and pass_lon is not None:
-                google_maps_url = f"https://www.google.com/maps/search/?api=1&query={pass_lat},{pass_lon}"
-                html_link = f'<a href="{google_maps_url}" color="blue"><u>{passname}</u></a>'
-                sights_links.append(html_link)
-
-        # NEU: Füge Excel-Infos für diesen Tag hinzu
         if arrival_date in daily_info:
-            for info_item in daily_info[arrival_date]:
-                sights_links.append(info_item)
+            sights_links.extend(daily_info[arrival_date])
 
-        sights_html = "<br/>".join(sights_links) if sights_links else ""
-
-        # In der for-Schleife bei der Zeilenerstellung:
-        cancellation_style = get_cancellation_cell_style(
-            booking.get("free_cancel_until"), booking.get("arrival_date"), cell_style
-        )
+        cancellation_style = get_cancellation_cell_style(booking.get("free_cancel_until"), booking.get("arrival_date"), cell_style)
 
         row = [
-            Paragraph(str(day_counter), cell_style),
-            Paragraph(date_str, cell_style),
-            Paragraph(previous_city or "", cell_style),
-            Paragraph(current_city, cell_style),
-            Paragraph(km_text, cell_style),
-            Paragraph(accommodation_text.replace("\n", "<br/>"), cell_style),
-            Paragraph(hm_max_text, cell_style),
-            Paragraph(gpx_text, cell_style),
-            Paragraph(sights_html, link_style),
-            Paragraph(str(booking.get("total_price", "")), cell_style),
-            Paragraph(
-                f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "",
-                cancellation_style,  # <- Verwende den farbigen Style
-            ),
+            Paragraph(str(day_counter), cell_style), Paragraph(date_str, cell_style),
+            Paragraph(previous_city or "", cell_style), Paragraph(current_city, cell_style),
+            Paragraph("<br/>".join(km_values), cell_style), Paragraph(accommodation_text.replace("\n", "<br/>"), cell_style),
+            Paragraph("<br/>".join(hm_max_values), cell_style), Paragraph("<br/>".join(gpx_tracks), cell_style),
+            Paragraph("<br/>".join(sights_links), link_style), Paragraph(str(booking.get("total_price", "")), cell_style),
+            Paragraph(f"bis: {booking.get('free_cancel_until', '')}" if booking.get("free_cancel_until") else "", cancellation_style),
         ]
         table_data.append(row)
+        previous_city, previous_departure_date, day_counter = current_city, booking.get("departure_date"), day_counter + 1
 
-        previous_city = current_city
-        previous_departure_date = booking.get("departure_date")
-        day_counter += 1
-
-    # Checkout-Zeile und Zwischentage für letzte Unterkunft hinzufügen
+    # Checkout row for last accommodation
     if bookings_sorted and previous_departure_date:
         last_booking = bookings_sorted[-1]
         last_departure_date = last_booking.get("departure_date")
         last_city = extract_city_name(last_booking.get("address", ""))
-
         if last_departure_date:
             try:
                 last_arrival = datetime.fromisoformat(last_booking.get("arrival_date", ""))
                 last_checkout = datetime.fromisoformat(last_departure_date)
-
-                # Berechne Anzahl Tage zwischen Check-in und Check-out
                 days_staying = (last_checkout - last_arrival).days
-
-                # Füge Leerzeilen für Zwischentage ein (falls mehr als 1 Nacht)
                 if days_staying > 1:
-                    for day_offset in range(1, days_staying):
-                        intermediate_date = last_arrival + timedelta(days=day_offset)
-                        row = [
+                    for d_off in range(1, days_staying):
+                        intermediate_date = last_arrival + timedelta(days=d_off)
+                        table_data.append([
                             Paragraph(str(day_counter), cell_style),
                             Paragraph(intermediate_date.strftime("%a, %d.%m.%Y"), cell_style),
                             Paragraph(last_city, cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                            Paragraph("", cell_style),
-                        ]
-                        table_data.append(row)
+                            "", "", "", "", "", "", "", ""
+                        ])
                         day_counter += 1
-
-                # Checkout-Zeile hinzufügen
-                checkout_row = [
+                table_data.append([
                     Paragraph(str(day_counter), cell_style),
                     Paragraph(last_checkout.strftime("%a, %d.%m.%Y"), cell_style),
                     Paragraph(last_city, cell_style),
                     Paragraph("Checkout", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                    Paragraph("", cell_style),
-                ]
-                table_data.append(checkout_row)
+                    "", "", "", "", "", "", ""
+                ])
+            except ValueError: pass
 
-            except ValueError:
-                # Falls Datum nicht geparst werden kann, überspringe
-                pass
-
-    # Tabelle erstellen
-    col_widths = [
-        1.0 * cm,  # Tag
-        2.1 * cm,  # Datum
-        2.2 * cm,  # Von
-        2.2 * cm,  # Nach
-        1.0 * cm,  # km
-        5.3 * cm,  # Unterkunft
-        1.8 * cm,  # Hm/Max
-        2.2 * cm,  # GPX
-        4.1 * cm,  # Sehenswürdigkeiten
-        1.2 * cm,  # Preis
-        2.0 * cm,  # Storno
-    ]
-
+    col_widths = [1.0*cm, 2.1*cm, 2.2*cm, 2.2*cm, 1.0*cm, 5.3*cm, 1.8*cm, 2.2*cm, 4.1*cm, 1.2*cm, 2.0*cm]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
-
-    table.setStyle(
-        TableStyle(
-            [
-                # Header
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4472C4")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), bold_font),
-                ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-                # Body
-                ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-                ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
-                ("ALIGN", (0, 1), (0, -1), "CENTER"),  # Tag zentriert
-                ("ALIGN", (4, 1), (4, -1), "RIGHT"),  # km rechts
-                ("ALIGN", (9, 1), (9, -1), "RIGHT"),  # Preis rechts
-                ("FONTNAME", (0, 1), (-1, -1), default_font),
-                ("FONTSIZE", (0, 1), (-1, -1), 9),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                # Gitternetz
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("LINEBELOW", (0, 0), (-1, 0), 2, colors.HexColor("#4472C4")),
-                # Padding
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 1), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
-            ]
-        )
-    )
-
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4472C4")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), bold_font),
+        ("FONTSIZE", (0, 0), (-1, 0), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+        ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (4, 1), (4, -1), "RIGHT"),
+        ("ALIGN", (9, 1), (9, -1), "RIGHT"),
+        ("FONTNAME", (0, 1), (-1, -1), default_font),
+        ("FONTSIZE", (0, 1), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("LINEBELOW", (0, 0), (-1, 0), 2, colors.HexColor("#4472C4")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
+    ]))
     story.append(table)
-
-    # Zusammenfassung unter der Tabelle
     story.append(Spacer(1, 0.8 * cm))
-
     summary_text = (
         f"<b>Gesamtkilometer:</b> {total_km:.2f} km       "
         f"<b>Gesamthöhenmeter:</b> {total_ascent} m       "
@@ -522,22 +325,12 @@ def export_bookings_to_pdf(
     )
     story.append(Paragraph(summary_text, summary_style))
 
-    # Höhenprofile hinzufügen
     if output_dir:
         gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)
-        add_elevation_profiles_to_story_seq(
-            story, gpx_files, bookings_sorted, gpx_dir or output_dir, title_style, page_width_cm=25.0  # NEU!  # NEU!
-        )
+        add_elevation_profiles_to_story(story, gpx_files, bookings_sorted, gpx_dir or output_dir, title_style, page_width_cm=PDF_PAGE_WIDTH_CM)
 
-    # PDF generieren
     doc.build(story)
     print(f"PDF-Datei erstellt: {output_path}")
 
-
 if __name__ == "__main__":
-    # Beispielaufruf
-    export_bookings_to_pdf(
-        json_path=Path("output/bookings.json"),
-        output_path=Path("output/Reiseplanung_Kroatien_2026.pdf"),
-        title="Reiseplanung Kroatien 2026",
-    )
+    export_bookings_to_pdf(json_path=Path("output/bookings.json"), output_path=Path("output/tour_plan.pdf"))

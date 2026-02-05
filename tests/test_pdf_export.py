@@ -435,6 +435,7 @@ class TestExportBookingsToPDF:
         json_path = tmp_path / "bookings.json"
         output_path = tmp_path / "output.pdf"
         excel_path = tmp_path / "info.xlsx"
+        excel_path.touch() # Ensure file exists
 
         import json
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Dict
 
 from .logger import get_logger
+from .constants import ICS_MAX_LINE_LENGTH
 
 # Initialisiere Logger
 logger = get_logger()
@@ -68,16 +69,16 @@ def create_ics_event(
         desc_escaped = escape_text(description)
         desc_line = f"DESCRIPTION:{desc_escaped}"
 
-        # Umbrechen bei > 75 Zeichen (mit Continuation auf neuer Zeile)
-        if len(desc_line) > 75:
+        # Umbrechen bei > ICS_MAX_LINE_LENGTH Zeichen (mit Continuation auf neuer Zeile)
+        if len(desc_line) > ICS_MAX_LINE_LENGTH:
             lines = []
-            current_line = desc_line[:75]
-            remaining = desc_line[75:]
+            current_line = desc_line[:ICS_MAX_LINE_LENGTH]
+            remaining = desc_line[ICS_MAX_LINE_LENGTH:]
             lines.append(current_line)
 
             while remaining:
-                lines.append(" " + remaining[:74])  # Space-Prefix für Continuation
-                remaining = remaining[74:]
+                lines.append(" " + remaining[: ICS_MAX_LINE_LENGTH - 1])  # Space-Prefix für Continuation
+                remaining = remaining[ICS_MAX_LINE_LENGTH - 1 :]
 
             event.extend(lines)
         else:
