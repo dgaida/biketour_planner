@@ -1,7 +1,8 @@
 """BRouter API integration for offline routing."""
 
-import requests
 import gpxpy
+import requests
+
 from .exceptions import RoutingError
 from .logger import get_logger
 
@@ -26,10 +27,12 @@ def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: fl
         r.raise_for_status()
         return r.text
     except Exception as e:
-        raise RoutingError(str(e))
+        raise RoutingError(str(e)) from e
 
 
-def get_route2address_as_points(start_lat: float, start_lon: float, target_lat: float, target_lon: float) -> list[gpxpy.gpx.GPXTrackPoint]:
+def get_route2address_as_points(
+    start_lat: float, start_lon: float, target_lat: float, target_lon: float
+) -> list[gpxpy.gpx.GPXTrackPoint]:
     gpx_str = route_to_address(start_lat, start_lon, target_lat, target_lon)
     if not gpx_str:
         raise RoutingError("Empty response")
@@ -44,4 +47,4 @@ def get_route2address_as_points(start_lat: float, start_lon: float, target_lat: 
     except RoutingError:
         raise
     except Exception as e:
-        raise RoutingError(f"Failed to parse GPX: {e}")
+        raise RoutingError(f"Failed to parse GPX: {e}") from e

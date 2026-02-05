@@ -1,15 +1,15 @@
-import unittest
 import json
-from pathlib import Path
-import openpyxl
-from unittest.mock import patch
 import shutil
+import unittest
 from datetime import datetime
+from pathlib import Path
+
+import openpyxl
 
 from biketour_planner.excel_export import (
-    extract_city_name,
     create_accommodation_text,
     export_bookings_to_excel,
+    extract_city_name,
 )
 
 

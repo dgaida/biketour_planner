@@ -1,7 +1,7 @@
-import gpxpy
 import math
 from pathlib import Path
-from typing import Dict, Optional, List, Tuple
+
+import gpxpy
 
 from .elevation_calc import calculate_elevation_gain_segment_based, calculate_elevation_gain_smoothed
 from .logger import get_logger
@@ -40,7 +40,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def read_gpx_file(gpx_file: Path) -> Optional[gpxpy.gpx.GPX]:
+def read_gpx_file(gpx_file: Path) -> gpxpy.gpx.GPX | None:
     """Liest eine GPX-Datei mit robustem Encoding-Handling.
 
     Probiert verschiedene Encoding-Strategien (UTF-8, Latin-1, CP1252) und
@@ -126,7 +126,7 @@ def get_base_filename(filename: str) -> str:
     return filename
 
 
-def find_closest_point_in_track(points: List[Dict], target_lat: float, target_lon: float) -> Tuple[int, float]:
+def find_closest_point_in_track(points: list[dict], target_lat: float, target_lon: float) -> tuple[int, float]:
     """Findet den nächsten Punkt innerhalb eines Tracks zu einer Zielkoordinate.
 
     Durchsucht eine Liste von Punkten und berechnet für jeden die Haversine-Distanz

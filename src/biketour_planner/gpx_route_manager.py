@@ -1,15 +1,15 @@
 from __future__ import annotations
-from pathlib import Path
+
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Any, TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import gpxpy
 from tqdm import tqdm
 
-from .config import get_config
 from .brouter import get_route2address_as_points
+from .config import get_config
 from .gpx_route_manager_static import (
-    TrackStats,
     find_closest_point_in_track,
     get_base_filename,
     get_statistics4track,
@@ -17,14 +17,10 @@ from .gpx_route_manager_static import (
     read_gpx_file,
 )
 from .logger import get_logger
-from .models import RoutePosition, RouteStatistics, RouteContext
-from .constants import (
-    DEFAULT_MAX_CONNECTION_DISTANCE_M,
-    DEFAULT_MAX_CHAIN_LENGTH
-)
+from .models import RouteContext, RoutePosition, RouteStatistics
 
 if TYPE_CHECKING:
-    from .models import Booking
+    pass
 
 # Initialize Logger
 logger = get_logger()
@@ -70,9 +66,9 @@ class GPXRouteManager:
         self,
         gpx_dir: Path,
         output_path: Path,
-        max_connection_distance_m: Optional[float] = None,
-        max_chain_length: Optional[int] = None,
-        start_search_radius_km: Optional[float] = None,
+        max_connection_distance_m: float | None = None,
+        max_chain_length: int | None = None,
+        start_search_radius_km: float | None = None,
         verbose: bool = False,
     ):
         """Initializes the GPXRouteManager and loads all GPX files.
@@ -94,16 +90,11 @@ class GPXRouteManager:
         self.verbose = verbose
 
         self.max_connection_distance_m = (
-            max_connection_distance_m if max_connection_distance_m is not None
-            else config.routing.max_connection_distance_m
+            max_connection_distance_m if max_connection_distance_m is not None else config.routing.max_connection_distance_m
         )
-        self.max_chain_length = (
-            max_chain_length if max_chain_length is not None
-            else config.routing.max_chain_length
-        )
+        self.max_chain_length = max_chain_length if max_chain_length is not None else config.routing.max_chain_length
         self.start_search_radius_km = (
-            start_search_radius_km if start_search_radius_km is not None
-            else config.routing.start_search_radius_km
+            start_search_radius_km if start_search_radius_km is not None else config.routing.start_search_radius_km
         )
         self.target_search_radius_km = config.routing.target_search_radius_km
 
@@ -121,7 +112,7 @@ class GPXRouteManager:
         """
         gpx_files = list(Path(self.gpx_dir).glob("*.gpx"))
 
-        def process_file(gpx_file: Path) -> Optional[tuple[str, dict[str, Any]]]:
+        def process_file(gpx_file: Path) -> tuple[str, dict[str, Any]] | None:
             gpx = read_gpx_file(gpx_file)
             if gpx is None or not gpx.tracks:
                 return None
@@ -173,8 +164,8 @@ class GPXRouteManager:
         start_lon: float,
         target_lat: float,
         target_lon: float,
-        previous_last_file: Optional[dict[str, Any]] = None,
-    ) -> tuple[Optional[str], Optional[int], Optional[str]]:
+        previous_last_file: dict[str, Any] | None = None,
+    ) -> tuple[str | None, int | None, str | None]:
         """Determines the starting position for the route search.
 
         If multiple tracks are within the search radius of the starting location,
@@ -233,12 +224,9 @@ class GPXRouteManager:
             dist_track_end_to_target = haversine(meta["end_lat"], meta["end_lon"], target_lat, target_lon)
             min_dist_to_target = min(dist_track_start_to_target, dist_track_end_to_target)
 
-            candidates.append({
-                "filename": filename,
-                "index": idx,
-                "dist_to_start": dist_to_start,
-                "dist_to_target": min_dist_to_target
-            })
+            candidates.append(
+                {"filename": filename, "index": idx, "dist_to_start": dist_to_start, "dist_to_target": min_dist_to_target}
+            )
 
             if self.verbose:
                 logger.debug(
@@ -269,7 +257,7 @@ class GPXRouteManager:
         start_lon: float,
         target_lat: float,
         target_lon: float,
-    ) -> tuple[Optional[str], Optional[int], Optional[float], Optional[float]]:
+    ) -> tuple[str | None, int | None, float | None, float | None]:
         """Determines the target position and the relevant target side for the route search.
 
         This method implements the central logic for efficient routing:
@@ -374,7 +362,7 @@ class GPXRouteManager:
         self,
         current_index: int,
         meta: dict[str, Any],
-        force_direction: Optional[str],
+        force_direction: str | None,
         target_side_lat: float,
         target_side_lon: float,
         iteration: int,
@@ -448,7 +436,7 @@ class GPXRouteManager:
         used_base_files: set[str],
         current_lat: float,
         current_lon: float,
-    ) -> tuple[Optional[str], Optional[int]]:
+    ) -> tuple[str | None, int | None]:
         """Finds the next GPX file in the route chain.
 
         Args:
@@ -507,14 +495,14 @@ class GPXRouteManager:
         visited: set[str],
         used_base_files: set[str],
         route_files: list[dict[str, Any]],
-        force_direction: Optional[str],
+        force_direction: str | None,
         target_side_lat: float,
         target_side_lon: float,
         max_elevation: float,
         total_distance: float,
         total_ascent: float,
         total_descent: float,
-    ) -> tuple[bool, Optional[str], Optional[int], float, float, float, float, float, float]:
+    ) -> tuple[bool, str | None, int | None, float, float, float, float, float, float]:
         """Processes a single iteration of the route search (compatibility wrapper).
 
         Args:
@@ -545,13 +533,10 @@ class GPXRouteManager:
             visited=visited,
             used_base_files=used_base_files,
             route_files=route_files,
-            force_direction=force_direction
+            force_direction=force_direction,
         )
         stats = RouteStatistics(
-            max_elevation=max_elevation,
-            total_distance=total_distance,
-            total_ascent=total_ascent,
-            total_descent=total_descent
+            max_elevation=max_elevation, total_distance=total_distance, total_ascent=total_ascent, total_descent=total_descent
         )
 
         should_continue, next_pos, updated_stats = self._process_route_iteration_new(current, context, stats)
@@ -564,7 +549,9 @@ class GPXRouteManager:
             if current_file == target_file:
                 end_index = target_index
             else:
-                end_index = self._set_end_index(current_index, meta, force_direction, target_side_lat, target_side_lon, iteration)
+                end_index = self._set_end_index(
+                    current_index, meta, force_direction, target_side_lat, target_side_lon, iteration
+                )
             end_pt = meta["points"][end_index]
             current_lat, current_lon = end_pt["lat"], end_pt["lon"]
         else:
@@ -579,7 +566,7 @@ class GPXRouteManager:
             updated_stats.max_elevation,
             updated_stats.total_distance,
             updated_stats.total_ascent,
-            updated_stats.total_descent
+            updated_stats.total_descent,
         )
 
     def _process_route_iteration_new(
@@ -587,7 +574,7 @@ class GPXRouteManager:
         current: RoutePosition,
         context: RouteContext,
         stats: RouteStatistics,
-    ) -> tuple[bool, Optional[RoutePosition], RouteStatistics]:
+    ) -> tuple[bool, RoutePosition | None, RouteStatistics]:
         """Processes a single iteration of the route search.
 
         Performs the following steps for a single track section:
@@ -646,16 +633,20 @@ class GPXRouteManager:
         context.used_base_files.add(base_name)
 
         # Add to route
-        context.route_files.append({
-            "file": current.file,
-            "start_index": current.index,
-            "end_index": end_index,
-            "reversed": reversed_dir
-        })
+        context.route_files.append(
+            {"file": current.file, "start_index": current.index, "end_index": end_index, "reversed": reversed_dir}
+        )
 
         # Update statistics
         max_el, dist, asc, desc = self._get_statistics4track(
-            meta, current.index, end_index, stats.max_elevation, stats.total_distance, stats.total_ascent, stats.total_descent, reversed_dir
+            meta,
+            current.index,
+            end_index,
+            stats.max_elevation,
+            stats.total_distance,
+            stats.total_ascent,
+            stats.total_descent,
+            reversed_dir,
         )
         stats.max_elevation = max_el
         stats.total_distance = dist
@@ -677,7 +668,9 @@ class GPXRouteManager:
         if not next_file:
             logger.debug(f"⚠️  No suitable next GPX found (max distance: {self.max_connection_distance_m}m)")
             if context.target.file not in context.visited:
-                self._add_target_track_to_route(context.target.file, context.target.index, current_lat, current_lon, context.route_files)
+                self._add_target_track_to_route(
+                    context.target.file, context.target.index, current_lat, current_lon, context.route_files
+                )
             return False, None, stats
 
         next_pt = self.gpx_index[next_file]["points"][next_index]
@@ -718,12 +711,14 @@ class GPXRouteManager:
             start_idx = 0
             reversed_dir = False
 
-        route_files.append({
-            "file": target_file,
-            "start_index": min(start_idx, target_index) if not reversed_dir else max(start_idx, target_index),
-            "end_index": target_index,
-            "reversed": reversed_dir,
-        })
+        route_files.append(
+            {
+                "file": target_file,
+                "start_index": min(start_idx, target_index) if not reversed_dir else max(start_idx, target_index),
+                "end_index": target_index,
+                "reversed": reversed_dir,
+            }
+        )
 
     def collect_route_between_locations(
         self,
@@ -732,7 +727,7 @@ class GPXRouteManager:
         target_lat: float,
         target_lon: float,
         booking: dict[str, Any],
-        previous_last_file: Optional[dict[str, Any]] = None,
+        previous_last_file: dict[str, Any] | None = None,
     ) -> None:
         """Calculates and chains GPX files between start and target locations.
 
@@ -754,8 +749,12 @@ class GPXRouteManager:
             logger.info(f"🔗 Continuation from: {previous_last_file['file']} (Index {previous_last_file['end_index']})")
         logger.info(f"{'=' * 80}")
 
-        start_file, start_idx, force_dir = self._find_start_pos(start_lat, start_lon, target_lat, target_lon, previous_last_file)
-        target_file, target_idx, target_side_lat, target_side_lon = self._find_target_pos(start_lat, start_lon, target_lat, target_lon)
+        start_file, start_idx, force_dir = self._find_start_pos(
+            start_lat, start_lon, target_lat, target_lon, previous_last_file
+        )
+        target_file, target_idx, target_side_lat, target_side_lon = self._find_target_pos(
+            start_lat, start_lon, target_lat, target_lon
+        )
 
         if not start_file or not target_file:
             logger.warning("⚠️  No matching GPX files found!")
@@ -793,7 +792,7 @@ class GPXRouteManager:
             last = context.route_files[-1]
             booking["_last_gpx_file"] = {"file": last["file"], "end_index": last["end_index"], "reversed": last["reversed"]}
 
-    def merge_gpx_files(self, route_files: list[dict[str, Any]], output_dir: Path, booking: dict[str, Any]) -> Optional[Path]:
+    def merge_gpx_files(self, route_files: list[dict[str, Any]], output_dir: Path, booking: dict[str, Any]) -> Path | None:
         """Merges multiple GPX track segments into a single GPX file.
 
         Args:
@@ -883,7 +882,7 @@ class GPXRouteManager:
 
         return bookings_sorted
 
-    def extend_track2hotel(self, booking: dict[str, Any], output_path: Path) -> Optional[Path]:
+    def extend_track2hotel(self, booking: dict[str, Any], output_path: Path) -> Path | None:
         """Extends the route to the hotel using BRouter."""
         if not booking.get("gpx_files") or "latitude" not in booking:
             if "gpx_files" not in booking or not booking["gpx_files"]:
@@ -925,7 +924,9 @@ class GPXRouteManager:
             for p in pts:
                 segment.points.append(gpxpy.gpx.GPXTrackPoint(p.latitude, p.longitude, elevation=p.elevation, time=p.time))
 
-            new_pts = get_route2address_as_points(pts[-1].latitude, pts[-1].longitude, booking["latitude"], booking["longitude"])
+            new_pts = get_route2address_as_points(
+                pts[-1].latitude, pts[-1].longitude, booking["latitude"], booking["longitude"]
+            )
             for p in new_pts:
                 segment.points.append(gpxpy.gpx.GPXTrackPoint(p.latitude, p.longitude, elevation=p.elevation, time=p.time))
 
@@ -940,12 +941,13 @@ class GPXRouteManager:
             out_file.write_text(extended_gpx.to_xml(), encoding="utf-8")
 
             booking["gpx_files"][-1] = {
-                "file": out_name, "start_index": 0, "end_index": len(segment.points) - 1,
-                "reversed": False, "is_to_hotel": True
+                "file": out_name,
+                "start_index": 0,
+                "end_index": len(segment.points) - 1,
+                "reversed": False,
+                "is_to_hotel": True,
             }
-            booking["_last_gpx_file"] = {
-                "file": out_name, "end_index": len(segment.points) - 1, "reversed": False
-            }
+            booking["_last_gpx_file"] = {"file": out_name, "end_index": len(segment.points) - 1, "reversed": False}
 
             logger.info(f"   ✅ Hotel point added. Total: {len(segment.points)} points")
             logger.info(f"   💾 Saved as: {out_name}")

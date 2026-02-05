@@ -124,10 +124,12 @@ warn_unreachable = true
 strict_equality = true
 pretty = true
 
-# ===== Ruff Configuration (Alternative to Flake8) =====
+# ===== Ruff Configuration =====
 [tool.ruff]
 line-length = 127
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings

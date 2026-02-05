@@ -1,12 +1,13 @@
 import re
-from bs4 import BeautifulSoup
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
-from .logger import get_logger
+from bs4 import BeautifulSoup
+
+from .exceptions import ParsingError
 from .geoapify import find_top_tourist_sights
 from .geocode import geocode_address
-from .exceptions import ParsingError
+from .logger import get_logger
 
 # Initialize Logger
 logger = get_logger()
@@ -27,7 +28,7 @@ MONTHS_DE = {
 }
 
 
-def parse_date(text: str) -> Optional[str]:
+def parse_date(text: str) -> str | None:
     """Parse a German date in format 'Day, D. Month Year'.
 
     Args:
@@ -48,7 +49,7 @@ def parse_date(text: str) -> Optional[str]:
     return None
 
 
-def parse_gps_coordinates(gps_text: str) -> tuple[Optional[float], Optional[float]]:
+def parse_gps_coordinates(gps_text: str) -> tuple[float | None, float | None]:
     """Convert GPS coordinates from degrees/minutes to decimal degrees.
 
     Args:
@@ -84,7 +85,7 @@ def parse_gps_coordinates(gps_text: str) -> tuple[Optional[float], Optional[floa
     return lat, lon
 
 
-def parse_airbnb_booking(soup: BeautifulSoup) -> Optional[dict[str, Any]]:
+def parse_airbnb_booking(soup: BeautifulSoup) -> dict[str, Any] | None:
     """Extract booking information from an Airbnb HTML confirmation.
 
     Args:
@@ -224,7 +225,7 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
         content = html_path.read_text(encoding="utf-8")
         soup = BeautifulSoup(content, "lxml")
     except Exception as e:
-        raise ParsingError(f"Failed to read/parse {html_path}: {e}")
+        raise ParsingError(f"Failed to read/parse {html_path}: {e}") from e
 
     text = soup.get_text(" ", strip=True)
 
@@ -249,22 +250,28 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
     if script_tag:
         script_text = script_tag.string
         h_m = re.search(r"hotel_name:\s*'([^']*)'", script_text)
-        if h_m: hotel_name = h_m.group(1)
+        if h_m:
+            hotel_name = h_m.group(1)
         c_m = re.search(r"city_name:\s*'([^']*)'", script_text)
-        if c_m: city_name = c_m.group(1)
+        if c_m:
+            city_name = c_m.group(1)
         co_m = re.search(r"country_name:\s*'([^']*)'", script_text)
-        if co_m: country_name = co_m.group(1)
+        if co_m:
+            country_name = co_m.group(1)
         di_m = re.search(r"date_in:\s*'([^']*)'", script_text)
-        if di_m: arrival_date = di_m.group(1)
+        if di_m:
+            arrival_date = di_m.group(1)
         do_m = re.search(r"date_out:\s*'([^']*)'", script_text)
-        if do_m: departure_date = do_m.group(1)
+        if do_m:
+            departure_date = do_m.group(1)
 
     # Primary: hotel-details__address (new format)
     hotel_details_div = soup.find("div", class_="hotel-details__address")
     if hotel_details_div:
         if not hotel_name:
             h2_tag = hotel_details_div.find("h2")
-            if h2_tag: hotel_name = h2_tag.text.strip()
+            if h2_tag:
+                hotel_name = h2_tag.text.strip()
         if not address:
             addr_strong = hotel_details_div.find("strong", string="Adresse:")
             if addr_strong and addr_strong.next_sibling:
@@ -272,7 +279,8 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
         phone_strong = hotel_details_div.find("strong", string="Telefon:")
         if phone_strong:
             phone_span = phone_strong.find_next("span", class_="u-phone")
-            if phone_span: phone = phone_span.text.strip()
+            if phone_span:
+                phone = phone_span.text.strip()
         gps_strong = hotel_details_div.find("strong", string="GPS-Koordinaten:")
         if gps_strong and gps_strong.next_sibling:
             gps_lat, gps_lon = parse_gps_coordinates(gps_strong.next_sibling.strip())
@@ -292,7 +300,8 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
             time_div = arrival_col.find("div", class_="dates__time")
             if time_div:
                 time_m = re.search(r"(\d{1,2}:\d{2})\s*-", time_div.text.strip())
-                if time_m: checkin_time = time_m.group(1)
+                if time_m:
+                    checkin_time = time_m.group(1)
 
         departure_cols = dates_section.find_all("div", class_="col-6 dates__item")
         if len(departure_cols) > 1 and not departure_date:
@@ -307,11 +316,13 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
     # Backup: old methods
     if not arrival_date:
         arr_elem = soup.find("h3", string="Anreise")
-        if arr_elem: arrival_date = parse_date(arr_elem.find_next("div").text)
+        if arr_elem:
+            arrival_date = parse_date(arr_elem.find_next("div").text)
 
     if not departure_date:
         dep_elem = soup.find("h3", string="Abreise")
-        if dep_elem: departure_date = parse_date(dep_elem.find_next("div").text)
+        if dep_elem:
+            departure_date = parse_date(dep_elem.find_next("div").text)
 
     if not checkin_time:
         try:
@@ -319,11 +330,13 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
             if checkin_elem:
                 checkin_raw = checkin_elem.find_next("div").find_next("div").text
                 checkin_time = checkin_raw.split("-")[0].strip()
-        except (AttributeError, IndexError): pass
+        except (AttributeError, IndexError):
+            pass
 
     if not address:
         addr_label = soup.find("div", string="Adresse")
-        if addr_label: address = addr_label.find_next("div").text.strip()
+        if addr_label:
+            address = addr_label.find_next("div").text.strip()
 
     # Amenities
     has_kitchen = has_washing_machine = has_breakfast = False
@@ -339,14 +352,17 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
     if meals_header:
         parent = meals_header.find_parent(["tr", "th"])
         td = parent.find_next("td") if parent else meals_header.find_next("td")
-        if td: has_breakfast = "Frühstück" in td.get_text(" ")
+        if td:
+            has_breakfast = "Frühstück" in td.get_text(" ")
 
     # Price
     total_price = None
     price_elem = soup.find("div", attrs={"data-total-price": True})
     if price_elem:
-        try: total_price = float(price_elem.get("data-total-price"))
-        except (ValueError, TypeError): pass
+        try:
+            total_price = float(price_elem.get("data-total-price"))
+        except (ValueError, TypeError):
+            pass
 
     # Cancellation
     cancel_m = re.search(r"bis (\d{1,2}\. [A-Za-zäöüÄÖÜ]+ \d{4})", text)
@@ -355,12 +371,14 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
     # Fallback for hotel_name
     if not hotel_name:
         h_elem = soup.select_one(".gta-modal-preview__hotel-name .bui-text")
-        if h_elem: hotel_name = h_elem.text.strip()
+        if h_elem:
+            hotel_name = h_elem.text.strip()
         if not hotel_name:
             container = soup.find("div", class_="gta-modal-preview__hotel-name")
             if container:
                 bui = container.find("div", class_="bui-text")
-                if bui: hotel_name = bui.text.strip()
+                if bui:
+                    hotel_name = bui.text.strip()
 
     return {
         "hotel_name": hotel_name,

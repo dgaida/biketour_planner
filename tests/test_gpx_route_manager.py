@@ -9,13 +9,13 @@ Testet die GPXRouteManager-Klasse inklusive:
 - Mehrtägige Touren (previous_last_file)
 """
 
-import pytest
-
 # from pathlib import Path
 from unittest.mock import patch
-import gpxpy
-from biketour_planner.gpx_route_manager import GPXRouteManager
 
+import gpxpy
+import pytest
+
+from biketour_planner.gpx_route_manager import GPXRouteManager
 
 # ============================================================================
 # Test-Fixtures
@@ -597,7 +597,11 @@ class TestEdgeCases:
         booking = {}
 
         manager.collect_route_between_locations(
-            start_lat=48.0, start_lon=11.0, target_lat=50.0, target_lon=13.0, booking=booking  # Sehr weit entfernt
+            start_lat=48.0,
+            start_lon=11.0,
+            target_lat=50.0,
+            target_lon=13.0,
+            booking=booking,  # Sehr weit entfernt
         )
 
         # Sollte trotzdem Werte setzen

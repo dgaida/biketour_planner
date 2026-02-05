@@ -7,11 +7,12 @@ Testet das Lesen von zusätzlichen Tagesinformationen aus Excel-Dateien inklusiv
 - Fehlerbehandlung bei ungültigen Daten
 """
 
-import pytest
 from datetime import datetime
-from openpyxl import Workbook
-from biketour_planner.excel_info_reader import read_daily_info_from_excel
 
+import pytest
+from openpyxl import Workbook
+
+from biketour_planner.excel_info_reader import read_daily_info_from_excel
 
 # ============================================================================
 # Test-Fixtures
@@ -417,8 +418,8 @@ class TestReadDailyInfoFromExcel:
         ws = wb.active
 
         for i in range(1, 11):
-            ws[f"B{i+1}"] = datetime(2026, 5, i)
-            ws[f"C{i+1}"] = f"Info für Tag {i}"
+            ws[f"B{i + 1}"] = datetime(2026, 5, i)
+            ws[f"C{i + 1}"] = f"Info für Tag {i}"
 
         excel_file = tmp_path / "multiple.xlsx"
         wb.save(excel_file)

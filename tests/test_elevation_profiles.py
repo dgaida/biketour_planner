@@ -8,21 +8,22 @@ Testet die Höhenprofil-Generierung inklusive:
 - Hinzufügen von Profilen zu PDF-Stories
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import numpy as np
 from io import BytesIO
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import numpy as np
+import pytest
 from reportlab.lib.styles import ParagraphStyle
+
 from biketour_planner.elevation_profiles import (
-    extract_elevation_profile,
-    calculate_gradient,
-    get_color_for_gradient,
-    create_elevation_profile_plot,
     add_elevation_profiles_to_story,
+    calculate_gradient,
+    create_elevation_profile_plot,
+    extract_elevation_profile,
+    get_color_for_gradient,
     get_merged_gpx_files_from_bookings,
 )
-
 
 # ============================================================================
 # Test-Fixtures
@@ -458,7 +459,7 @@ class TestCreateElevationProfilePlot:
         invalid_file = tmp_path / "invalid.gpx"
         invalid_file.write_text("nicht gpx", encoding="utf-8")
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="Konnte invalid.gpx nicht lesen"):
             create_elevation_profile_plot(invalid_file, booking_with_stats)
 
 
@@ -506,8 +507,8 @@ class TestAddElevationProfilesToStory:
 <gpx version="1.1">
   <trk>
     <trkseg>
-      <trkpt lat="48.{i}" lon="11.{i}"><ele>{500 + i*10}</ele></trkpt>
-      <trkpt lat="48.{i+1}" lon="11.{i+1}"><ele>{510 + i*10}</ele></trkpt>
+      <trkpt lat="48.{i}" lon="11.{i}"><ele>{500 + i * 10}</ele></trkpt>
+      <trkpt lat="48.{i + 1}" lon="11.{i + 1}"><ele>{510 + i * 10}</ele></trkpt>
     </trkseg>
   </trk>
 </gpx>"""

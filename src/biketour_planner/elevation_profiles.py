@@ -5,10 +5,10 @@ Dieses Modul erstellt farbcodierte Höhenprofile aus GPX-Dateien:
 - Grün für Abfahrten (desto steiler, desto kräftiger)
 """
 
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
 
 import matplotlib
 import numpy as np
@@ -183,16 +183,16 @@ def create_elevation_profile_plot(
     # Daten extrahieren
     distances, elevations = extract_elevation_profile(gpx_file)
     t1 = time.time()
-    logger.debug(f"  └─ Datenextraktion: {t1-t0:.2f}s")
+    logger.debug(f"  └─ Datenextraktion: {t1 - t0:.2f}s")
 
     gradients = calculate_gradient(distances, elevations)
     t2 = time.time()
-    logger.debug(f"  └─ Gradientberechnung: {t2-t1:.2f}s")
+    logger.debug(f"  └─ Gradientberechnung: {t2 - t1:.2f}s")
 
     # Plot erstellen
     fig, ax = plt.subplots(figsize=figsize, dpi=100)
     t3 = time.time()
-    logger.debug(f"  └─ Figure erstellen: {t3-t2:.2f}s")
+    logger.debug(f"  └─ Figure erstellen: {t3 - t2:.2f}s")
 
     # OPTIMIERUNG: Reduziere Anzahl der Segmente durch Downsampling bei vielen Punkten
     max_segments = 5000  # Maximal 500 farbige Segmente für bessere Performance
@@ -232,12 +232,14 @@ def create_elevation_profile_plot(
             )
 
     t4 = time.time()
-    logger.debug(f"  └─ Farbsegmente zeichnen ({len(distances_plot)-1} Segmente, {len(color_segments)} Farben): {t4-t3:.2f}s")
+    logger.debug(
+        f"  └─ Farbsegmente zeichnen ({len(distances_plot) - 1} Segmente, {len(color_segments)} Farben): {t4 - t3:.2f}s"
+    )
 
     # Schwarze Konturlinie oben
     ax.plot(distances, elevations, color="black", linewidth=1.5, zorder=10)
     t5 = time.time()
-    logger.debug(f"  └─ Konturlinie zeichnen: {t5-t4:.2f}s")
+    logger.debug(f"  └─ Konturlinie zeichnen: {t5 - t4:.2f}s")
 
     # Beschriftungen
     if title is None:
@@ -275,13 +277,13 @@ def create_elevation_profile_plot(
         fontsize=10,
         verticalalignment="top",
         horizontalalignment="center",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+        bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5},
     )
 
     # WICHTIG: tight_layout weglassen - ist sehr langsam bei vielen Plots
     plt.tight_layout()
     t6 = time.time()
-    logger.debug(f"  └─ Layout & Beschriftungen: {t6-t5:.2f}s")
+    logger.debug(f"  └─ Layout & Beschriftungen: {t6 - t5:.2f}s")
 
     # In BytesIO speichern
     img_buffer = BytesIO()
@@ -289,7 +291,7 @@ def create_elevation_profile_plot(
     # KRITISCHER SCHRITT: Dieser ist oft der Flaschenhals
     plt.savefig(img_buffer, format="png", dpi=100, bbox_inches="tight")
     t7 = time.time()
-    logger.debug(f"  └─ savefig() (KRITISCH): {t7-t6:.2f}s")
+    logger.debug(f"  └─ savefig() (KRITISCH): {t7 - t6:.2f}s")
 
     # NEU: Validiere dass tatsächlich Daten im Buffer sind
     buffer_size = img_buffer.tell()
@@ -299,7 +301,7 @@ def create_elevation_profile_plot(
 
     plt.close(fig)
     t8 = time.time()
-    logger.debug(f"  └─ close(): {t8-t7:.2f}s")
+    logger.debug(f"  └─ close(): {t8 - t7:.2f}s")
     if buffer_size == 0:
         raise ValueError("savefig() hat keine Daten in den Buffer geschrieben")
 
@@ -311,7 +313,7 @@ def create_elevation_profile_plot(
 
     # Warnung bei langsamen Plots
     if total_time > 5.0:
-        logger.warning(f"⚠️  Plot für {gpx_file.name} war langsam ({total_time:.1f}s) - savefig benötigte {t7-t6:.1f}s")
+        logger.warning(f"⚠️  Plot für {gpx_file.name} war langsam ({total_time:.1f}s) - savefig benötigte {t7 - t6:.1f}s")
 
     return img_buffer
 

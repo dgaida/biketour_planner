@@ -1,9 +1,10 @@
 import json
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
+
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
-from datetime import datetime, timedelta
 
 # from .geoapify import get_names_as_comma_separated_string
 from .excel_hyperlinks import create_tourist_sights_hyperlinks
@@ -93,7 +94,7 @@ def export_bookings_to_excel(json_path: Path, template_path: Path, output_path: 
         start_row: Zeile ab der die Daten eingefügt werden (1-basiert)
     """
     # JSON laden
-    with open(json_path, "r", encoding="utf-8") as f:
+    with open(json_path, encoding="utf-8") as f:
         bookings = json.load(f)
 
     # Nach Anreisedatum sortieren

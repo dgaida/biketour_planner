@@ -7,11 +7,12 @@ Testet das Parsing von Booking.com HTML-Bestätigungen inklusive:
 """
 
 import pytest
+
 from biketour_planner.parse_booking import (
+    MONTHS_DE,
+    extract_booking_info,
     parse_date,
     parse_gps_coordinates,
-    extract_booking_info,
-    MONTHS_DE,
 )
 
 

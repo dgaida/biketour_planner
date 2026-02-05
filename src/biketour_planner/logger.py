@@ -6,11 +6,10 @@ auf die Konsole als auch in Dateien schreiben kann.
 
 import logging
 import sys
+from datetime import datetime
 
 # import os
 from pathlib import Path
-from typing import Optional
-from datetime import datetime
 
 # Entferne die hartcodierte LOG_FILE Konstante
 # LOG_FILE = Path(os.path.join("logs", f"app_{datetime.now().strftime('%Y%m%d_%H%M')}.log"))
@@ -19,7 +18,7 @@ from datetime import datetime
 def setup_logger(
     name: str = "biketour_planner",
     level: int = None,  # Geändert von logging.INFO
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
     console_output: bool = True,
 ) -> logging.Logger:
     """Konfiguriert und gibt einen Logger zurück.

@@ -7,10 +7,12 @@ Testet die Geoapify API Integration inklusive:
 - Umgang mit fehlenden/ungültigen API-Keys
 """
 
-import pytest
-from unittest.mock import patch, Mock
-import requests
 from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+import requests
+
 from biketour_planner.geoapify import (
     find_top_tourist_sights,
     get_names_as_comma_separated_string,

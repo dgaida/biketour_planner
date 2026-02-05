@@ -7,13 +7,15 @@ Testet die BRouter API Integration inklusive:
 - Validierung der GPX-Ausgabe
 """
 
-import pytest
-from unittest.mock import patch, Mock
-import requests
+from unittest.mock import Mock, patch
+
 import gpxpy
+import pytest
+import requests
+
 from biketour_planner.brouter import (
-    route_to_address,
     get_route2address_as_points,
+    route_to_address,
 )
 from biketour_planner.exceptions import RoutingError
 
@@ -448,7 +450,7 @@ class TestGetRoute2AddressAsPoints:
         """Testet Verhalten bei ungültigem XML."""
         mock_route.return_value = "ungültiges XML <gpx"
 
-        with pytest.raises(Exception):  # gpxpy wirft verschiedene Exceptions
+        with pytest.raises(RoutingError, match="Failed to parse GPX"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -456,7 +458,10 @@ class TestGetRoute2AddressAsPoints:
         """Testet Verhalten bei sehr großer Route (viele Punkte)."""
         # Erstelle GPX with 1000 points
         points_xml = "\n".join(
-            [f'<trkpt lat="{52.5200 - i*0.001}" lon="{13.4050 - i*0.001}"><ele>{35+i}</ele></trkpt>' for i in range(1000)]
+            [
+                f'<trkpt lat="{52.5200 - i * 0.001}" lon="{13.4050 - i * 0.001}"><ele>{35 + i}</ele></trkpt>'
+                for i in range(1000)
+            ]
         )
 
         gpx_string = f"""<?xml version="1.0" encoding="UTF-8"?>

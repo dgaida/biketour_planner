@@ -7,10 +7,9 @@ Dieses Modul erstellt ICS-Kalenderdateien mit:
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict
 
-from .logger import get_logger
 from .constants import ICS_MAX_LINE_LENGTH
+from .logger import get_logger
 
 # Initialisiere Logger
 logger = get_logger()
@@ -92,7 +91,7 @@ def create_ics_event(
     return "\n".join(event)
 
 
-def create_accommodation_description(booking: Dict) -> str:
+def create_accommodation_description(booking: dict) -> str:
     """Erstellt eine Beschreibung für Übernachtungsereignisse.
 
     Extrahiert alle relevanten Informationen aus dem Buchungs-Dictionary
@@ -163,7 +162,7 @@ def create_accommodation_description(booking: Dict) -> str:
 
 
 def export_bookings_to_ics(
-    bookings: List[Dict],
+    bookings: list[dict],
     output_path: Path,
 ) -> None:
     """Exportiert Buchungsinformationen in eine ICS-Kalenderdatei.

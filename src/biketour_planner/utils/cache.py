@@ -4,8 +4,9 @@ Caching utilities for the bike tour planner.
 
 import functools
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -22,15 +23,15 @@ def load_json_cache(path: Path) -> dict:
     """
     if path.exists():
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
     return {}
 
 
 def json_cache(
-    cache_file: Path, cache_dict_name: Optional[str] = None, cache_file_var_name: Optional[str] = None
+    cache_file: Path, cache_dict_name: str | None = None, cache_file_var_name: str | None = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorator for JSON-based function caching.
 
@@ -59,8 +60,8 @@ def json_cache(
                 cache = globals_dict[cache_dict_name]
             else:
                 if not hasattr(wrapper, "_internal_cache"):
-                    setattr(wrapper, "_internal_cache", {})
-                cache = getattr(wrapper, "_internal_cache")
+                    wrapper._internal_cache = {}
+                cache = wrapper._internal_cache
 
             # Create cache key from function arguments
             cache_key = f"{args}_{kwargs}"
@@ -82,7 +83,7 @@ def json_cache(
                         p.parent.mkdir(parents=True, exist_ok=True)
                         with open(p, "w", encoding="utf-8") as f:
                             json.dump(cache, f, indent=2, ensure_ascii=False)
-                except (IOError, TypeError):
+                except (OSError, TypeError):
                     pass
 
             return result

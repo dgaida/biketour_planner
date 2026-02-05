@@ -1,7 +1,8 @@
-import pytest
-from pathlib import Path
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 
 @pytest.fixture
 def booking_html():
@@ -24,6 +25,7 @@ def booking_html():
     </body>
     </html>
     """
+
 
 @pytest.fixture
 def complete_tour_setup(tmp_path, booking_html):
@@ -53,24 +55,16 @@ def complete_tour_setup(tmp_path, booking_html):
     passes = [{"passname": "Test Pass", "latitude": 43.51, "longitude": 16.44}]
     (gpx_dir / "Paesse.json").write_text(json.dumps(passes))
 
-    return {
-        "booking_dir": booking_dir,
-        "gpx_dir": gpx_dir,
-        "output_dir": tmp_path / "output"
-    }
+    return {"booking_dir": booking_dir, "gpx_dir": gpx_dir, "output_dir": tmp_path / "output"}
+
 
 @pytest.mark.integration
-@patch('biketour_planner.brouter.requests.get')
-@patch('biketour_planner.geoapify.requests.get')
-def test_complete_planning_workflow(
-    mock_geoapify,
-    mock_brouter,
-    complete_tour_setup,
-    booking_html
-):
+@patch("biketour_planner.brouter.requests.get")
+@patch("biketour_planner.geoapify.requests.get")
+def test_complete_planning_workflow(mock_geoapify, mock_brouter, complete_tour_setup, booking_html):
     """Test complete workflow: parse -> route -> merge."""
-    from biketour_planner.parse_booking import create_all_bookings
     from biketour_planner.gpx_route_manager import GPXRouteManager
+    from biketour_planner.parse_booking import create_all_bookings
 
     # Mock external services
     mock_brouter.return_value = MagicMock(
@@ -83,25 +77,22 @@ def test_complete_planning_workflow(
    <trkpt lat="43.5081" lon="16.4402"><ele>10</ele></trkpt>
   </trkseg>
  </trk>
-</gpx>"""
+</gpx>""",
     )
-    mock_geoapify.return_value = MagicMock(
-        status_code=200,
-        json=lambda: {"features": []}
-    )
+    mock_geoapify.return_value = MagicMock(status_code=200, json=lambda: {"features": []})
 
     setup = complete_tour_setup
 
     # Add another booking so we have a route between them
-    booking2_html = booking_html.replace('2026-05-15', '2026-05-16').replace('2026-05-16', '2026-05-17').replace('Test Hotel E2E', 'Hotel 2')
+    booking2_html = (
+        booking_html.replace("2026-05-15", "2026-05-16")
+        .replace("2026-05-16", "2026-05-17")
+        .replace("Test Hotel E2E", "Hotel 2")
+    )
     (setup["booking_dir"] / "booking2.html").write_text(booking2_html, encoding="utf-8")
 
     # 1. Parse bookings
-    bookings = create_all_bookings(
-        setup["booking_dir"],
-        search_radius_m=5000,
-        max_pois=2
-    )
+    bookings = create_all_bookings(setup["booking_dir"], search_radius_m=5000, max_pois=2)
     assert len(bookings) == 2
 
     # 2. Process routes

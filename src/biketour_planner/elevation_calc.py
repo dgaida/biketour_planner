@@ -3,9 +3,7 @@
 import numpy as np
 
 
-def calculate_elevation_gain_simple(
-    elevations: list[float], threshold: float = 3.0, calculate_descent: bool = False
-) -> float:
+def calculate_elevation_gain_simple(elevations: list[float], threshold: float = 3.0, calculate_descent: bool = False) -> float:
     """Berechnet positive Höhenmeter mit Schwellwert (einfache Methode).
 
     Diese Methode ignoriert kleine Schwankungen unter dem Schwellwert und

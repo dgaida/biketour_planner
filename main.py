@@ -5,10 +5,10 @@ from pathlib import Path
 
 from biketour_planner.config import get_config
 from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
+from biketour_planner.ics_export import export_bookings_to_ics
 from biketour_planner.parse_booking import create_all_bookings
 from biketour_planner.pass_finder import load_json, process_passes
 from biketour_planner.pdf_export import export_bookings_to_pdf
-from biketour_planner.ics_export import export_bookings_to_ics
 
 # Lade Konfiguration
 config = get_config()
