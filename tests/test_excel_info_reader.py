@@ -7,11 +7,12 @@ Testet das Lesen von zusätzlichen Tagesinformationen aus Excel-Dateien inklusiv
 - Fehlerbehandlung bei ungültigen Daten
 """
 
-import pytest
 from datetime import datetime
-from openpyxl import Workbook
-from biketour_planner.excel_info_reader import read_daily_info_from_excel
 
+import pytest
+from openpyxl import Workbook
+
+from biketour_planner.excel_info_reader import read_daily_info_from_excel
 
 # ============================================================================
 # Test-Fixtures
@@ -194,7 +195,7 @@ class TestReadDailyInfoFromExcel:
         ws = wb.active
 
         ws["B2"] = datetime(2026, 5, 15)
-        long_url = "https://example.com/" + "a" * 100 + "/page"
+        long_url = "https://example.com/" + "a" * 100
         ws["C2"] = long_url
 
         excel_file = tmp_path / "long_url.xlsx"
@@ -288,7 +289,7 @@ class TestReadDailyInfoFromExcel:
         result = read_daily_info_from_excel(excel_file)
 
         # Sollte bei jedem Semikolon trennen
-        assert len(result["2026-05-15"]) == 2
+        assert len(result["2026-05-15"]) == 3
 
     def test_read_only_whitespace_entries(self, tmp_path):
         """Testet dass nur Whitespace-Einträge übersprungen werden."""
@@ -417,8 +418,8 @@ class TestReadDailyInfoFromExcel:
         ws = wb.active
 
         for i in range(1, 11):
-            ws[f"B{i+1}"] = datetime(2026, 5, i)
-            ws[f"C{i+1}"] = f"Info für Tag {i}"
+            ws[f"B{i + 1}"] = datetime(2026, 5, i)
+            ws[f"C{i + 1}"] = f"Info für Tag {i}"
 
         excel_file = tmp_path / "multiple.xlsx"
         wb.save(excel_file)

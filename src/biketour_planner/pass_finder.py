@@ -6,7 +6,7 @@ sie den nächstgelegenen Hotels zu.
 
 import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from .config import get_config
 from .geocode import geocode_address
@@ -15,10 +15,10 @@ from .logger import get_logger
 
 logger = get_logger()
 
-JsonData = Union[dict[str, Any], list[dict[str, Any]]]
+JsonData = dict[str, Any] | list[dict[str, Any]]
 
 
-def load_json(file_path: Union[Path, str]) -> JsonData:
+def load_json(file_path: Path | str) -> JsonData:
     """Lädt eine JSON-Datei mit Error-Handling.
 
     Die Funktion sucht die Datei relativ zum 'src/data/' Verzeichnis.
@@ -49,7 +49,7 @@ def load_json(file_path: Union[Path, str]) -> JsonData:
         raise
 
 
-def get_gpx_endpoints(gpx_file: Path) -> Optional[tuple[float, float, float, float]]:
+def get_gpx_endpoints(gpx_file: Path) -> tuple[float, float, float, float] | None:
     """Extrahiert Start- und Endpunkt aus einer GPX-Datei.
 
     Args:
@@ -84,7 +84,7 @@ def get_gpx_endpoints(gpx_file: Path) -> Optional[tuple[float, float, float, flo
     )
 
 
-def find_nearest_hotel(pass_lat: float, pass_lon: float, bookings: list[dict]) -> Optional[dict]:
+def find_nearest_hotel(pass_lat: float, pass_lon: float, bookings: list[dict]) -> dict | None:
     """Findet das nächstgelegene Hotel zu einem Pass.
 
     Args:
@@ -112,7 +112,7 @@ def find_nearest_hotel(pass_lat: float, pass_lon: float, bookings: list[dict]) -
             nearest_booking = booking
 
     if nearest_booking:
-        logger.info(f"Nächstes Hotel zu Pass: {nearest_booking.get('hotel_name')} " f"({min_distance / 1000:.1f} km entfernt)")
+        logger.info(f"Nächstes Hotel zu Pass: {nearest_booking.get('hotel_name')} ({min_distance / 1000:.1f} km entfernt)")
 
     return nearest_booking
 
@@ -123,9 +123,9 @@ def find_pass_track(
     pass_lat: float,
     pass_lon: float,
     gpx_dir: Path,
-    hotel_radius_km: float = None,
-    pass_radius_km: float = None,
-) -> Optional[Path]:
+    hotel_radius_km: float | None = None,
+    pass_radius_km: float | None = None,
+) -> Path | None:
     """Findet einen GPS-Track der vom Hotel zum Pass führt.
 
     Sucht nach GPX-Dateien deren:
@@ -176,9 +176,7 @@ def find_pass_track(
             if score < best_score:
                 best_score = score
                 best_track = gpx_file
-                logger.debug(
-                    f"Kandidat: {gpx_file.name} " f"(Hotel: {dist_start_to_hotel:.0f}m, Pass: {dist_end_to_pass:.0f}m)"
-                )
+                logger.debug(f"Kandidat: {gpx_file.name} (Hotel: {dist_start_to_hotel:.0f}m, Pass: {dist_end_to_pass:.0f}m)")
 
         # Prüfe auch umgekehrte Richtung (Ende bei Hotel, Start bei Pass)
         dist_end_to_hotel = haversine(end_lat, end_lon, hotel_lat, hotel_lon)
@@ -190,15 +188,14 @@ def find_pass_track(
                 best_score = score
                 best_track = gpx_file
                 logger.debug(
-                    f"Kandidat (reversed): {gpx_file.name} "
-                    f"(Hotel: {dist_end_to_hotel:.0f}m, Pass: {dist_start_to_pass:.0f}m)"
+                    f"Kandidat (reversed): {gpx_file.name} (Hotel: {dist_end_to_hotel:.0f}m, Pass: {dist_start_to_pass:.0f}m)"
                 )
 
     if best_track:
         logger.info(f"✅ Pass-Track gefunden: {best_track.name}")
     else:
         logger.warning(
-            f"⚠️  Kein passender Track gefunden " f"(Hotel-Radius: {hotel_radius_km}km, Pass-Radius: {pass_radius_km}km)"
+            f"⚠️  Kein passender Track gefunden (Hotel-Radius: {hotel_radius_km}km, Pass-Radius: {pass_radius_km}km)"
         )
 
     return best_track
@@ -208,8 +205,8 @@ def process_passes(
     passes_json_path: Path,
     gpx_dir: Path,
     bookings: list[dict],
-    hotel_radius_km: float = None,
-    pass_radius_km: float = None,
+    hotel_radius_km: float | None = None,
+    pass_radius_km: float | None = None,
 ) -> list[dict]:
     """Verarbeitet alle Pässe und ordnet GPS-Tracks zu Hotels zu.
 
@@ -259,9 +256,9 @@ def process_passes(
         logger.info("Keine Pässe in der JSON-Datei")
         return bookings
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info(f"Verarbeite {len(passes)} Pass/Pässe")
-    logger.info(f"{'='*80}\n")
+    logger.info(f"{'=' * 80}\n")
 
     # Initialisiere paesse_tracks für alle Buchungen
     for booking in bookings:
@@ -325,7 +322,7 @@ def process_passes(
 
                 logger.info(f"   ✅ Track zugeordnet: {track_file.name} → {hotel_name}")
                 logger.info(
-                    f"      Statistiken: {total_distance/1000:.1f} km, {int(total_ascent)} hm↑, {int(total_descent)} hm↓"
+                    f"      Statistiken: {total_distance / 1000:.1f} km, {int(total_ascent)} hm↑, {int(total_descent)} hm↓"
                 )
             else:
                 logger.warning(f"   ⚠️  Konnte GPX-Datei {track_file.name} nicht lesen")
@@ -334,9 +331,9 @@ def process_passes(
 
     # Zusammenfassung
     total_pass_tracks = sum(len(b.get("paesse_tracks", [])) for b in bookings)
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info(f"✅ {total_pass_tracks} Pass-Track(s) zugeordnet")
-    logger.info(f"{'='*80}\n")
+    logger.info(f"{'=' * 80}\n")
 
     return bookings
 

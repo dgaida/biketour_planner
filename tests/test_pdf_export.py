@@ -8,16 +8,17 @@ Testet den PDF-Export inklusive:
 - Excel-Info-Integration
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from reportlab.lib.styles import ParagraphStyle
+
+import pytest
 from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle
+
 from biketour_planner.pdf_export import (
     create_tourist_sights_links,
-    get_cancellation_cell_style,
     export_bookings_to_pdf,
+    get_cancellation_cell_style,
 )
-
 
 # ============================================================================
 # Test-Fixtures
@@ -435,6 +436,7 @@ class TestExportBookingsToPDF:
         json_path = tmp_path / "bookings.json"
         output_path = tmp_path / "output.pdf"
         excel_path = tmp_path / "info.xlsx"
+        excel_path.touch()  # Ensure file exists
 
         import json
 

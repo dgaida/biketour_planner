@@ -4,8 +4,9 @@ Dieses Modul liest eine Excel-Datei mit zusätzlichen Infos pro Tag ein
 und bereitet diese für den PDF-Export auf.
 """
 
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from openpyxl import load_workbook
 
 
@@ -82,12 +83,14 @@ def read_daily_info_from_excel(excel_path: Path, start_row: int = 2) -> dict[str
             # Konvertiere Links zu HTML
             formatted_items = []
             for item in info_items:
-                if item.startswith("http"):
+                if item.startswith(("http", "https", "ftp")):
                     # Extrahiere Linktext (nach letztem Slash oder verwende URL)
                     link_text = item.split("/")[-1] if "/" in item else item
                     # Begrenze Linktext auf 50 Zeichen
-                    if len(link_text) > 50:
-                        link_text = link_text[:47] + "..."
+                    from .constants import EXCEL_MAX_LINK_TEXT_LENGTH
+
+                    if len(link_text) > EXCEL_MAX_LINK_TEXT_LENGTH:
+                        link_text = link_text[: EXCEL_MAX_LINK_TEXT_LENGTH - 3] + "..."
 
                     html_link = f'<a href="{item}" color="blue"><u>{link_text}</u></a>'
                     formatted_items.append(html_link)

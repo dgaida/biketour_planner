@@ -7,8 +7,8 @@ Dieses Modul erstellt ICS-Kalenderdateien mit:
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict
 
+from .constants import ICS_MAX_LINE_LENGTH
 from .logger import get_logger
 
 # Initialisiere Logger
@@ -68,16 +68,16 @@ def create_ics_event(
         desc_escaped = escape_text(description)
         desc_line = f"DESCRIPTION:{desc_escaped}"
 
-        # Umbrechen bei > 75 Zeichen (mit Continuation auf neuer Zeile)
-        if len(desc_line) > 75:
+        # Umbrechen bei > ICS_MAX_LINE_LENGTH Zeichen (mit Continuation auf neuer Zeile)
+        if len(desc_line) > ICS_MAX_LINE_LENGTH:
             lines = []
-            current_line = desc_line[:75]
-            remaining = desc_line[75:]
+            current_line = desc_line[:ICS_MAX_LINE_LENGTH]
+            remaining = desc_line[ICS_MAX_LINE_LENGTH:]
             lines.append(current_line)
 
             while remaining:
-                lines.append(" " + remaining[:74])  # Space-Prefix für Continuation
-                remaining = remaining[74:]
+                lines.append(" " + remaining[: ICS_MAX_LINE_LENGTH - 1])  # Space-Prefix für Continuation
+                remaining = remaining[ICS_MAX_LINE_LENGTH - 1 :]
 
             event.extend(lines)
         else:
@@ -91,7 +91,7 @@ def create_ics_event(
     return "\n".join(event)
 
 
-def create_accommodation_description(booking: Dict) -> str:
+def create_accommodation_description(booking: dict) -> str:
     """Erstellt eine Beschreibung für Übernachtungsereignisse.
 
     Extrahiert alle relevanten Informationen aus dem Buchungs-Dictionary
@@ -162,7 +162,7 @@ def create_accommodation_description(booking: Dict) -> str:
 
 
 def export_bookings_to_ics(
-    bookings: List[Dict],
+    bookings: list[dict],
     output_path: Path,
 ) -> None:
     """Exportiert Buchungsinformationen in eine ICS-Kalenderdatei.

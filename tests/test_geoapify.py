@@ -7,9 +7,12 @@ Testet die Geoapify API Integration inklusive:
 - Umgang mit fehlenden/ungültigen API-Keys
 """
 
+from pathlib import Path
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
 import requests
+
 from biketour_planner.geoapify import (
     find_top_tourist_sights,
     get_names_as_comma_separated_string,
@@ -19,6 +22,7 @@ from biketour_planner.geoapify import (
 class TestFindTopTouristSights:
     """Tests für die find_top_tourist_sights Funktion."""
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key_12345")
     @patch("biketour_planner.geoapify.requests.get")
@@ -30,7 +34,7 @@ class TestFindTopTouristSights:
         mock_response.json.return_value = {
             "features": [
                 {"properties": {"name": "Diokletianpalast", "lat": 43.5081, "lon": 16.4402}},
-                {"properties": {"name": "Marjan Park", "lat": 43.5150, "lon": 16.4300}},
+                {"properties": {"name": "Marjan Park", "lat": 43.515, "lon": 16.43}},
             ]
         }
         mock_get.return_value = mock_response
@@ -49,12 +53,14 @@ class TestFindTopTouristSights:
         assert call_args[1]["params"]["categories"] == "tourism.sights"
         assert call_args[1]["params"]["apiKey"] == "test_key_12345"
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_custom_radius(self, mock_get):
         """Testet POI-Suche mit benutzerdefiniertem Radius."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 
@@ -63,12 +69,14 @@ class TestFindTopTouristSights:
         call_args = mock_get.call_args
         assert "circle:16.4402,43.5081,10000" in call_args[1]["params"]["filter"]
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_custom_limit(self, mock_get):
         """Testet POI-Suche mit benutzerdefiniertem Limit."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 
@@ -77,6 +85,7 @@ class TestFindTopTouristSights:
         call_args = mock_get.call_args
         assert call_args[1]["params"]["limit"] == 5
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", None)
     def test_find_sights_missing_api_key(self):
@@ -86,6 +95,7 @@ class TestFindTopTouristSights:
         # Sollte leeres Dict zurückgeben, nicht None
         assert result == {"features": []}
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
@@ -97,12 +107,14 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_http_error(self, mock_get):
         """Testet Handling von HTTP-Fehlern."""
         mock_response = Mock()
+        mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
 
@@ -110,6 +122,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
@@ -121,12 +134,14 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_empty_response(self, mock_get):
         """Testet Verhalten bei leerer Response."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 
@@ -135,12 +150,14 @@ class TestFindTopTouristSights:
         assert result is not None
         assert result["features"] == []
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_malformed_json(self, mock_get):
         """Testet Verhalten bei fehlerhaftem JSON."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Invalid JSON")
         mock_get.return_value = mock_response
 
@@ -148,6 +165,7 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
@@ -159,12 +177,14 @@ class TestFindTopTouristSights:
 
         assert result is None
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_coordinate_format(self, mock_get):
         """Testet korrekte Koordinaten-Formatierung im API-Call."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 
@@ -174,14 +194,17 @@ class TestFindTopTouristSights:
         filter_param = call_args[1]["params"]["filter"]
 
         # Prüfe dass Koordinaten im richtigen Format sind (lon,lat,radius)
-        assert "circle:16.440235,43.508134,5000" == filter_param
+        # Coordinates are now rounded to 4 decimal places in find_top_tourist_sights
+        assert "circle:16.4402,43.5081,5000" == filter_param
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_find_sights_negative_coordinates(self, mock_get):
         """Testet POI-Suche mit negativen Koordinaten."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 
@@ -346,12 +369,14 @@ class TestGetNamesAsCommaSeparatedString:
 class TestGeoapifyIntegration:
     """Integrationstests für die Geoapify-Module."""
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_full_workflow(self, mock_get):
         """Testet kompletten Workflow: Suche + Namen-Extraktion."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "features": [
                 {"properties": {"name": "Sehenswürdigkeit 1", "lat": 43.51, "lon": 16.44}},
@@ -369,6 +394,7 @@ class TestGeoapifyIntegration:
         assert "Sehenswürdigkeit 1" in names
         assert "Sehenswürdigkeit 2" in names
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", None)
     def test_workflow_missing_api_key(self):
@@ -381,12 +407,14 @@ class TestGeoapifyIntegration:
         names = get_names_as_comma_separated_string(data)
         assert names == ""
 
+    @patch("biketour_planner.geoapify.GEOAPIFY_CACHE_FILE", Path("non_existent.json"))
     @patch("biketour_planner.geoapify._geoapify_cache", {})  # Cache leeren
     @patch("biketour_planner.geoapify.geoapify_api_key", "test_key")
     @patch("biketour_planner.geoapify.requests.get")
     def test_workflow_no_results(self, mock_get):
         """Testet Workflow wenn keine POIs gefunden werden."""
         mock_response = Mock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"features": []}
         mock_get.return_value = mock_response
 

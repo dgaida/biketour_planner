@@ -9,14 +9,13 @@ Testet die internen Hilfsmethoden des GPXRouteManager inklusive:
 - _update_gpx_index_entry: GPX-Index aktualisieren
 """
 
-import pytest
-
 # from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 # import gpxpy
 from biketour_planner.gpx_route_manager import GPXRouteManager
-
 
 # ============================================================================
 # Test-Fixtures

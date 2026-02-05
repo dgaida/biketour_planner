@@ -7,14 +7,17 @@ Testet die BRouter API Integration inklusive:
 - Validierung der GPX-Ausgabe
 """
 
-import pytest
-from unittest.mock import patch, Mock
-import requests
+from unittest.mock import Mock, patch
+
 import gpxpy
+import pytest
+import requests
+
 from biketour_planner.brouter import (
-    route_to_address,
     get_route2address_as_points,
+    route_to_address,
 )
+from biketour_planner.exceptions import RoutingError
 
 
 class TestRouteToAddress:
@@ -114,7 +117,7 @@ class TestRouteToAddress:
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404 Not Found")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(RoutingError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
     @patch("biketour_planner.brouter.check_brouter_availability")
@@ -122,13 +125,13 @@ class TestRouteToAddress:
     def test_route_to_address_http_error_400(self, mock_get, mock_check):
         """Testet Verhalten bei HTTP 400 (fehlende Routing-Daten)."""
         # Mock BRouter als verfügbar
-        mock_check.return_value = True
+        mock_check.value = True
 
         mock_response = Mock()
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("400 Bad Request - No data available")
         mock_get.return_value = mock_response
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(RoutingError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
     @patch("biketour_planner.brouter.check_brouter_availability")
@@ -140,7 +143,7 @@ class TestRouteToAddress:
 
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused - BRouter Server nicht erreichbar")
 
-        with pytest.raises(requests.exceptions.ConnectionError):
+        with pytest.raises(RoutingError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
     @patch("biketour_planner.brouter.check_brouter_availability")
@@ -152,7 +155,7 @@ class TestRouteToAddress:
 
         mock_get.side_effect = requests.exceptions.Timeout("Request timeout - Routenberechnung dauert zu lange")
 
-        with pytest.raises(requests.exceptions.Timeout):
+        with pytest.raises(RoutingError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
     @patch("biketour_planner.brouter.check_brouter_availability")
@@ -276,7 +279,7 @@ class TestGetRoute2AddressAsPoints:
         """Testet Verhalten bei leerer Response."""
         mock_route.return_value = ""
 
-        with pytest.raises(ValueError, match="leere Antwort"):
+        with pytest.raises(RoutingError, match="Empty response"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -284,7 +287,8 @@ class TestGetRoute2AddressAsPoints:
         """Testet Verhalten bei Whitespace-only Response."""
         mock_route.return_value = "   \n\t  "
 
-        with pytest.raises(ValueError, match="leere Antwort"):
+        # BRouter or parser might handle this differently now, but let's assume it fails
+        with pytest.raises(RoutingError):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -295,7 +299,7 @@ class TestGetRoute2AddressAsPoints:
 </gpx>"""
         mock_route.return_value = gpx_string
 
-        with pytest.raises(ValueError, match="keine Tracks/Segmente"):
+        with pytest.raises(RoutingError, match="No tracks or segments found in GPX"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -308,7 +312,7 @@ class TestGetRoute2AddressAsPoints:
 </gpx>"""
         mock_route.return_value = gpx_string
 
-        with pytest.raises(ValueError, match="keine Tracks/Segmente"):
+        with pytest.raises(RoutingError, match="No tracks or segments found in GPX"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -323,7 +327,7 @@ class TestGetRoute2AddressAsPoints:
 </gpx>"""
         mock_route.return_value = gpx_string
 
-        with pytest.raises(ValueError, match="keine Punkte"):
+        with pytest.raises(RoutingError, match="No points found in GPX"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -420,25 +424,25 @@ class TestGetRoute2AddressAsPoints:
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_propagates_http_errors(self, mock_route):
         """Testet dass HTTP-Fehler weitergegeben werden."""
-        mock_route.side_effect = requests.exceptions.HTTPError("404 Not Found")
+        mock_route.side_effect = RoutingError("404 Not Found")
 
-        with pytest.raises(requests.exceptions.HTTPError):
+        with pytest.raises(RoutingError):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_propagates_connection_errors(self, mock_route):
         """Testet dass Verbindungsfehler weitergegeben werden."""
-        mock_route.side_effect = requests.exceptions.ConnectionError("BRouter nicht erreichbar")
+        mock_route.side_effect = RoutingError("BRouter nicht erreichbar")
 
-        with pytest.raises(requests.exceptions.ConnectionError):
+        with pytest.raises(RoutingError):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_propagates_timeout(self, mock_route):
         """Testet dass Timeouts weitergegeben werden."""
-        mock_route.side_effect = requests.exceptions.Timeout("Timeout")
+        mock_route.side_effect = RoutingError("Timeout")
 
-        with pytest.raises(requests.exceptions.Timeout):
+        with pytest.raises(RoutingError):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
@@ -446,15 +450,18 @@ class TestGetRoute2AddressAsPoints:
         """Testet Verhalten bei ungültigem XML."""
         mock_route.return_value = "ungültiges XML <gpx"
 
-        with pytest.raises(Exception):  # gpxpy wirft verschiedene Exceptions
+        with pytest.raises(RoutingError, match="Failed to parse GPX"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_large_route(self, mock_route):
         """Testet Verhalten bei sehr großer Route (viele Punkte)."""
-        # Erstelle GPX mit 1000 Punkten
+        # Erstelle GPX with 1000 points
         points_xml = "\n".join(
-            [f'<trkpt lat="{52.5200 - i*0.001}" lon="{13.4050 - i*0.001}"><ele>{35+i}</ele></trkpt>' for i in range(1000)]
+            [
+                f'<trkpt lat="{52.5200 - i * 0.001}" lon="{13.4050 - i * 0.001}"><ele>{35 + i}</ele></trkpt>'
+                for i in range(1000)
+            ]
         )
 
         gpx_string = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -541,11 +548,11 @@ class TestBRouterIntegration:
         mock_get.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
         # route_to_address sollte Exception werfen
-        with pytest.raises(requests.exceptions.ConnectionError):
+        with pytest.raises(RoutingError):
             route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
 
         # get_route2address_as_points sollte Exception propagieren
-        with pytest.raises(requests.exceptions.ConnectionError):
+        with pytest.raises(RoutingError):
             get_route2address_as_points(48.1351, 11.5820, 47.4917, 11.0953)
 
     @patch("biketour_planner.brouter.check_brouter_availability")

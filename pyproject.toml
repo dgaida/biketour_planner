@@ -26,6 +26,7 @@ dependencies = [
     "matplotlib",
     "PyYAML>=6.0",
     "tqdm",
+    "pydantic>=2.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -33,6 +34,15 @@ where = ["src"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+# ===== Pytest Configuration =====
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: marks tests as integration tests",
+    "slow: marks tests as slow",
+]
 
 # ===== Coverage Configuration =====
 [tool.coverage.run]
@@ -114,15 +124,12 @@ warn_unreachable = true
 strict_equality = true
 pretty = true
 
-# ===== Flake8 Configuration =====
-# Note: Flake8 doesn't support pyproject.toml natively
-# This is for documentation; create setup.cfg for actual config
-# [tool.flake8] - Not supported, use setup.cfg instead
-
-# ===== Ruff Configuration (Alternative to Flake8) =====
+# ===== Ruff Configuration =====
 [tool.ruff]
 line-length = 127
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings

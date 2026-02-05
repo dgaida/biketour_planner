@@ -13,10 +13,10 @@ import pytest
 # from pathlib import Path
 # import gpxpy
 from biketour_planner.gpx_route_manager_static import (
+    find_closest_point_in_track,
+    get_base_filename,
     haversine,
     read_gpx_file,
-    get_base_filename,
-    find_closest_point_in_track,
 )
 
 

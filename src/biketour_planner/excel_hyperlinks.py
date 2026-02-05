@@ -1,8 +1,7 @@
 from openpyxl.styles import Font
-from typing import Optional
 
 
-def create_tourist_sights_hyperlinks(worksheet, row: int, tourist_sights: Optional[dict]) -> None:
+def create_tourist_sights_hyperlinks(worksheet, row: int, tourist_sights: dict | None) -> None:
     """Erstellt anklickbare Hyperlinks für Sehenswürdigkeiten über mehrere Excel-Spalten.
 
     Der erste Link wird in Spalte I eingefügt, weitere Links in L, M, N, ...
