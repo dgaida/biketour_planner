@@ -18,7 +18,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .constants import PDF_PAGE_WIDTH_CM
-from .elevation_profiles import add_elevation_profiles_to_story, get_merged_gpx_files_from_bookings
+from .elevation_profiles import (
+    add_elevation_profiles_to_story_seq,
+    get_merged_gpx_files_from_bookings,
+)
 from .excel_export import create_accommodation_text, extract_city_name
 from .excel_info_reader import read_daily_info_from_excel
 from .gpx_route_manager_static import get_statistics4track, read_gpx_file
@@ -393,7 +396,8 @@ def export_bookings_to_pdf(
 
     if output_dir:
         gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)
-        add_elevation_profiles_to_story(
+        # Sequenzielle Erstellung der Höhenprofile (User-Wunsch zur Vermeidung von leeren Plots)
+        add_elevation_profiles_to_story_seq(
             story, gpx_files, bookings_sorted, gpx_dir or output_dir, title_style, page_width_cm=PDF_PAGE_WIDTH_CM
         )
 

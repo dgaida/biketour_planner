@@ -18,6 +18,7 @@ from reportlab.lib.styles import ParagraphStyle
 
 from biketour_planner.elevation_profiles import (
     add_elevation_profiles_to_story,
+    add_elevation_profiles_to_story_seq,
     calculate_gradient,
     create_elevation_profile_plot,
     extract_elevation_profile,
@@ -340,29 +341,30 @@ class TestGetColorForGradient:
 class TestCreateElevationProfilePlot:
     """Tests für die create_elevation_profile_plot Funktion."""
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_basic(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_basic(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet grundlegende Plot-Erstellung."""
         # Mock figure und axes
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         img_buffer = create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
         assert isinstance(img_buffer, BytesIO)
-        mock_plt.subplots.assert_called_once()
-        mock_plt.savefig.assert_called_once()
-        mock_plt.close.assert_called_once()
+        mock_figure_class.assert_called_once()
+        mock_fig.savefig.assert_called_once()
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_with_pass_track(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_with_pass_track(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet Plot-Erstellung mit Pass-Track-Statistiken."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         pass_track = {
             "total_ascent_m": 500,
@@ -373,13 +375,14 @@ class TestCreateElevationProfilePlot:
 
         assert isinstance(img_buffer, BytesIO)
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_custom_title(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_custom_title(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet Plot mit benutzerdefiniertem Titel."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats, title="Custom Title")
 
@@ -388,52 +391,56 @@ class TestCreateElevationProfilePlot:
         call_args = mock_ax.set_title.call_args
         assert "Custom Title" in call_args[0][0]
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_custom_figsize(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_custom_figsize(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet Plot mit benutzerdefinierter Größe."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats, figsize=(16, 6))
 
-        call_args = mock_plt.subplots.call_args
+        call_args = mock_figure_class.call_args
         assert call_args[1]["figsize"] == (16, 6)
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_draws_colored_segments(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_draws_colored_segments(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet dass farbige Segmente gezeichnet werden."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
-        # fill_between sollte für farbige Segmente aufgerufen werden
-        assert mock_ax.fill_between.call_count > 0
+        # add_collection sollte für farbige Segmente aufgerufen werden (PolyCollection)
+        assert mock_ax.add_collection.call_count > 0
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_draws_contour_line(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_draws_contour_line(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet dass schwarze Konturlinie gezeichnet wird."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
         # plot sollte für Konturlinie aufgerufen werden
         mock_ax.plot.assert_called()
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_sets_labels(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_sets_labels(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet dass Achsenbeschriftungen gesetzt werden."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -441,13 +448,14 @@ class TestCreateElevationProfilePlot:
         mock_ax.set_ylabel.assert_called_once()
         mock_ax.set_title.assert_called_once()
 
-    @patch("biketour_planner.elevation_profiles.plt")
-    def test_create_plot_adds_statistics_text(self, mock_plt, simple_gpx_file, booking_with_stats):
+    @patch("biketour_planner.elevation_profiles.Figure")
+    def test_create_plot_adds_statistics_text(self, mock_figure_class, simple_gpx_file, booking_with_stats):
         """Testet dass Statistik-Text hinzugefügt wird."""
         mock_fig = Mock()
         mock_ax = Mock()
-        mock_plt.subplots.return_value = (mock_fig, mock_ax)
-        mock_plt.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
+        mock_figure_class.return_value = mock_fig
+        mock_fig.add_subplot.return_value = mock_ax
+        mock_fig.savefig.side_effect = lambda buffer, **kwargs: buffer.write(b"fake data")
 
         create_elevation_profile_plot(simple_gpx_file, booking_with_stats)
 
@@ -469,7 +477,29 @@ class TestCreateElevationProfilePlot:
 
 
 class TestAddElevationProfilesToStory:
-    """Tests für die add_elevation_profiles_to_story Funktion."""
+    """Tests für die add_elevation_profiles_to_story Funktion (Parallel & Sequenziell)."""
+
+    @patch("biketour_planner.elevation_profiles.Paragraph")
+    @patch("biketour_planner.elevation_profiles.PageBreak")
+    @patch("biketour_planner.elevation_profiles.Image")
+    @patch("biketour_planner.elevation_profiles.create_elevation_profile_plot")
+    def test_add_profiles_seq_basic(self, mock_create_plot, mock_image, mock_pb, mock_para, simple_gpx_file, tmp_path):
+        """Testet grundlegendes Hinzufügen von Profilen (sequenziell)."""
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        mock_create_plot.side_effect = lambda *args, **kwargs: BytesIO(b"fake image data")
+
+        story = []
+        gpx_files = [simple_gpx_file]
+        bookings = [{"gpx_track_final": simple_gpx_file.name}]
+
+        title_style = ParagraphStyle("Title")
+
+        add_elevation_profiles_to_story_seq(story, gpx_files, bookings, output_dir, title_style)
+
+        assert len(story) > 0
+        assert mock_create_plot.call_count >= 1
 
     @patch("biketour_planner.elevation_profiles.Paragraph")
     @patch("biketour_planner.elevation_profiles.PageBreak")
