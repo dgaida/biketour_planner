@@ -11,9 +11,9 @@ from io import BytesIO
 from pathlib import Path
 
 import matplotlib
-from matplotlib.figure import Figure
-from matplotlib.collections import PolyCollection
 import numpy as np
+from matplotlib.collections import PolyCollection
+from matplotlib.figure import Figure
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import Image, PageBreak, Paragraph
@@ -26,7 +26,6 @@ from .logger import get_logger
 logger = get_logger()
 
 matplotlib.use("Agg")  # Backend für Nicht-GUI-Umgebungen
-import matplotlib.pyplot as plt  # noqa: E402
 
 
 def extract_elevation_profile(gpx_file: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -233,9 +232,7 @@ def create_elevation_profile_plot(
         ax.add_collection(collection)
 
     t4 = time.time()
-    logger.debug(
-        f"  └─ Farbsegmente zeichnen ({len(distances_plot) - 1} Segmente, {len(color_verts)} Farben): {t4 - t3:.2f}s"
-    )
+    logger.debug(f"  └─ Farbsegmente zeichnen ({len(distances_plot) - 1} Segmente, {len(color_verts)} Farben): {t4 - t3:.2f}s")
 
     # Schwarze Konturlinie oben
     ax.plot(distances, elevations, color="black", linewidth=1.5, zorder=10)
