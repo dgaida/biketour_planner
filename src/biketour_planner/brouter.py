@@ -3,6 +3,7 @@
 import gpxpy
 import requests
 
+from .config import get_config
 from .exceptions import RoutingError
 from .logger import get_logger
 
@@ -10,17 +11,27 @@ logger = get_logger()
 
 
 def check_brouter_availability() -> bool:
+    config = get_config()
+    base_url = config.routing.brouter_url.rstrip("/")
+    url = f"{base_url}/brouter"
     try:
-        r = requests.get("http://localhost:17777/brouter", timeout=2)
-        return r.status_code == 200
-    except requests.exceptions.RequestException:
+        logger.debug(f"Checking BRouter availability at {url}")
+        r = requests.get(url, timeout=5)
+        # BRouter might return 400 (Bad Request) if called without parameters,
+        # which is still a sign that the server is up and responding.
+        return r.status_code < 500
+    except requests.exceptions.RequestException as e:
+        logger.debug(f"BRouter not reachable at {url}: {e}")
         return False
 
 
 def route_to_address(lat_from: float, lon_from: float, lat_to: float, lon_to: float) -> str:
     if not check_brouter_availability():
         raise RoutingError("BRouter server not reachable")
-    url = "http://localhost:17777/brouter"
+
+    config = get_config()
+    base_url = config.routing.brouter_url.rstrip("/")
+    url = f"{base_url}/brouter"
     lonlats = f"{lon_from:.15g},{lat_from:.15g}|{lon_to:.15g},{lat_to:.15g}"
     try:
         r = requests.get(url, params={"lonlats": lonlats, "profile": "trekking", "format": "gpx"}, timeout=30)

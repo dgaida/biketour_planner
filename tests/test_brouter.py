@@ -14,10 +14,53 @@ import pytest
 import requests
 
 from biketour_planner.brouter import (
+    check_brouter_availability,
     get_route2address_as_points,
     route_to_address,
 )
 from biketour_planner.exceptions import RoutingError
+
+
+class TestCheckBRouterAvailability:
+    """Tests für die check_brouter_availability Funktion."""
+
+    @patch("biketour_planner.brouter.requests.get")
+    def test_check_availability_success(self, mock_get):
+        """Testet Verfügbarkeit bei Status 200."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        assert check_brouter_availability() is True
+        mock_get.assert_called_once()
+        assert "timeout" in mock_get.call_args[1]
+        assert mock_get.call_args[1]["timeout"] == 5
+
+    @patch("biketour_planner.brouter.requests.get")
+    def test_check_availability_400(self, mock_get):
+        """Testet Verfügbarkeit bei Status 400 (Bad Request)."""
+        # BRouter liefert oft 400 zurück, wenn keine Parameter übergeben werden
+        mock_response = Mock()
+        mock_response.status_code = 400
+        mock_get.return_value = mock_response
+
+        assert check_brouter_availability() is True
+
+    @patch("biketour_planner.brouter.requests.get")
+    def test_check_availability_500(self, mock_get):
+        """Testet Nicht-Verfügbarkeit bei Server-Fehler (500)."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_get.return_value = mock_response
+
+        assert check_brouter_availability() is False
+
+    @patch("biketour_planner.brouter.requests.get")
+    def test_check_availability_connection_error(self, mock_get):
+        """Testet Nicht-Verfügbarkeit bei Verbindungsfehler."""
+        mock_get.side_effect = requests.exceptions.ConnectionError()
+
+        assert check_brouter_availability() is False
 
 
 class TestRouteToAddress:
