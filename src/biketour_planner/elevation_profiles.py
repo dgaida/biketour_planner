@@ -11,6 +11,8 @@ from io import BytesIO
 from pathlib import Path
 
 import matplotlib
+from matplotlib.figure import Figure
+from matplotlib.collections import PolyCollection
 import numpy as np
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
@@ -189,13 +191,14 @@ def create_elevation_profile_plot(
     t2 = time.time()
     logger.debug(f"  └─ Gradientberechnung: {t2 - t1:.2f}s")
 
-    # Plot erstellen
-    fig, ax = plt.subplots(figsize=figsize, dpi=100)
+    # Plot erstellen - Verwende OO-API für Thread-Sicherheit
+    fig = Figure(figsize=figsize, dpi=100)
+    ax = fig.add_subplot(111)
     t3 = time.time()
     logger.debug(f"  └─ Figure erstellen: {t3 - t2:.2f}s")
 
     # OPTIMIERUNG: Reduziere Anzahl der Segmente durch Downsampling bei vielen Punkten
-    max_segments = 5000  # Maximal 500 farbige Segmente für bessere Performance
+    max_segments = 5000
     if len(distances) > max_segments:
         # Downsample: Nimm nur jeden n-ten Punkt
         step = len(distances) // max_segments
@@ -208,32 +211,30 @@ def create_elevation_profile_plot(
         elevations_plot = elevations
         gradients_plot = gradients
 
-    # OPTIMIERUNG: Batch die fill_between Aufrufe
-    # Statt jeden Punkt einzeln zu zeichnen, gruppiere nach Farbe
+    # OPTIMIERUNG: Verwende PolyCollection für massiv bessere Performance
     from collections import defaultdict
 
-    color_segments = defaultdict(list)
+    color_verts = defaultdict(list)
 
     for i in range(1, len(distances_plot)):
         color = get_color_for_gradient(gradients_plot[i])
-        color_segments[color].append((i - 1, i))
+        # Erstelle Polygon-Vertizes für dieses Segment: (x0,0), (x0,y0), (x1,y1), (x1,0)
+        verts = [
+            (distances_plot[i - 1], 0),
+            (distances_plot[i - 1], elevations_plot[i - 1]),
+            (distances_plot[i], elevations_plot[i]),
+            (distances_plot[i], 0),
+        ]
+        color_verts[color].append(verts)
 
-    # Zeichne alle Segmente einer Farbe auf einmal
-    for color, segments in color_segments.items():
-        for start_idx, end_idx in segments:
-            ax.fill_between(
-                distances_plot[start_idx : end_idx + 1],
-                0,
-                elevations_plot[start_idx : end_idx + 1],
-                color=color,
-                alpha=0.7,
-                linewidth=0,
-                edgecolor="none",  # Wichtig: keine Kanten für bessere Performance
-            )
+    # Zeichne alle Segmente einer Farbe als eine Collection
+    for color, verts in color_verts.items():
+        collection = PolyCollection(verts, facecolors=color, alpha=0.7, linewidths=0, edgecolors="none")
+        ax.add_collection(collection)
 
     t4 = time.time()
     logger.debug(
-        f"  └─ Farbsegmente zeichnen ({len(distances_plot) - 1} Segmente, {len(color_segments)} Farben): {t4 - t3:.2f}s"
+        f"  └─ Farbsegmente zeichnen ({len(distances_plot) - 1} Segmente, {len(color_verts)} Farben): {t4 - t3:.2f}s"
     )
 
     # Schwarze Konturlinie oben
@@ -280,8 +281,8 @@ def create_elevation_profile_plot(
         bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5},
     )
 
-    # WICHTIG: tight_layout weglassen - ist sehr langsam bei vielen Plots
-    plt.tight_layout()
+    # Tight Layout auf Figure-Ebene
+    fig.tight_layout()
     t6 = time.time()
     logger.debug(f"  └─ Layout & Beschriftungen: {t6 - t5:.2f}s")
 
@@ -289,7 +290,7 @@ def create_elevation_profile_plot(
     img_buffer = BytesIO()
 
     # KRITISCHER SCHRITT: Dieser ist oft der Flaschenhals
-    plt.savefig(img_buffer, format="png", dpi=100, bbox_inches="tight")
+    fig.savefig(img_buffer, format="png", dpi=100, bbox_inches="tight")
     t7 = time.time()
     logger.debug(f"  └─ savefig() (KRITISCH): {t7 - t6:.2f}s")
 
@@ -299,7 +300,7 @@ def create_elevation_profile_plot(
     # WICHTIG: Buffer zurücksetzen damit er gelesen werden kann!
     img_buffer.seek(0)
 
-    plt.close(fig)
+    # fig.close() existiert nicht bei Figure-Objekten, sie werden durch GC aufgeräumt
     t8 = time.time()
     logger.debug(f"  └─ close(): {t8 - t7:.2f}s")
     if buffer_size == 0:
@@ -476,9 +477,6 @@ def add_elevation_profiles_to_story(
     added_count = 0
     error_count = 0
 
-    # Speichere Buffer um sie offen zu halten bis PDF fertig ist
-    buffer_references = []
-
     for gpx_file in gpx_files:
         # Haupt-Track
         main_key = (gpx_file.name, "main")
@@ -513,7 +511,6 @@ def add_elevation_profiles_to_story(
                 logger.debug(f"📝 Image-Objekt erstellt: {type(img)}, width={img.drawWidth}, height={img.drawHeight}")
 
                 story.append(img)
-                buffer_references.append(img_buffer)  # Halte Buffer offen
                 added_count += 1
                 logger.debug(f"✅ Haupt-Track hinzugefügt: {filename}")
 
@@ -555,7 +552,7 @@ def add_elevation_profiles_to_story_seq(
     title_style: ParagraphStyle,
     page_width_cm: float = 25.0,
 ) -> None:
-    """Fügt Höhenprofile für alle GPX-Dateien zur PDF-Story hinzu.
+    """Fügt Höhenprofile für alle GPX-Dateien zur PDF-Story hinzu (sequenziell).
 
     Erstellt Höhenprofile für:
     1. Haupt-Tracks (merged GPX zu Hotels)
@@ -568,11 +565,6 @@ def add_elevation_profiles_to_story_seq(
         gpx_dir: Verzeichnis mit Original-GPX-Dateien (für Pass-Tracks).
         title_style: ParagraphStyle für Überschriften.
         page_width_cm: Verfügbare Seitenbreite in cm für Skalierung.
-
-    Example:
-        >>> story = []
-        >>> gpx_files = [Path("day1.gpx"), Path("day2.gpx")]
-        >>> add_elevation_profiles_to_story(story, gpx_files, bookings, gpx_dir, title_style)
     """
     if not gpx_files and not any(b.get("paesse_tracks") for b in bookings):
         return
@@ -591,19 +583,24 @@ def add_elevation_profiles_to_story_seq(
         if gpx_track:
             gpx_to_booking[gpx_track] = booking
 
+    added_count = 0
+    error_count = 0
+
     # Für jede GPX-Datei ein Profil erstellen
     for gpx_file in tqdm(gpx_files, desc="Erstelle Höhenprofile"):
         try:
             booking = gpx_to_booking.get(gpx_file.name)
 
-            # Haupt-Track Profil erstellen (ohne pass_track Parameter)
+            # 1. Haupt-Track
+            logger.debug(f"📝 Verarbeite Haupt-Track: {gpx_file.name}")
             img_buffer = create_elevation_profile_plot(gpx_file, booking, title=gpx_file.stem)
 
-            # Als reportlab Image hinzufügen
             img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
             story.append(img)
+            added_count += 1
+            logger.debug(f"✅ Haupt-Track hinzugefügt: {gpx_file.name}")
 
-            # Prüfe ob es Pass-Tracks für diesen Tag gibt
+            # 2. Pass-Tracks für diesen Tag
             if booking and booking.get("paesse_tracks"):
                 for pass_track in booking["paesse_tracks"]:
                     pass_file = gpx_dir / pass_track["file"]
@@ -611,29 +608,35 @@ def add_elevation_profiles_to_story_seq(
 
                     if pass_file.exists():
                         try:
-                            # Pass-Track Profil erstellen (MIT pass_track Parameter)
+                            logger.debug(f"📝 Verarbeite Pass-Track: {pass_file.name}")
                             pass_img_buffer = create_elevation_profile_plot(
                                 pass_file,
                                 booking,
-                                pass_track=pass_track,  # Übergebe Pass-Statistiken
+                                pass_track=pass_track,
                                 title=f"{passname} ({pass_file.stem})",
                             )
 
-                            # Als reportlab Image hinzufügen
                             pass_img = Image(pass_img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
                             story.append(pass_img)
+                            added_count += 1
+                            logger.debug(f"✅ Pass-Track hinzugefügt: {pass_file.name}")
 
                         except Exception as e:
                             error_text = f"<i>Fehler beim Erstellen des Pass-Profils für {passname}: {e}</i>"
                             story.append(Paragraph(error_text, title_style))
+                            error_count += 1
+                            logger.warning(f"⚠️  Fehler bei Pass-Track {pass_file.name}: {e}")
 
         except Exception as e:
             # Fehler-Nachricht bei Problemen
             error_text = f"<i>Fehler beim Erstellen des Profils für {gpx_file.name}: {e}</i>"
             story.append(Paragraph(error_text, title_style))
+            error_count += 1
+            logger.warning(f"⚠️  Fehler bei Haupt-Track {gpx_file.name}: {e}")
 
-    total_profiles = len(gpx_files) + sum(len(b.get("paesse_tracks", [])) for b in bookings)
-    print(f"✅ {total_profiles} Höhenprofile erstellt")
+    total_profiles = added_count + error_count
+    logger.info(f"📊 Zusammenfassung (sequenziell): {added_count} erfolgreich, {error_count} Fehler, {total_profiles} gesamt")
+    print(f"✅ {total_profiles} Höhenprofile erstellt (sequenziell)")
 
 
 def get_merged_gpx_files_from_bookings(bookings: list[dict], output_dir: Path) -> list[Path]:

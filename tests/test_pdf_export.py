@@ -405,7 +405,7 @@ class TestExportBookingsToPDF:
 
     @patch("biketour_planner.pdf_export.SimpleDocTemplate")
     @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
-    @patch("biketour_planner.pdf_export.add_elevation_profiles_to_story")
+    @patch("biketour_planner.pdf_export.add_elevation_profiles_to_story_seq")
     def test_export_adds_elevation_profiles(self, mock_add_profiles, mock_get_gpx, mock_doc, bookings_data, tmp_path):
         """Testet dass Höhenprofile hinzugefügt werden."""
         json_path = tmp_path / "bookings.json"
@@ -425,7 +425,7 @@ class TestExportBookingsToPDF:
 
         export_bookings_to_pdf(json_path, output_path, output_dir=output_dir)
 
-        # add_elevation_profiles_to_story sollte aufgerufen werden
+        # add_elevation_profiles_to_story_seq sollte aufgerufen werden
         mock_add_profiles.assert_called_once()
 
     @patch("biketour_planner.pdf_export.SimpleDocTemplate")
