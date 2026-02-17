@@ -27,12 +27,13 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -e .
+          pip install pytest pytest-cov
           pip install mkdocs-material mkdocstrings[python] mkdocs-mermaid2-plugin mike mkdocs-static-i18n interrogate git-cliff
 
       - name: Run tests
         run: |
           export PYTHONPATH=$(pwd)/src
-          pytest
+          python -m pytest
 
       - name: Check API documentation coverage
         run: |
