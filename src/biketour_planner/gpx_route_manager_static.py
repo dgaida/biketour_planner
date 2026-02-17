@@ -147,7 +147,7 @@ def find_closest_point_in_track(points: list[dict], target_lat: float, target_lo
 
 
 def get_statistics4track(
-    gpx,
+    gpx: gpxpy.gpx.GPX,
     start_index: int = 0,
     end_index: int = None,
     max_elevation: float = 0.0,
