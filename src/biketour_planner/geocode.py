@@ -1,3 +1,9 @@
+"""Geocoding utilities for the Bike Tour Planner.
+
+This module provides functions to convert postal addresses into geographic coordinates
+using various geocoding services with fallback strategies and caching.
+"""
+
 import re
 from pathlib import Path
 from time import sleep
@@ -23,6 +29,14 @@ _geocode_cache = load_json_cache(GEOCODE_CACHE_FILE)
 
 
 def clean_address(address: str) -> str:
+    """Cleans an address string from noise and local floor information.
+
+    Args:
+        address: The raw address string.
+
+    Returns:
+        The cleaned address string.
+    """
     address = re.sub(r"\s+(Prizemlje|[\d]+\.\s*kat)\b", "", address, flags=re.IGNORECASE)
     address = re.sub(r"\s+-\s+\d+", "", address)
     address = re.sub(r"\bbr\.\s+\d+", "", address)
@@ -30,11 +44,31 @@ def clean_address(address: str) -> str:
 
 
 def extract_city_country(address: str) -> str:
+    """Extracts city and country from a full address.
+
+    Args:
+        address: The full address string.
+
+    Returns:
+        The city and country part of the address.
+    """
     parts = address.split(",")
     return ",".join(parts[-2:]).strip() if len(parts) >= 2 else address
 
 
 def geocode_with_nominatim(address: str, retries: int = 3) -> tuple[float, float]:
+    """Geocodes an address using Nominatim.
+
+    Args:
+        address: The address to geocode.
+        retries: Number of retries on timeout.
+
+    Returns:
+        A tuple of (latitude, longitude).
+
+    Raises:
+        GeocodingError: If the address cannot be found or the service is unavailable.
+    """
     for attempt in range(retries):
         try:
             location = geolocator_nominatim.geocode(address)
@@ -50,6 +84,17 @@ def geocode_with_nominatim(address: str, retries: int = 3) -> tuple[float, float
 
 
 def geocode_with_photon(address: str) -> tuple[float, float]:
+    """Geocodes an address using Photon.
+
+    Args:
+        address: The address to geocode.
+
+    Returns:
+        A tuple of (latitude, longitude).
+
+    Raises:
+        GeocodingError: If Photon is not available or the address is not found.
+    """
     if not geolocator_photon:
         raise GeocodingError(address, "Photon not available")
     try:
@@ -63,6 +108,14 @@ def geocode_with_photon(address: str) -> tuple[float, float]:
 
 @json_cache(GEOCODE_CACHE_FILE, "_geocode_cache", "GEOCODE_CACHE_FILE")
 def _cached_geocode(address: str) -> tuple[float, float] | None:
+    """Cached internal geocoding with multiple fallback strategies.
+
+    Args:
+        address: The address to geocode.
+
+    Returns:
+        A tuple of (latitude, longitude) or None if all strategies fail.
+    """
     cleaned = clean_address(address)
     try:
         return geocode_with_nominatim(cleaned)
@@ -82,6 +135,19 @@ def _cached_geocode(address: str) -> tuple[float, float] | None:
 
 
 def geocode_address(address: str) -> tuple[float, float]:
+    """Geocodes an address with caching and multiple strategies.
+
+    This is the main public entry point for geocoding.
+
+    Args:
+        address: The address to geocode.
+
+    Returns:
+        A tuple of (latitude, longitude).
+
+    Raises:
+        GeocodingError: If all geocoding strategies fail.
+    """
     result = _cached_geocode(address)
     if result:
         return tuple(result)

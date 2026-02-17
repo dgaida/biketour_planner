@@ -1,0 +1,104 @@
+site_name: Bike Tour Planner
+site_description: Automatisierte Radtourenplanung mit Booking.com-Parsing, GPX-Manipulation und BRouter-Routing.
+site_author: Daniel Gaida
+site_url: https://dgaida.github.io/biketour_planner/
+
+theme:
+  name: material
+  language: de
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    logo: material/bike
+    repo: fontawesome/brands/github
+
+repo_name: dgaida/biketour_planner
+repo_url: https://github.com/dgaida/biketour_planner
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: de
+          default: true
+          name: Deutsch
+          build: true
+        - locale: en
+          name: English
+          build: true
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+  - mermaid2:
+      arguments:
+        theme: 'material'
+  - mike:
+      alias_type: symlink
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:mermaid2.fence_mermaid
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:pymdownx.emoji.twemoji
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+
+nav:
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Architecture: architecture/index.md
+  - API Reference: api/index.md
+  - Development:
+      - Docstrings: development/docstrings.md
+      - Testing: development/testing.md
+      - Metrics: development/metrics.md
+      - Release: development/release.md
+  - Changelog: changelog.md
+  - Troubleshooting: troubleshooting.md
+
+extra:
+  version:
+    method: mike

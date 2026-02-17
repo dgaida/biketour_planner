@@ -1,3 +1,5 @@
+"""Excel export functionality for the Bike Tour Planner."""
+
 import json
 import re
 from datetime import datetime, timedelta
@@ -6,65 +8,64 @@ from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 
-# from .geoapify import get_names_as_comma_separated_string
 from .excel_hyperlinks import create_tourist_sights_hyperlinks
 
 
 def extract_city_name(address: str) -> str:
-    """Extrahiert nur den Ortsnamen aus einer vollständigen Adresse.
+    """Extracts only the city name from a full address string.
 
     Args:
-        address: Vollständige Adresse, z.B. "Straße 1, 21000 Split, Kroatien"
+        address: Full address, e.g., "Street 1, 21000 Split, Croatia"
 
     Returns:
-        Nur der Ortsname, z.B. "Split"
+        The city name, e.g., "Split".
     """
     if not address:
         return ""
 
-    # Format: "Straße, PLZ Stadt, Land"
-    # Wir wollen nur "Stadt"
+    # Format: "Street, ZIP City, Country"
+    # We want only "City"
 
-    # Entferne Land am Ende (nach letztem Komma)
+    # Remove country at the end (after last comma)
     parts = address.split(",")
 
-    # Bestimme den Teil, der die Stadt enthalten könnte
+    # Determine the part that might contain the city
     if len(parts) >= 2:
-        # Nimm den vorletzten Teil (sollte "PLZ Stadt" sein)
+        # Take the second to last part (should be "ZIP City")
         city_part = parts[-2].strip()
     else:
-        # Falls keine Kommas vorhanden, nimm den ganzen String
+        # If no commas, take the whole string
         city_part = address.strip()
 
-    # Entferne PLZ (führende Zahlen und Leerzeichen)
+    # Remove ZIP (leading digits and spaces)
     city_match = re.search(r"^\d+\s+(.+)$", city_part)
     if city_match:
         return city_match.group(1).strip()
 
-    # Falls kein PLZ-Muster, gib den bereinigten Stadtteil zurück
+    # Fallback to cleaned city part
     return city_part
 
 
 def create_accommodation_text(booking: dict) -> str:
-    """Erstellt den Unterkunftstext mit Name, Adresse und Ausstattung.
+    """Creates a formatted text for accommodation including name, address, and amenities.
 
     Args:
-        booking: Buchungsinformationen-Dictionary
+        booking: Dictionary containing booking information.
 
     Returns:
-        Formatierter Text für die Excel-Zelle
+        Formatted multi-line text for the Excel cell.
     """
     text_parts = []
 
-    # Hotelname
+    # Hotel name
     if booking.get("hotel_name"):
         text_parts.append(booking["hotel_name"])
 
-    # Adresse
+    # Address
     if booking.get("address"):
         text_parts.append(booking["address"])
 
-    # Ausstattung
+    # Amenities
     amenities = []
     if booking.get("has_washing_machine"):
         amenities.append("Wasch")
@@ -82,136 +83,123 @@ def create_accommodation_text(booking: dict) -> str:
 
 
 def export_bookings_to_excel(json_path: Path, template_path: Path, output_path: Path, start_row: int = 4) -> None:
-    """Exportiert Buchungsinformationen in eine Excel-Datei basierend auf Template.
+    """Exports booking information to an Excel file based on a template.
 
-    Fügt automatisch Leerzeilen für Tage ohne Buchung ein (zwischen departure_date
-    einer Buchung und arrival_date der nächsten Buchung).
+    Automatically inserts empty lines for days without a booking (between the departure date
+    of one booking and the arrival date of the next).
 
     Args:
-        json_path: Pfad zur JSON-Datei mit Buchungen
-        template_path: Pfad zur Excel-Template-Datei
-        output_path: Pfad für die Ausgabe-Excel-Datei
-        start_row: Zeile ab der die Daten eingefügt werden (1-basiert)
+        json_path: Path to the JSON file with bookings.
+        template_path: Path to the Excel template file.
+        output_path: Path for the output Excel file.
+        start_row: Row to start inserting data (1-based).
     """
-    # JSON laden
+    # Load JSON
     with open(json_path, encoding="utf-8") as f:
         bookings = json.load(f)
 
-    # Nach Anreisedatum sortieren
+    # Sort by arrival date
     bookings_sorted = sorted(bookings, key=lambda x: x.get("arrival_date", "9999-12-31"))
 
-    # Template laden
+    # Load template
     wb = load_workbook(template_path)
     ws = wb.active
 
-    # Vorherige Stadt für Start-Ziel-Bestimmung
+    # Previous city for start-destination determination
     previous_city = None
     previous_departure_date = None
 
-    # Aktueller Tageszähler
+    # Current day counter
     day_counter = 1
 
-    # Aktuelle Excel-Zeile
+    # Current Excel row
     current_row = start_row
 
-    # Daten einfügen
+    # Insert data
     for booking in bookings_sorted:
-        # Prüfe ob Leerzeilen für Zwischentage eingefügt werden müssen
+        # Check if empty rows for gap days need to be inserted
         if previous_departure_date and booking.get("arrival_date"):
             try:
                 prev_departure = datetime.fromisoformat(previous_departure_date)
                 current_arrival = datetime.fromisoformat(booking["arrival_date"])
 
-                # Berechne Differenz in Tagen
+                # Calculate difference in days
                 days_between = (current_arrival - prev_departure).days
 
-                # Füge Leerzeilen ein (eine Zeile pro Tag dazwischen)
+                # Insert empty rows (one row per gap day)
                 if days_between > 0:
                     for day_offset in range(days_between):
-                        # Spalte A: Tageszähler
+                        # Column A: Day counter
                         ws[f"A{current_row}"] = day_counter
 
-                        # Spalte B: Datum des Zwischentags
+                        # Column B: Date of the gap day
                         intermediate_date = prev_departure + timedelta(days=day_offset)
                         ws[f"B{current_row}"] = intermediate_date
                         ws[f"B{current_row}"].number_format = "DDD, DD.MM.YYYY"
 
-                        # Spalte C: Startort (vorherige Stadt)
+                        # Column C: Start city (previous city)
                         if previous_city:
                             ws[f"C{current_row}"] = previous_city
-
-                        # Restliche Spalten bleiben leer
 
                         day_counter += 1
                         current_row += 1
 
             except ValueError:
-                # Falls Datumskonvertierung fehlschlägt, überspringe die Lückenprüfung
                 pass
 
-        # Normale Buchungszeile einfügen
+        # Insert normal booking row
         row = current_row
 
-        # Spalte A: Tageszähler
+        # Column A: Day counter
         ws[f"A{row}"] = day_counter
 
-        # Spalte B: Datum
+        # Column B: Date
         arrival_date = booking.get("arrival_date", "")
         if arrival_date:
             try:
-                # Konvertiere ISO-Datum zu datetime für bessere Formatierung
                 date_obj = datetime.fromisoformat(arrival_date)
                 ws[f"B{row}"] = date_obj
                 ws[f"B{row}"].number_format = "DDD, DD.MM.YYYY"
             except ValueError:
                 ws[f"B{row}"] = arrival_date
 
-        # Spalte C: Startort (vorherige Stadt)
+        # Column C: Start city (previous city)
         if previous_city:
             ws[f"C{row}"] = previous_city
 
-        # Spalte D: Zielort (aktuelle Stadt)
+        # Column D: Destination city (current city)
         current_city = extract_city_name(booking.get("address", ""))
         ws[f"D{row}"] = current_city
 
-        # Spalte E: km
+        # Column E: distance in km
         ws[f"E{row}"] = booking.get("total_distance_km", "")
 
-        # Spalte F: Unterkunft mit Name, Adresse und Ausstattung
+        # Column F: Accommodation with name, address, and amenities
         accommodation_text = create_accommodation_text(booking)
         ws[f"F{row}"] = accommodation_text
         ws[f"F{row}"].alignment = Alignment(wrap_text=True, vertical="top")
 
+        # Column G: Ascent / Max Elevation
         ws[f"G{row}"] = f"{booking.get('total_ascent_m', '')} / {booking.get('max_elevation_m', '')}"
 
+        # Column H: Final track name
         ws[f"H{row}"] = booking.get("gpx_track_final", "")[:12]
 
-        # cs_string_names = get_names_as_comma_separated_string(booking.get("tourist_sights", None))
-
-        # ws[f"I{row}"] = cs_string_names
+        # Column I: Tourist Sights
         create_tourist_sights_hyperlinks(ws, row, booking.get("tourist_sights", None))
 
-        # Spalte J: Preis
+        # Column J: Price
         ws[f"J{row}"] = booking.get("total_price", "")
 
+        # Column K: Cancellation info
         ws[f"K{row}"] = f"Stornierung bis: {booking.get('free_cancel_until', '')}"
 
-        # Aktualisiere Variablen für nächste Iteration
+        # Update variables for next iteration
         previous_city = current_city
         previous_departure_date = booking.get("departure_date")
         day_counter += 1
         current_row += 1
 
-    # Ausgabe speichern
+    # Save output
     wb.save(output_path)
-    print(f"Excel-Datei erstellt: {output_path}")
-
-
-if __name__ == "__main__":
-    # Beispielaufruf
-    export_bookings_to_excel(
-        json_path=Path("output/bookings.json"),
-        template_path=Path("Reiseplanung_Fahrrad template.xlsx"),
-        output_path=Path("output/Reiseplanung_Kroatien_2026.xlsx"),
-        start_row=4,  # Passe an, ab welcher Zeile die Daten stehen sollen
-    )
+    print(f"Excel file created: {output_path}")

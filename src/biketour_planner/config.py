@@ -1,6 +1,6 @@
-"""Konfigurations-Management für Bike Tour Planner.
+"""Configuration management for the Bike Tour Planner.
 
-Lädt Konfiguration aus YAML-Datei mit Fallback auf Default-Werte.
+Loads configuration from a YAML file with fallback to default values.
 """
 
 from pathlib import Path
@@ -10,16 +10,16 @@ import yaml
 
 
 class Config:
-    """Zentrale Konfigurations-Klasse.
+    """Central configuration class.
 
-    Lädt Konfiguration aus config.yaml oder verwendet Defaults.
+    Loads configuration from config.yaml or uses defaults.
 
     Example:
         >>> config = Config()
         >>> print(config.get("routing.max_connection_distance_m"))
         1000
         >>> print(config.directories.gpx)
-        PosixPath('../2026_Kroatien/gpx')
+        PosixPath('../2026_Croatia/gpx')
     """
 
     DEFAULT_CONFIG = {
@@ -38,10 +38,10 @@ class Config:
     }
 
     def __init__(self, config_path: Path = Path("config.yaml")):
-        """Initialisiert Konfiguration.
+        """Initializes configuration.
 
         Args:
-            config_path: Pfad zur YAML-Konfigurationsdatei (Default: config.yaml).
+            config_path: Path to the YAML configuration file (Default: config.yaml).
         """
         self._config = self.DEFAULT_CONFIG.copy()
 
@@ -50,12 +50,17 @@ class Config:
                 user_config = yaml.safe_load(f)
                 self._merge_config(user_config)
         else:
-            print(f"⚠️  Keine {config_path} gefunden, verwende Default-Konfiguration")
+            print(f"⚠️  No {config_path} found, using default configuration")
 
     def _merge_config(self, user_config: dict[str, Any]) -> None:
-        """Merged User-Config mit Defaults (Deep Merge)."""
+        """Merges user config with defaults (Deep Merge).
+
+        Args:
+            user_config: Dictionary containing user-defined configuration values.
+        """
 
         def deep_merge(base: dict, override: dict) -> dict:
+            """Recursively merges two dictionaries."""
             result = base.copy()
             for key, value in override.items():
                 if key in result and isinstance(result[key], dict) and isinstance(value, dict):
@@ -67,14 +72,14 @@ class Config:
         self._config = deep_merge(self._config, user_config)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Holt Konfigurations-Wert mit Dot-Notation.
+        """Gets a configuration value using dot notation.
 
         Args:
-            key: Konfigurations-Key in Dot-Notation (z.B. "routing.max_connection_distance_m").
-            default: Rückgabewert falls Key nicht existiert.
+            key: Configuration key in dot notation (e.g., "routing.max_connection_distance_m").
+            default: Return value if the key does not exist.
 
         Returns:
-            Konfigurations-Wert oder default.
+            The configuration value or the default.
 
         Example:
             >>> config = Config()
@@ -94,154 +99,201 @@ class Config:
 
     @property
     def directories(self) -> "DirectoriesConfig":
-        """Zugriff auf Verzeichnis-Konfiguration."""
+        """Access directory configuration."""
         return DirectoriesConfig(self._config["directories"])
 
     @property
     def routing(self) -> "RoutingConfig":
-        """Zugriff auf Routing-Konfiguration."""
+        """Access routing configuration."""
         return RoutingConfig(self._config["routing"])
 
     @property
     def passes(self) -> "PassesConfig":
-        """Zugriff auf Pass-Finder-Konfiguration."""
+        """Access mountain pass finder configuration."""
         return PassesConfig(self._config["passes"])
 
     @property
     def geoapify(self) -> "GeoapifyConfig":
-        """Zugriff auf Geoapify-Konfiguration."""
+        """Access Geoapify configuration."""
         return GeoapifyConfig(self._config["geoapify"])
 
     @property
     def export(self) -> "ExportConfig":
-        """Zugriff auf Export-Konfiguration."""
+        """Access export configuration."""
         return ExportConfig(self._config["export"])
 
     @property
     def logging(self) -> "LoggingConfig":
-        """Zugriff auf Logging-Konfiguration."""
+        """Access logging configuration."""
         return LoggingConfig(self._config["logging"])
 
 
 class DirectoriesConfig:
-    """Helper-Klasse für Verzeichnis-Zugriffe."""
+    """Helper class for directory configuration access."""
 
     def __init__(self, config: dict):
+        """Initializes DirectoriesConfig.
+
+        Args:
+            config: Dictionary containing directory settings.
+        """
         self._config = config
 
     @property
     def booking(self) -> Path:
+        """Path to booking HTML files."""
         return Path(self._config["booking"])
 
     @property
     def gpx(self) -> Path:
+        """Path to original GPX files."""
         return Path(self._config["gpx"])
 
     @property
     def output(self) -> Path:
+        """Path for generated output files."""
         return Path(self._config["output"])
 
 
 class RoutingConfig:
-    """Helper-Klasse für Routing-Parameter."""
+    """Helper class for routing parameters."""
 
     def __init__(self, config: dict):
+        """Initializes RoutingConfig.
+
+        Args:
+            config: Dictionary containing routing settings.
+        """
         self._config = config
 
     @property
     def brouter_url(self) -> str:
+        """URL of the BRouter engine."""
         return self._config["brouter_url"]
 
     @property
     def max_connection_distance_m(self) -> float:
+        """Maximum distance for automatic track chaining in meters."""
         return float(self._config["max_connection_distance_m"])
 
     @property
     def max_chain_length(self) -> int:
+        """Maximum number of tracks to chain."""
         return int(self._config["max_chain_length"])
 
     @property
     def start_search_radius_km(self) -> float:
+        """Search radius for the start track in kilometers."""
         return float(self._config["start_search_radius_km"])
 
     @property
     def target_search_radius_km(self) -> float:
+        """Search radius for the target track in kilometers."""
         return float(self._config.get("target_search_radius_km", 10.0))
 
 
 class PassesConfig:
-    """Helper-Klasse für Pass-Finder-Parameter."""
+    """Helper class for mountain pass finder parameters."""
 
     def __init__(self, config: dict):
+        """Initializes PassesConfig.
+
+        Args:
+            config: Dictionary containing pass finder settings.
+        """
         self._config = config
 
     @property
     def hotel_radius_km(self) -> float:
+        """Search radius around hotels for passes in kilometers."""
         return float(self._config["hotel_radius_km"])
 
     @property
     def pass_radius_km(self) -> float:
+        """Search radius around pass summits in kilometers."""
         return float(self._config["pass_radius_km"])
 
     @property
     def passes_file(self) -> str:
+        """Filename of the JSON pass database."""
         return self._config["passes_file"]
 
 
 class GeoapifyConfig:
-    """Helper-Klasse für Geoapify-Parameter."""
+    """Helper class for Geoapify parameters."""
 
     def __init__(self, config: dict):
+        """Initializes GeoapifyConfig.
+
+        Args:
+            config: Dictionary containing Geoapify settings.
+        """
         self._config = config
 
     @property
     def search_radius_m(self) -> int:
+        """Search radius for tourist attractions in meters."""
         return int(self._config["search_radius_m"])
 
     @property
     def max_pois(self) -> int:
+        """Maximum number of tourist attractions to discover."""
         return int(self._config["max_pois"])
 
 
 class ExportConfig:
-    """Helper-Klasse für Export-Parameter."""
+    """Helper class for export parameters."""
 
     def __init__(self, config: dict):
+        """Initializes ExportConfig.
+
+        Args:
+            config: Dictionary containing export settings.
+        """
         self._config = config
 
     @property
     def title(self) -> str:
+        """Title of the generated report."""
         return self._config["title"]
 
     @property
     def excel_info_file(self) -> str:
+        """Filename of the additional trip info Excel file."""
         return self._config["excel_info_file"]
 
 
 class LoggingConfig:
-    """Helper-Klasse für Logging-Parameter."""
+    """Helper class for logging parameters."""
 
     def __init__(self, config: dict):
+        """Initializes LoggingConfig.
+
+        Args:
+            config: Dictionary containing logging settings.
+        """
         self._config = config
 
     @property
     def level(self) -> str:
+        """Logging level (e.g., 'INFO', 'DEBUG')."""
         return self._config["level"]
 
     @property
     def file(self) -> str:
+        """Path to the log file."""
         return self._config["file"]
 
 
-# Globale Config-Instanz
+# Global config instance
 _global_config: Config = None
 
 
 def get_config() -> Config:
-    """Holt globale Konfigurations-Instanz (Singleton).
+    """Gets the global configuration instance (Singleton).
 
     Returns:
-        Config-Instanz.
+        The Config instance.
     """
     global _global_config
     if _global_config is None:

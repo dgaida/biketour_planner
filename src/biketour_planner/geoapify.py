@@ -21,6 +21,17 @@ _geoapify_cache = load_json_cache(GEOAPIFY_CACHE_FILE)
 
 @json_cache(GEOAPIFY_CACHE_FILE, "_geoapify_cache", "GEOAPIFY_CACHE_FILE")
 def _fetch_tourist_sights(lat: float, lon: float, radius: int, limit: int) -> dict[str, Any] | None:
+    """Fetches tourist sights from Geoapify API.
+
+    Args:
+        lat: Latitude of the center point.
+        lon: Longitude of the center point.
+        radius: Search radius in meters.
+        limit: Maximum number of results to return.
+
+    Returns:
+        The Geoapify API response as a dictionary, or None on error.
+    """
     if not geoapify_api_key:
         logger.warning("GEOAPIFY_API_KEY not set - skipping tourist sight discovery")
         return {"features": []}
@@ -43,6 +54,17 @@ def _fetch_tourist_sights(lat: float, lon: float, radius: int, limit: int) -> di
 def find_top_tourist_sights(
     lat: float, lon: float, radius: int | None = None, limit: int | None = None
 ) -> dict[str, Any] | None:
+    """Finds top tourist sights near a location with caching.
+
+    Args:
+        lat: Latitude.
+        lon: Longitude.
+        radius: Optional search radius in meters. Defaults to config value.
+        limit: Optional maximum number of sights. Defaults to config value.
+
+    Returns:
+        Dictionary containing tourist sights or None.
+    """
     config = get_config()
     if radius is None:
         try:
@@ -58,6 +80,14 @@ def find_top_tourist_sights(
 
 
 def get_names_as_comma_separated_string(data: dict[str, Any] | None) -> str:
+    """Extracts names from Geoapify data and returns them as a comma-separated string.
+
+    Args:
+        data: The Geoapify API response dictionary.
+
+    Returns:
+        A comma-separated string of names.
+    """
     if not data:
         return ""
     names = []

@@ -1,3 +1,5 @@
+"""Static helper functions for GPX route management."""
+
 import math
 from pathlib import Path
 
@@ -6,29 +8,29 @@ import gpxpy
 from .elevation_calc import calculate_elevation_gain_segment_based, calculate_elevation_gain_smoothed
 from .logger import get_logger
 
-# Initialisiere Logger
+# Initialize Logger
 logger = get_logger()
 
 TrackStats = tuple[float, float, float, float]
 
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Berechnet die Distanz zwischen zwei Koordinaten in Metern.
+    """Calculates the distance between two coordinates in meters.
 
-    Verwendet die Haversine-Formel für Großkreisberechnungen auf einer Kugel.
-    Diese Formel liefert gute Näherungswerte für Distanzen auf der Erdoberfläche.
+    Uses the Haversine formula for great-circle distances on a sphere.
+    This formula provides good approximations for distances on the Earth's surface.
 
     Args:
-        lat1: Breitengrad Punkt 1 in Dezimalgrad.
-        lon1: Längengrad Punkt 1 in Dezimalgrad.
-        lat2: Breitengrad Punkt 2 in Dezimalgrad.
-        lon2: Längengrad Punkt 2 in Dezimalgrad.
+        lat1: Latitude of point 1 in decimal degrees.
+        lon1: Longitude of point 1 in decimal degrees.
+        lat2: Latitude of point 2 in decimal degrees.
+        lon2: Longitude of point 2 in decimal degrees.
 
     Returns:
-        Distanz in Metern als float.
+        The distance in meters.
 
     Example:
-        >>> distance = haversine(52.5200, 13.4050, 48.1351, 11.5820)  # Berlin -> München
+        >>> distance = haversine(52.5200, 13.4050, 48.1351, 11.5820)  # Berlin -> Munich
         >>> print(f"{distance / 1000:.1f} km")
         504.2 km
     """
@@ -41,34 +43,29 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def read_gpx_file(gpx_file: Path) -> gpxpy.gpx.GPX | None:
-    """Liest eine GPX-Datei mit robustem Encoding-Handling.
+    """Reads a GPX file with robust encoding handling.
 
-    Probiert verschiedene Encoding-Strategien (UTF-8, Latin-1, CP1252) und
-    behandelt BOM (Byte Order Mark) sowie führende Whitespaces. Bei allen
-    Fehlschlägen wird ein binärer Leseversuch mit Fehlertoleranz durchgeführt.
+    Tries different encoding strategies (UTF-8, Latin-1, CP1252) and
+    handles BOM (Byte Order Mark) and leading whitespaces.
 
     Args:
-        gpx_file: Pfad zur GPX-Datei.
+        gpx_file: Path to the GPX file.
 
     Returns:
-        Geparste GPX-Datei als gpxpy.gpx.GPX Objekt oder None bei Fehler.
-
-    Note:
-        Die Funktion gibt Fehlermeldungen auf stdout aus, wirft aber keine
-        Exceptions, um die Verarbeitung weiterer Dateien nicht zu blockieren.
+        The parsed GPX object or None on error.
     """
-    # Versuche verschiedene Encoding-Strategien
+    # Try different encoding strategies
     encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
 
     for encoding in encodings:
         try:
             content = gpx_file.read_text(encoding=encoding)
 
-            # Entferne BOM falls vorhanden
+            # Remove BOM if present
             if content.startswith("\ufeff"):
                 content = content[1:]
 
-            # Entferne führende Whitespaces/Newlines
+            # Remove leading whitespaces/newlines
             content = content.lstrip()
 
             # Parse GPX
@@ -78,18 +75,18 @@ def read_gpx_file(gpx_file: Path) -> gpxpy.gpx.GPX | None:
         except (UnicodeDecodeError, gpxpy.gpx.GPXXMLSyntaxException):
             continue
         except Exception as e:
-            logger.error(f"Unerwarteter Fehler beim Lesen von {gpx_file.name}: {e}")
+            logger.error(f"Unexpected error reading {gpx_file.name}: {e}")
             continue
 
-    # Wenn alle Encodings fehlschlagen, versuche binär zu lesen
+    # If all encodings fail, try binary reading
     try:
         with open(gpx_file, "rb") as f:
             content = f.read()
 
-        # Versuche UTF-8 mit Fehlerbehandlung
+        # Try UTF-8 with error handling
         text = content.decode("utf-8", errors="ignore")
 
-        # Entferne BOM
+        # Remove BOM
         if text.startswith("\ufeff"):
             text = text[1:]
 
@@ -98,27 +95,27 @@ def read_gpx_file(gpx_file: Path) -> gpxpy.gpx.GPX | None:
         return gpxpy.parse(text)
 
     except Exception as e:
-        logger.error(f"Fehler beim Parsen von {gpx_file.name}: {e}")
+        logger.error(f"Error parsing {gpx_file.name}: {e}")
         return None
 
 
 def get_base_filename(filename: str) -> str:
-    """Extrahiert den Basis-Dateinamen ohne Richtungssuffix.
+    """Extracts the base filename without direction suffixes.
 
-    Entfernt Suffixe wie '_inverted', '_reversed', '_rev' etc. um zu verhindern,
-    dass derselbe Track in verschiedenen Richtungen mehrfach verwendet wird.
+    Removes suffixes like '_inverted', '_reversed', '_rev' etc. to prevent
+    using the same track multiple times in different directions.
 
     Args:
-        filename: GPX-Dateiname mit potenziellem Richtungssuffix.
+        filename: GPX filename with potential direction suffix.
 
     Returns:
-        Basis-Dateiname ohne Richtungsinformationen.
+        Base filename without direction info.
 
     Example:
-        >>> get_base_filename("route_München_Garmisch_reversed.gpx")
-        'route_München_Garmisch.gpx'
+        >>> get_base_filename("route_Munich_Garmisch_reversed.gpx")
+        'route_Munich_Garmisch.gpx'
     """
-    # Entferne häufige Suffixe für invertierte Tracks
+    # Remove common suffixes for inverted tracks
     for suffix in ["_inverted", "_reversed", "_rev", "_inverse", "_backward"]:
         if filename.lower().endswith(f"{suffix}.gpx"):
             return filename[: -len(suffix) - 4] + ".gpx"
@@ -127,23 +124,15 @@ def get_base_filename(filename: str) -> str:
 
 
 def find_closest_point_in_track(points: list[dict], target_lat: float, target_lon: float) -> tuple[int, float]:
-    """Findet den nächsten Punkt innerhalb eines Tracks zu einer Zielkoordinate.
-
-    Durchsucht eine Liste von Punkten und berechnet für jeden die Haversine-Distanz
-    zur Zielkoordinate. Gibt den Index des nächstgelegenen Punkts zurück.
+    """Finds the closest point within a track to a target coordinate.
 
     Args:
-        points: Liste von Punkt-Dictionaries mit Keys 'lat', 'lon', 'index'.
-        target_lat: Ziel-Breitengrad in Dezimalgrad.
-        target_lon: Ziel-Längengrad in Dezimalgrad.
+        points: List of point dictionaries with keys 'lat', 'lon', 'index'.
+        target_lat: Target latitude.
+        target_lon: Target longitude.
 
     Returns:
-        Tuple bestehend aus:
-            - index: Index des nächsten Punkts in der ursprünglichen Points-Liste.
-            - distance: Distanz zum nächsten Punkt in Metern.
-
-    Raises:
-        ValueError: Wenn points leer ist (implizit durch float('inf') Rückgabe).
+        A tuple of (index, distance) for the closest point.
     """
     best_idx = None
     best_dist = float("inf")
@@ -167,34 +156,28 @@ def get_statistics4track(
     total_descent: float = 0.0,
     reversed_direction: bool = False,
 ) -> TrackStats:
-    """Berechnet Statistiken für einen Track-Abschnitt zwischen zwei Indizes.
-
-    Lädt die GPX-Datei, extrahiert den relevanten Abschnitt und berechnet:
-    - Maximale Höhe
-    - Distanz (aufsummiert über Punktabstände)
-    - Positiver Höhenunterschied (nur Anstiege)
-    - Negativer Höhenunterschied (nur Abfahrten)
+    """Calculates statistics for a track section between two indices.
 
     Args:
-        gpx: GPX-Objekt.
-        start_index: Startindex des Abschnitts.
-        end_index: Endindex des Abschnitts.
-        max_elevation: Bisherige maximale Höhe in Metern (wird aktualisiert).
-        total_distance: Bisherige Gesamtdistanz in Metern (wird aktualisiert).
-        total_ascent: Bisheriger Gesamtanstieg in Metern (wird aktualisiert).
-        reversed_direction: Wenn True, wird der Track-Abschnitt rückwärts
-                           durchlaufen (Punkte in umgekehrter Reihenfolge).
+        gpx: GPX object.
+        start_index: Start index of the section.
+        end_index: End index of the section.
+        max_elevation: Previous max elevation.
+        total_distance: Previous total distance.
+        total_ascent: Previous total ascent.
+        total_descent: Previous total descent.
+        reversed_direction: If True, the section is traversed backward.
 
     Returns:
-        Tuple aus (max_elevation, total_distance, total_ascent, total_descent)
-        mit aktualisierten Werten.
-
-    Note:
-        Die Statistiken werden kumulativ berechnet, d.h. die übergebenen Werte
-        werden mit den Werten des aktuellen Abschnitts erweitert.
+        Tuple of (max_elevation, total_distance, total_ascent, total_descent).
     """
-    if not end_index:
-        end_index = float("inf")
+    if not end_index or end_index == float("inf"):
+        # Determine total number of points
+        num_points = 0
+        for track in gpx.tracks:
+            for seg in track.segments:
+                num_points += len(seg.points)
+        end_index = num_points - 1
 
     segment_points = []
     point_counter = 0
@@ -219,64 +202,18 @@ def get_statistics4track(
         prev = p
 
     elevations = [p.elevation for p in segment_points if p.elevation is not None]
-    max_elevation = max(max(elevations), max_elevation)
+    if elevations:
+        max_elevation = max(max(elevations), max_elevation)
 
-    # take mean of elevation calculations as both are not accurate, maybe one over- the other undershooting
-    ascent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
-    ascent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=False)
-    total_ascent += (ascent_segment + ascent_smoothed) / 2
+        # take mean of elevation calculations as both are not accurate
+        ascent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=False)
+        ascent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=False)
+        total_ascent += (ascent_segment + ascent_smoothed) / 2
 
-    descent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
-    descent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=True)
-    total_descent += (descent_segment + descent_smoothed) / 2
+        descent_segment = calculate_elevation_gain_segment_based(elevations, calculate_descent=True)
+        descent_smoothed = calculate_elevation_gain_smoothed(elevations, calculate_descent=True)
+        total_descent += (descent_segment + descent_smoothed) / 2
 
-    logger.debug(f"   Punkte: {end_index - start_index + 1}")
+    logger.debug(f"   Points: {len(segment_points)}")
 
     return max_elevation, total_distance, total_ascent, total_descent
-
-
-# def find_closest_gpx_point(gpx_dir: Path, lat: float, lon: float) -> Optional[Dict]:
-#     """Findet den nächsten Punkt in allen GPX-Dateien zu einer gegebenen Koordinate.
-#
-#     Durchsucht alle GPX-Dateien im angegebenen Verzeichnis und findet den Punkt,
-#     der der Zielkoordinate am nächsten liegt.
-#
-#     Args:
-#         gpx_dir: Verzeichnis mit GPX-Dateien.
-#         lat: Ziel-Breitengrad in Dezimalgrad.
-#         lon: Ziel-Längengrad in Dezimalgrad.
-#
-#     Returns:
-#         Dictionary mit folgenden Keys:
-#             - file (Path): Pfad zur GPX-Datei
-#             - segment: GPX-Segment-Objekt mit dem nächsten Punkt
-#             - index (int): Index des Punkts im Segment
-#             - distance (float): Distanz zum Punkt in Metern
-#
-#     Raises:
-#         ValueError: Wenn keine gültigen GPX-Punkte im Verzeichnis gefunden wurden.
-#
-#     Note:
-#         Diese Funktion ist für Kompatibilität mit älterem Code vorhanden.
-#         Für neue Implementierungen sollte GPXRouteManager verwendet werden.
-#     """
-#     best = None
-#
-#     for gpx_file in Path(gpx_dir).glob("*.gpx"):
-#         gpx = read_gpx_file(gpx_file)
-#
-#         if gpx is None:
-#             print(f"Überspringe {gpx_file.name} - Parsing fehlgeschlagen")
-#             continue
-#
-#         for track in gpx.tracks:
-#             for seg in track.segments:
-#                 for i, p in enumerate(seg.points):
-#                     d = haversine(lat, lon, p.latitude, p.longitude)
-#                     if best is None or d < best["distance"]:
-#                         best = {"file": gpx_file, "segment": seg, "index": i, "distance": d}
-#
-#     if best is None:
-#         raise ValueError(f"Keine gültigen GPX-Punkte in {gpx_dir} gefunden")
-#
-#     return best
