@@ -1,3 +1,5 @@
+"""Data models for the Bike Tour Planner."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,7 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 @dataclass
 class RoutePosition:
-    """Current position in route calculation."""
+    """Current position in route calculation.
+
+    Attributes:
+        file: Name of the GPX file.
+        index: Index of the point within the GPX track.
+        lat: Latitude of the point.
+        lon: Longitude of the point.
+    """
 
     file: str
     index: int
@@ -19,7 +28,14 @@ class RoutePosition:
 
 @dataclass
 class RouteStatistics:
-    """Accumulated route statistics."""
+    """Accumulated route statistics.
+
+    Attributes:
+        max_elevation: Maximum elevation reached in meters.
+        total_distance: Total distance traveled in meters.
+        total_ascent: Total ascent in meters.
+        total_descent: Total descent in meters.
+    """
 
     max_elevation: float = 0.0
     total_distance: float = 0.0
@@ -27,7 +43,11 @@ class RouteStatistics:
     total_descent: float = 0.0
 
     def update(self, other: RouteStatistics) -> None:
-        """Update statistics with another statistics object."""
+        """Update statistics with another statistics object.
+
+        Args:
+            other: Another RouteStatistics object to merge.
+        """
         self.max_elevation = max(self.max_elevation, other.max_elevation)
         self.total_distance += other.total_distance
         self.total_ascent += other.total_ascent
@@ -36,7 +56,16 @@ class RouteStatistics:
 
 @dataclass
 class RouteContext:
-    """Context for route iteration."""
+    """Context for route iteration.
+
+    Attributes:
+        iteration: Current iteration index.
+        target: The target RoutePosition we are heading towards.
+        visited: Set of filenames already visited.
+        used_base_files: Set of base filenames already used.
+        route_files: List of GPX segments forming the route.
+        force_direction: Direction to force for the first segment ('forward' or 'backward').
+    """
 
     iteration: int
     target: RoutePosition
@@ -47,7 +76,32 @@ class RouteContext:
 
 
 class Booking(BaseModel):
-    """Validated booking model."""
+    """Validated booking model representing an accommodation and associated route data.
+
+    Attributes:
+        hotel_name: Name of the accommodation.
+        arrival_date: Date of arrival.
+        departure_date: Date of departure.
+        latitude: Latitude of the accommodation.
+        longitude: Longitude of the accommodation.
+        address: Full address.
+        phone: Contact phone number.
+        city_name: Name of the city.
+        country_name: Name of the country.
+        has_kitchen: Whether the accommodation has a kitchen.
+        has_washing_machine: Whether the accommodation has a washing machine.
+        has_breakfast: Whether breakfast is included.
+        total_price: Total cost of the stay.
+        free_cancel_until: Last date for free cancellation.
+        tourist_sights: Nearby tourist sights discovered.
+        gpx_files: List of GPX segments for the route to this booking.
+        gpx_track_final: Filename of the merged final GPX track.
+        total_distance_km: Total distance for the daily route in km.
+        total_ascent_m: Total ascent for the daily route in meters.
+        total_descent_m: Total descent for the daily route in meters.
+        max_elevation_m: Maximum elevation reached on the route in meters.
+        last_gpx_file: Internal state for chaining routes to the next day.
+    """
 
     hotel_name: str = Field(..., min_length=1)
     arrival_date: date
@@ -82,6 +136,18 @@ class Booking(BaseModel):
     @field_validator("departure_date")
     @classmethod
     def departure_after_arrival(cls, v: date, info: Any) -> date:
+        """Validates that departure date is after arrival date.
+
+        Args:
+            v: Departure date.
+            info: Validation context.
+
+        Returns:
+            The validated departure date.
+
+        Raises:
+            ValueError: If departure is not after arrival.
+        """
         if "arrival_date" in info.data and v <= info.data["arrival_date"]:
             raise ValueError("Departure must be after arrival")
         return v

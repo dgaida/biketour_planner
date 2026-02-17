@@ -1,3 +1,8 @@
+"""Parsing logic for extracting booking information from HTML confirmations.
+
+Supports Booking.com and Airbnb confirmation formats.
+"""
+
 import re
 from pathlib import Path
 from typing import Any
@@ -400,7 +405,16 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
 
 
 def create_all_bookings(booking_dir: Path, search_radius_m: int, max_pois: int) -> list[dict[str, Any]]:
-    """Create all bookings from HTML files in a directory."""
+    """Create all bookings from HTML files in a directory.
+
+    Args:
+        booking_dir: Directory containing HTML booking confirmations.
+        search_radius_m: Search radius for tourist sights in meters.
+        max_pois: Maximum number of POIs to find per booking.
+
+    Returns:
+        List of dictionaries containing booking information.
+    """
     all_bookings = []
     logger.debug("Start create_all_bookings")
 
