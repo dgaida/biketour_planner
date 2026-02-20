@@ -62,6 +62,10 @@ jobs:
             mike set-default --push latest
           else
             mike deploy --push dev
+            # Set dev as default if no default is set yet (to avoid 404 at root)
+            if ! mike list | grep -q "latest"; then
+              mike set-default --push dev
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
