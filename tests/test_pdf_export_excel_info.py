@@ -1,8 +1,8 @@
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch
-import pytest
+from unittest.mock import patch
+
 from biketour_planner.pdf_export import export_bookings_to_pdf
+
 
 class TestPDFExportExcelInfo:
     @patch("biketour_planner.pdf_export.SimpleDocTemplate")

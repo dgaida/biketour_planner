@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 
+
 def increment_version():
     pyproject_path = Path("pyproject.toml")
     if not pyproject_path.exists():
