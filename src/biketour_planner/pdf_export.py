@@ -310,6 +310,37 @@ def export_bookings_to_pdf(
             ),
         ]
         table_data.append(row)
+
+        # Add stay days for this booking
+        if booking.get("arrival_date") and booking.get("departure_date"):
+            try:
+                arrival = datetime.fromisoformat(booking["arrival_date"])
+                departure = datetime.fromisoformat(booking["departure_date"])
+                stay_days_count = (departure - arrival).days
+                if stay_days_count > 1:
+                    for d_off in range(1, stay_days_count):
+                        stay_date = arrival + timedelta(days=d_off)
+                        stay_date_iso = stay_date.strftime("%Y-%m-%d")
+                        stay_info = daily_info.get(stay_date_iso, [])
+                        day_counter += 1
+                        table_data.append(
+                            [
+                                Paragraph(str(day_counter), cell_style),
+                                Paragraph(stay_date.strftime("%a, %d.%m.%Y"), cell_style),
+                                Paragraph(current_city, cell_style),
+                                "",
+                                "",
+                                Paragraph(accommodation_text.replace("\n", "<br/>"), cell_style),
+                                "",
+                                "",
+                                Paragraph("<br/>".join(stay_info), link_style),
+                                "",
+                                "",
+                            ]
+                        )
+            except ValueError:
+                pass
+
         previous_city, previous_departure_date, day_counter = current_city, booking.get("departure_date"), day_counter + 1
 
     # Checkout row for last accommodation
@@ -319,30 +350,7 @@ def export_bookings_to_pdf(
         last_city = extract_city_name(last_booking.get("address", ""))
         if last_departure_date:
             try:
-                last_arrival = datetime.fromisoformat(last_booking.get("arrival_date", ""))
                 last_checkout = datetime.fromisoformat(last_departure_date)
-                days_staying = (last_checkout - last_arrival).days
-                if days_staying > 1:
-                    for d_off in range(1, days_staying):
-                        intermediate_date = last_arrival + timedelta(days=d_off)
-                        intermediate_date_iso = intermediate_date.strftime("%Y-%m-%d")
-                        intermediate_info = daily_info.get(intermediate_date_iso, [])
-                        table_data.append(
-                            [
-                                Paragraph(str(day_counter), cell_style),
-                                Paragraph(intermediate_date.strftime("%a, %d.%m.%Y"), cell_style),
-                                Paragraph(last_city, cell_style),
-                                "",
-                                "",
-                                "",
-                                "",
-                                "",
-                                Paragraph("<br/>".join(intermediate_info), link_style),
-                                "",
-                                "",
-                            ]
-                        )
-                        day_counter += 1
 
                 checkout_date_iso = last_checkout.strftime("%Y-%m-%d")
                 checkout_info = daily_info.get(checkout_date_iso, [])
