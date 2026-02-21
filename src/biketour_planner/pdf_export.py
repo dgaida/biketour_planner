@@ -208,6 +208,8 @@ def export_bookings_to_pdf(
                 if days_between > 0:
                     for day_offset in range(days_between):
                         intermediate_date = prev_departure + timedelta(days=day_offset)
+                        intermediate_date_iso = intermediate_date.strftime("%Y-%m-%d")
+                        intermediate_info = daily_info.get(intermediate_date_iso, [])
                         row = [
                             Paragraph(str(day_counter), cell_style),
                             Paragraph(intermediate_date.strftime("%a, %d.%m.%Y"), cell_style),
@@ -217,7 +219,7 @@ def export_bookings_to_pdf(
                             "",
                             "",
                             "",
-                            "",
+                            Paragraph("<br/>".join(intermediate_info), link_style),
                             "",
                             "",
                         ]
@@ -323,6 +325,8 @@ def export_bookings_to_pdf(
                 if days_staying > 1:
                     for d_off in range(1, days_staying):
                         intermediate_date = last_arrival + timedelta(days=d_off)
+                        intermediate_date_iso = intermediate_date.strftime("%Y-%m-%d")
+                        intermediate_info = daily_info.get(intermediate_date_iso, [])
                         table_data.append(
                             [
                                 Paragraph(str(day_counter), cell_style),
@@ -333,12 +337,15 @@ def export_bookings_to_pdf(
                                 "",
                                 "",
                                 "",
-                                "",
+                                Paragraph("<br/>".join(intermediate_info), link_style),
                                 "",
                                 "",
                             ]
                         )
                         day_counter += 1
+
+                checkout_date_iso = last_checkout.strftime("%Y-%m-%d")
+                checkout_info = daily_info.get(checkout_date_iso, [])
                 table_data.append(
                     [
                         Paragraph(str(day_counter), cell_style),
@@ -349,7 +356,7 @@ def export_bookings_to_pdf(
                         "",
                         "",
                         "",
-                        "",
+                        Paragraph("<br/>".join(checkout_info), link_style),
                         "",
                         "",
                     ]
