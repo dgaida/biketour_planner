@@ -21,16 +21,11 @@ def increment_version():
     major, minor, patch = map(int, match.groups())
     new_version = f"{major}.{minor}.{patch + 1}"
 
-    new_content = re.sub(
-        r'^version\s*=\s*"\d+\.\d+\.\d+"',
-        f'version = "{new_version}"',
-        content,
-        count=1,
-        flags=re.MULTILINE
-    )
+    new_content = re.sub(r'^version\s*=\s*"\d+\.\d+\.\d+"', f'version = "{new_version}"', content, count=1, flags=re.MULTILINE)
 
     pyproject_path.write_text(new_content, encoding="utf-8")
     print(f"Version incremented to {new_version}")
+
 
 if __name__ == "__main__":
     increment_version()

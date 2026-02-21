@@ -32,7 +32,7 @@ class TestPDFExportExcelInfo:
         mock_read_excel.return_value = {
             "2026-05-15": ["Arrival Info"],
             "2026-05-16": ["Intermediate Info"],
-            "2026-05-17": ["Checkout Info"]
+            "2026-05-17": ["Checkout Info"],
         }
 
         mock_get_gpx.return_value = []
@@ -59,7 +59,9 @@ class TestPDFExportExcelInfo:
     @patch("biketour_planner.pdf_export.Table")
     @patch("biketour_planner.pdf_export.read_daily_info_from_excel")
     @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
-    def test_export_integrates_excel_info_for_intermediate_gap(self, mock_get_gpx, mock_read_excel, mock_table, mock_doc, tmp_path):
+    def test_export_integrates_excel_info_for_intermediate_gap(
+        self, mock_get_gpx, mock_read_excel, mock_table, mock_doc, tmp_path
+    ):
         """Testet Excel-Infos für Lücken zwischen Buchungen."""
         # Setup
         json_path = tmp_path / "bookings.json"
@@ -80,7 +82,7 @@ class TestPDFExportExcelInfo:
                 "departure_date": "2026-05-19",
                 "hotel_name": "Hotel 2",
                 "address": "City 2",
-            }
+            },
         ]
         json_path.write_text(json.dumps(bookings), encoding="utf-8")
 
@@ -97,10 +99,7 @@ class TestPDFExportExcelInfo:
         # Then Day 4: 18th (Arrival Hotel 2)
         # Then Checkout: 19th
 
-        mock_read_excel.return_value = {
-            "2026-05-16": ["Gap Day 16"],
-            "2026-05-17": ["Gap Day 17"]
-        }
+        mock_read_excel.return_value = {"2026-05-16": ["Gap Day 16"], "2026-05-17": ["Gap Day 17"]}
 
         mock_get_gpx.return_value = []
 
