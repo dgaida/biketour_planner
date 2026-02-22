@@ -535,23 +535,16 @@ class TestExportBookingsToPDF:
         bookings = [
             {
                 "arrival_date": "2026-05-15",
-                "departure_date": "2026-05-17", # 2 nights stay
+                "departure_date": "2026-05-17",  # 2 nights stay
                 "hotel_name": "Pass Hotel",
                 "address": "Pass Road 1",
-                "paesse_tracks": [
-                    {
-                        "file": "pass1.gpx",
-                        "passname": "Great Pass",
-                        "latitude": 45.0,
-                        "longitude": 15.0
-                    }
-                ]
+                "paesse_tracks": [{"file": "pass1.gpx", "passname": "Great Pass", "latitude": 45.0, "longitude": 15.0}],
             },
             {
-                "arrival_date": "2026-05-20", # Gap of 3 days
+                "arrival_date": "2026-05-20",  # Gap of 3 days
                 "hotel_name": "After Gap Hotel",
-                "address": "Road 2"
-            }
+                "address": "Road 2",
+            },
         ]
 
         json_path = tmp_path / "bookings.json"
@@ -561,6 +554,7 @@ class TestExportBookingsToPDF:
         (gpx_dir / "pass1.gpx").touch()
 
         import json
+
         json_path.write_text(json.dumps(bookings), encoding="utf-8")
 
         mock_get_gpx.return_value = []
@@ -580,6 +574,7 @@ class TestExportBookingsToPDF:
         json_path = tmp_path / "bookings.json"
         output_path = tmp_path / "output.pdf"
         import json
+
         json_path.write_text(json.dumps(bookings_data), encoding="utf-8")
 
         mock_get_gpx.return_value = []

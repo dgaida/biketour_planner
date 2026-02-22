@@ -1,16 +1,19 @@
-import pytest
 from unittest.mock import MagicMock
+
 from biketour_planner.excel_hyperlinks import create_tourist_sights_hyperlinks
+
 
 def test_create_hyperlinks_none():
     ws = {}
     create_tourist_sights_hyperlinks(ws, 5, None)
     assert ws["I5"] == ""
 
+
 def test_create_hyperlinks_empty():
     ws = {}
     create_tourist_sights_hyperlinks(ws, 5, {"features": []})
     assert ws["I5"] == ""
+
 
 def test_create_hyperlinks_success():
     ws = MagicMock()
@@ -20,20 +23,8 @@ def test_create_hyperlinks_success():
 
     tourist_sights = {
         "features": [
-            {
-                "properties": {
-                    "name": "Tower",
-                    "lat": 45.0,
-                    "lon": 15.0
-                }
-            },
-            {
-                "properties": {
-                    "name": "Bridge",
-                    "lat": 45.1,
-                    "lon": 15.1
-                }
-            }
+            {"properties": {"name": "Tower", "lat": 45.0, "lon": 15.0}},
+            {"properties": {"name": "Bridge", "lat": 45.1, "lon": 15.1}},
         ]
     }
 
@@ -51,26 +42,14 @@ def test_create_hyperlinks_success():
     assert "Bridge" in formula2
     assert "45.1,15.1" in formula2
 
+
 def test_create_hyperlinks_fallbacks():
     ws = MagicMock()
     tourist_sights = {
         "features": [
-            {
-                "properties": {
-                    "street": "Main St",
-                    "lat": 1.0,
-                    "lon": 2.0
-                }
-            },
-            {
-                "properties": {
-                    "lat": 3.0,
-                    "lon": 4.0
-                }
-            },
-            {
-                "something": "else"
-            }
+            {"properties": {"street": "Main St", "lat": 1.0, "lon": 2.0}},
+            {"properties": {"lat": 3.0, "lon": 4.0}},
+            {"something": "else"},
         ]
     }
     create_tourist_sights_hyperlinks(ws, 1, tourist_sights)
@@ -80,20 +59,13 @@ def test_create_hyperlinks_fallbacks():
     assert "(3.0, 4.0)" in ws.__setitem__.call_args_list[1][0][1]
     # 3rd: Skipped (no properties)
 
+
 def test_create_hyperlinks_missing_coords():
     ws = MagicMock()
-    tourist_sights = {
-        "features": [
-            {
-                "properties": {
-                    "name": "No Lat",
-                    "lon": 2.0
-                }
-            }
-        ]
-    }
+    tourist_sights = {"features": [{"properties": {"name": "No Lat", "lon": 2.0}}]}
     create_tourist_sights_hyperlinks(ws, 1, tourist_sights)
     assert not ws.__setitem__.called
+
 
 def test_create_hyperlinks_too_many_pois():
     ws = MagicMock()

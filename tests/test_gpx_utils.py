@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 from biketour_planner.gpx_utils import get_gps_tracks4day_4alldays
+
 
 @patch("biketour_planner.gpx_utils.GPXRouteManager")
 def test_get_gps_tracks4day_4alldays(mock_manager_class):

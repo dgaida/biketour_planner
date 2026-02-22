@@ -1,6 +1,7 @@
 import json
-from pathlib import Path
-from biketour_planner.utils.cache import load_json_cache, json_cache
+
+from biketour_planner.utils.cache import json_cache, load_json_cache
+
 
 def test_load_json_cache(tmp_path):
     cache_file = tmp_path / "cache.json"
@@ -9,13 +10,16 @@ def test_load_json_cache(tmp_path):
 
     assert load_json_cache(cache_file) == data
 
+
 def test_load_json_cache_nonexistent(tmp_path):
     assert load_json_cache(tmp_path / "missing.json") == {}
+
 
 def test_load_json_cache_invalid(tmp_path):
     cache_file = tmp_path / "invalid.json"
     cache_file.write_text("not json")
     assert load_json_cache(cache_file) == {}
+
 
 def test_json_cache_internal(tmp_path):
     cache_file = tmp_path / "test_cache.json"
@@ -28,14 +32,14 @@ def test_json_cache_internal(tmp_path):
     assert cache_file.exists()
 
     # Check if it uses cache
-    with open(cache_file, "r") as f:
+    with open(cache_file) as f:
         content = json.load(f)
     assert "(2,)_{}" in content
     assert content["(2,)_{}"] == 4
 
+
 def test_json_cache_external_dict(tmp_path):
     cache_file = tmp_path / "ext_cache.json"
-    my_cache = {}
 
     # We simulate the globals by putting things in the function's module or similar
     # But here we can just test if it works when we don't provide external names
@@ -45,6 +49,7 @@ def test_json_cache_external_dict(tmp_path):
 
     assert my_func(5) == 6
     assert cache_file.exists()
+
 
 def test_json_cache_exception_handling(tmp_path):
     # Test directory creation failure or similar

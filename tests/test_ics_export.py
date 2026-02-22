@@ -1,11 +1,7 @@
-import pytest
-from pathlib import Path
 from datetime import datetime
-from biketour_planner.ics_export import (
-    create_ics_event,
-    create_accommodation_description,
-    export_bookings_to_ics
-)
+
+from biketour_planner.ics_export import create_accommodation_description, create_ics_event, export_bookings_to_ics
+
 
 def test_create_ics_event_basic():
     summary = "Test Event"
@@ -20,6 +16,7 @@ def test_create_ics_event_basic():
     assert "DTEND;VALUE=DATE:20260517" in event_str
     assert "END:VEVENT" in event_str
 
+
 def test_create_ics_event_with_description_and_location():
     summary = "Test Event"
     start_date = datetime(2026, 5, 15)
@@ -31,6 +28,7 @@ def test_create_ics_event_with_description_and_location():
 
     assert "DESCRIPTION:A long description" in event_str
     assert "LOCATION:Test Location\\, 12345 City" in event_str
+
 
 def test_create_ics_event_wrapping():
     summary = "Test Event"
@@ -45,6 +43,7 @@ def test_create_ics_event_wrapping():
     # Check for continuation lines (lines starting with a space)
     assert "\n " in event_str
 
+
 def test_create_accommodation_description_complete():
     booking = {
         "hotel_name": "Hotel Test",
@@ -57,7 +56,7 @@ def test_create_accommodation_description_complete():
         "total_price": 123.45,
         "free_cancel_until": "2026-05-10",
         "latitude": 45.123,
-        "longitude": 15.456
+        "longitude": 15.456,
     }
 
     desc = create_accommodation_description(booking)
@@ -71,6 +70,7 @@ def test_create_accommodation_description_complete():
     assert "Kostenlose Stornierung bis: 2026-05-10" in desc
     assert "Google Maps: https://www.google.com/maps/search/?api=1&query=45.123,15.456" in desc
 
+
 def test_export_bookings_to_ics(tmp_path):
     output_file = tmp_path / "test.ics"
     bookings = [
@@ -80,7 +80,7 @@ def test_export_bookings_to_ics(tmp_path):
             "arrival_date": "2026-05-15",
             "departure_date": "2026-05-16",
             "address": "Street A",
-            "free_cancel_until": "2026-05-10"
+            "free_cancel_until": "2026-05-10",
         }
     ]
 
@@ -93,18 +93,14 @@ def test_export_bookings_to_ics(tmp_path):
     assert "⚠️ Stornierungsfrist: Hotel A" in content
     assert "END:VCALENDAR" in content
 
+
 def test_export_bookings_to_ics_invalid_date(tmp_path, caplog):
     output_file = tmp_path / "test_invalid.ics"
-    bookings = [
-        {
-            "hotel_name": "Bad Date Hotel",
-            "arrival_date": "invalid-date",
-            "departure_date": "2026-05-16"
-        }
-    ]
+    bookings = [{"hotel_name": "Bad Date Hotel", "arrival_date": "invalid-date", "departure_date": "2026-05-16"}]
 
     export_bookings_to_ics(bookings, output_file)
     assert "Ungültiges Datum" in caplog.text
+
 
 def test_export_bookings_to_ics_invalid_cancel_date(tmp_path, caplog):
     output_file = tmp_path / "test_invalid_cancel.ics"
@@ -113,7 +109,7 @@ def test_export_bookings_to_ics_invalid_cancel_date(tmp_path, caplog):
             "hotel_name": "Bad Cancel Hotel",
             "arrival_date": "2026-05-15",
             "departure_date": "2026-05-16",
-            "free_cancel_until": "invalid-date"
+            "free_cancel_until": "invalid-date",
         }
     ]
 

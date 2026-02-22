@@ -1,9 +1,9 @@
-import pytest
 from biketour_planner.elevation_calc import (
+    calculate_elevation_gain_segment_based,
     calculate_elevation_gain_simple,
     calculate_elevation_gain_smoothed,
-    calculate_elevation_gain_segment_based
 )
+
 
 def test_calculate_elevation_gain_simple():
     # Basic test
@@ -19,6 +19,7 @@ def test_calculate_elevation_gain_simple():
     # Total: 4+9+7 = 20
     assert calculate_elevation_gain_simple(elevations, threshold=3.0) == 20.0
 
+
 def test_calculate_elevation_gain_simple_descent():
     elevations = [100, 95, 100, 90, 80]
     # calculate_descent=True, threshold=3.0
@@ -29,10 +30,12 @@ def test_calculate_elevation_gain_simple_descent():
     # Total: 5+10+10 = 25
     assert calculate_elevation_gain_simple(elevations, threshold=3.0, calculate_descent=True) == 25.0
 
+
 def test_calculate_elevation_gain_simple_edge_cases():
     assert calculate_elevation_gain_simple([]) == 0.0
     assert calculate_elevation_gain_simple([100]) == 0.0
-    assert calculate_elevation_gain_simple([100, None, 105]) == 0.0 # None skipped
+    assert calculate_elevation_gain_simple([100, None, 105]) == 0.0  # None skipped
+
 
 def test_calculate_elevation_gain_smoothed():
     elevations = [100, 100, 100, 100, 100, 110, 110, 110, 110, 110]
@@ -59,10 +62,12 @@ def test_calculate_elevation_gain_smoothed():
     # total 8.0
     assert calculate_elevation_gain_smoothed(elevations, window_size=5, threshold=3.0) == 8.0
 
+
 def test_calculate_elevation_gain_smoothed_fallback():
     # Less than window_size+1 points
     elevations = [100, 110]
     assert calculate_elevation_gain_smoothed(elevations, window_size=5) == 10.0
+
 
 def test_calculate_elevation_gain_segment_based():
     elevations = [100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 140, 135, 130, 125, 120, 125, 130, 135, 140, 145]
@@ -71,6 +76,7 @@ def test_calculate_elevation_gain_segment_based():
     ascent = calculate_elevation_gain_segment_based(elevations, min_segment_length=5)
     assert ascent > 50 and ascent < 60
 
+
 def test_calculate_elevation_gain_segment_based_descent():
     elevations = [100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 140, 135, 130, 125, 120, 125, 130, 135, 140, 145]
     # descent segments after smoothing: 141.66->123.33
@@ -78,9 +84,11 @@ def test_calculate_elevation_gain_segment_based_descent():
     descent = calculate_elevation_gain_segment_based(elevations, min_segment_length=5, calculate_descent=True)
     assert descent > 15 and descent < 20
 
+
 def test_calculate_elevation_gain_segment_based_short_track():
     elevations = [100, 110]
     assert calculate_elevation_gain_segment_based(elevations, min_segment_length=10) == 10.0
+
 
 def test_calculate_elevation_gain_segment_based_constant():
     elevations = [100] * 20

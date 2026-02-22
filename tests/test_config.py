@@ -1,23 +1,21 @@
-import pytest
-import yaml
 from pathlib import Path
+
+import yaml
+
 from biketour_planner.config import Config, get_config
+
 
 def test_config_default():
     config = Config(Path("nonexistent.yaml"))
     assert config.routing.brouter_url == "http://localhost:17777"
     assert config.geoapify.max_pois == 2
 
+
 def test_config_override(tmp_path):
     config_file = tmp_path / "config.yaml"
     user_config = {
-        "routing": {
-            "brouter_url": "http://other-host:18888",
-            "max_connection_distance_m": 2000
-        },
-        "geoapify": {
-            "max_pois": 5
-        }
+        "routing": {"brouter_url": "http://other-host:18888", "max_connection_distance_m": 2000},
+        "geoapify": {"max_pois": 5},
     }
     with open(config_file, "w") as f:
         yaml.dump(user_config, f)
@@ -29,11 +27,13 @@ def test_config_override(tmp_path):
     # Default values preserved
     assert config.geoapify.search_radius_m == 5000
 
+
 def test_config_get():
     config = Config()
     assert config.get("routing.brouter_url") == "http://localhost:17777"
     assert config.get("nonexistent.key", "default") == "default"
     assert config.get("routing.missing", "default") == "default"
+
 
 def test_config_properties():
     config = Config()
@@ -51,6 +51,7 @@ def test_config_properties():
     assert isinstance(config.export.excel_info_file, str)
     assert isinstance(config.logging.level, str)
     assert isinstance(config.logging.file, str)
+
 
 def test_get_config_singleton():
     c1 = get_config()

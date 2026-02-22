@@ -413,8 +413,9 @@ class TestExtractBookingInfo:
         """
         (tmp_path / "booking1.html").write_text(html_content)
 
-        from biketour_planner.parse_booking import create_all_bookings
         from unittest.mock import patch
+
+        from biketour_planner.parse_booking import create_all_bookings
 
         with patch("biketour_planner.parse_booking.find_top_tourist_sights") as mock_sights:
             mock_sights.return_value = ["Sight 1"]

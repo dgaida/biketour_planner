@@ -1,14 +1,11 @@
-import pytest
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from biketour_planner.pass_finder import (
-    load_json,
-    get_gpx_endpoints,
-    find_nearest_hotel,
-    find_pass_track,
-    process_passes
-)
+
+import pytest
+
+from biketour_planner.pass_finder import find_nearest_hotel, find_pass_track, get_gpx_endpoints, load_json, process_passes
+
 
 def test_load_json(tmp_path):
     data = {"test": "value"}
@@ -18,10 +15,12 @@ def test_load_json(tmp_path):
     loaded = load_json(json_file)
     assert loaded == data
 
+
 def test_load_json_error(tmp_path):
     json_file = tmp_path / "nonexistent.json"
     with pytest.raises(FileNotFoundError):
         load_json(json_file)
+
 
 @patch("biketour_planner.pass_finder.read_gpx_file")
 def test_get_gpx_endpoints(mock_read_gpx):
@@ -39,15 +38,17 @@ def test_get_gpx_endpoints(mock_read_gpx):
     endpoints = get_gpx_endpoints(Path("test.gpx"))
     assert endpoints == (1.0, 2.0, 3.0, 4.0)
 
+
 def test_find_nearest_hotel():
     bookings = [
         {"hotel_name": "Far", "latitude": 10.0, "longitude": 10.0},
         {"hotel_name": "Near", "latitude": 1.1, "longitude": 1.1},
-        {"hotel_name": "No GPS"}
+        {"hotel_name": "No GPS"},
     ]
 
     nearest = find_nearest_hotel(1.0, 1.0, bookings)
     assert nearest["hotel_name"] == "Near"
+
 
 @patch("biketour_planner.pass_finder.get_gpx_endpoints")
 @patch("biketour_planner.pass_finder.get_config")
@@ -71,6 +72,7 @@ def test_find_pass_track(mock_get_config, mock_get_endpoints, tmp_path):
     track = find_pass_track(0.0, 0.0, 10.0, 10.0, gpx_dir)
     assert track == gpx_file
 
+
 @patch("biketour_planner.pass_finder.get_gpx_endpoints")
 @patch("biketour_planner.pass_finder.get_config")
 def test_find_pass_track_reversed(mock_get_config, mock_get_endpoints, tmp_path):
@@ -91,6 +93,7 @@ def test_find_pass_track_reversed(mock_get_config, mock_get_endpoints, tmp_path)
     track = find_pass_track(0.0, 0.0, 10.0, 10.0, gpx_dir)
     assert track == gpx_file
 
+
 @patch("biketour_planner.pass_finder.load_json")
 @patch("biketour_planner.pass_finder.geocode_address")
 @patch("biketour_planner.pass_finder.find_pass_track")
@@ -98,13 +101,7 @@ def test_find_pass_track_reversed(mock_get_config, mock_get_endpoints, tmp_path)
 @patch("biketour_planner.pass_finder.get_statistics4track")
 @patch("biketour_planner.pass_finder.get_config")
 def test_process_passes(
-    mock_get_config,
-    mock_get_stats,
-    mock_read_gpx,
-    mock_find_track,
-    mock_geocode,
-    mock_load_json,
-    tmp_path
+    mock_get_config, mock_get_stats, mock_read_gpx, mock_find_track, mock_geocode, mock_load_json, tmp_path
 ):
     # Setup config
     mock_config = MagicMock()
@@ -133,11 +130,13 @@ def test_process_passes(
     assert result[0]["paesse_tracks"][0]["passname"] == "Alpe d'Huez"
     assert result[0]["paesse_tracks"][0]["total_ascent_m"] == 1100
 
+
 def test_process_passes_no_file(caplog):
     bookings = [{"hotel_name": "Test"}]
     result = process_passes(Path("nonexistent.json"), Path("."), bookings)
     assert result == bookings
     assert "Keine Pässe-Datei gefunden" in caplog.text
+
 
 @patch("biketour_planner.pass_finder.load_json")
 def test_process_passes_empty_list(mock_load_json, tmp_path, caplog):
@@ -149,6 +148,7 @@ def test_process_passes_empty_list(mock_load_json, tmp_path, caplog):
     assert result == bookings
     assert "Keine Pässe in der JSON-Datei" in caplog.text
 
+
 @patch("biketour_planner.pass_finder.load_json")
 def test_process_passes_invalid_pass(mock_load_json, tmp_path, caplog):
     mock_load_json.return_value = [{"something": "else"}]
@@ -157,6 +157,7 @@ def test_process_passes_invalid_pass(mock_load_json, tmp_path, caplog):
     bookings = [{"hotel_name": "Test"}]
     process_passes(passes_json, Path("."), bookings)
     assert "Pass ohne Namen gefunden" in caplog.text
+
 
 @patch("biketour_planner.pass_finder.load_json")
 @patch("biketour_planner.pass_finder.geocode_address")
@@ -169,6 +170,7 @@ def test_process_passes_geocode_error(mock_geocode, mock_load_json, tmp_path, ca
     process_passes(passes_json, Path("."), bookings)
     assert "Geocoding fehlgeschlagen" in caplog.text
 
+
 @patch("biketour_planner.pass_finder.load_json")
 @patch("biketour_planner.pass_finder.geocode_address")
 def test_process_passes_no_hotel(mock_geocode, mock_load_json, tmp_path, caplog):
@@ -176,9 +178,10 @@ def test_process_passes_no_hotel(mock_geocode, mock_load_json, tmp_path, caplog)
     mock_geocode.return_value = (0.0, 0.0)
     passes_json = tmp_path / "passes.json"
     passes_json.write_text("[]")
-    bookings = [] # No hotels
+    bookings = []  # No hotels
     process_passes(passes_json, Path("."), bookings)
     assert "Kein Hotel gefunden" in caplog.text
+
 
 def test_get_gpx_endpoints_empty():
     with patch("biketour_planner.pass_finder.read_gpx_file") as mock_read:
@@ -189,10 +192,12 @@ def test_get_gpx_endpoints_empty():
         mock_read.return_value = mock_gpx
         assert get_gpx_endpoints(Path("test.gpx")) is None
 
+
 def test_find_pass_track_no_tracks(tmp_path, mock_get_config):
     gpx_dir = tmp_path / "empty"
     gpx_dir.mkdir()
     assert find_pass_track(0, 0, 1, 1, gpx_dir) is None
+
 
 @pytest.fixture
 def mock_get_config():
