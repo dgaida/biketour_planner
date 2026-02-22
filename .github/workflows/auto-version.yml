@@ -25,7 +25,12 @@ jobs:
           python-version: '3.11'
 
       - name: Increment version
-        run: python scripts/increment_version.py
+        id: bump_version
+        run: |
+          python scripts/increment_version.py
+          NEW_VERSION=$(grep '^version =' pyproject.toml | cut -d '"' -f 2)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
 
       - name: Configure Git
         run: |
@@ -33,11 +38,21 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push changes
+        id: push_changes
         run: |
           git add pyproject.toml
           if git diff --staged --quiet; then
             echo "No changes to commit"
+            echo "bumped=false" >> $GITHUB_OUTPUT
           else
-            git commit -m "chore: bump version"
+            git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }}"
             git push
+            echo "bumped=true" >> $GITHUB_OUTPUT
           fi
+
+      - name: Create and push tag
+        if: steps.push_changes.outputs.bumped == 'true'
+        run: |
+          VERSION="v${{ steps.bump_version.outputs.new_version }}"
+          git tag $VERSION
+          git push origin $VERSION

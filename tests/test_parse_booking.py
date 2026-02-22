@@ -123,6 +123,44 @@ class TestParseGPSCoordinates:
 class TestExtractBookingInfo:
     """Tests für die extract_booking_info Funktion."""
 
+    def test_extract_airbnb_booking(self, tmp_path):
+        """Testet Extraktion von Airbnb-Buchungen."""
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <script>
+            var data = {"metadata":{"title":"Cozy Airbnb","check_in_date":"2026-06-01","check_out_date":"2026-06-05"},"lat":44.123,"lng":15.456};
+        </script>
+        <script>
+            {"id":"header_action.direction", "subtitle": "Beach Road 1, Zadar"}
+        </script>
+        <script>
+            {"id":"payment_summary", "content": "Gesamtkosten: 450,00 €"}
+        </script>
+        <script>
+            {"id":"checkin_checkout_arrival_guide", "leading_kicker": "Check-in", "leading_subtitle": "15:00 - 22:00"}
+        </script>
+        <div class="rz78adb">
+            <p class="_yz1jt7x">Beach Road 1, Zadar, Croatia</p>
+        </div>
+        </html>
+        """
+        # Note: Airbnb parser looks for script with re.compile(r'"metadata".*"title".*"check_in_date"')
+        # My dummy content has it.
+
+        html_file = tmp_path / "airbnb.html"
+        html_file.write_text(html_content, encoding="utf-8")
+
+        result = extract_booking_info(html_file)
+
+        assert result["hotel_name"] == "Cozy Airbnb"
+        assert result["arrival_date"] == "2026-06-01"
+        assert result["departure_date"] == "2026-06-05"
+        assert result["latitude"] == 44.123
+        assert result["longitude"] == 15.456
+        assert result["city_name"] == "Zadar"
+        assert result["total_price"] == 450.0
+
     def test_extract_booking_info_complete_new_format(self, tmp_path):
         """Testet Extraktion mit vollständigem neuen HTML-Format."""
         html_content = """
@@ -362,6 +400,49 @@ class TestExtractBookingInfo:
 
         assert result["latitude"] is None
         assert result["longitude"] is None
+
+    def test_create_all_bookings(self, tmp_path):
+        """Testet create_all_bookings Funktion."""
+        html_content = """
+        <html>
+        <div class="hotel-details__address">
+            <h2>Test Hotel</h2>
+            <strong>GPS-Koordinaten:</strong> N 45° 0.0, E 15° 0.0
+        </div>
+        </html>
+        """
+        (tmp_path / "booking1.html").write_text(html_content)
+
+        from biketour_planner.parse_booking import create_all_bookings
+        from unittest.mock import patch
+
+        with patch("biketour_planner.parse_booking.find_top_tourist_sights") as mock_sights:
+            mock_sights.return_value = ["Sight 1"]
+            bookings = create_all_bookings(tmp_path, 5000, 2)
+
+            assert len(bookings) == 1
+            assert bookings[0]["hotel_name"] == "Test Hotel"
+            assert bookings[0]["tourist_sights"] == ["Sight 1"]
+
+    def test_extract_booking_info_more_fallbacks(self, tmp_path):
+        """Testet weitere Fallbacks in extract_booking_info."""
+        html_content = """
+        <html>
+        <h5>Ausstattung</h5>
+        <tr><td>Küche</td></tr>
+        <h5>Mahlzeiten</h5>
+        <tr><td>Frühstück</td></tr>
+        <div class="gta-modal-preview__hotel-name">
+            <div class="bui-text">Fallback Hotel Name</div>
+        </div>
+        </html>
+        """
+        html_file = tmp_path / "fallback.html"
+        html_file.write_text(html_content, encoding="utf-8")
+        result = extract_booking_info(html_file)
+        assert result["hotel_name"] == "Fallback Hotel Name"
+        assert result["has_kitchen"] is True
+        assert result["has_breakfast"] is True
 
 
 class TestMonthsDE:
