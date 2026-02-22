@@ -8,7 +8,7 @@ Testet den PDF-Export inklusive:
 - Excel-Info-Integration
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from reportlab.lib import colors
@@ -525,6 +525,63 @@ class TestExportBookingsToPDF:
         export_bookings_to_pdf(json_path, output_path)
 
         assert mock_doc_instance.build.called
+
+    @patch("biketour_planner.pdf_export.SimpleDocTemplate")
+    @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
+    @patch("biketour_planner.pdf_export.read_gpx_file")
+    @patch("biketour_planner.pdf_export.get_statistics4track")
+    def test_export_with_pass_tracks(self, mock_stats, mock_read_gpx, mock_get_gpx, mock_doc, tmp_path):
+        """Testet PDF-Export mit Pass-Tracks."""
+        bookings = [
+            {
+                "arrival_date": "2026-05-15",
+                "departure_date": "2026-05-17",  # 2 nights stay
+                "hotel_name": "Pass Hotel",
+                "address": "Pass Road 1",
+                "paesse_tracks": [{"file": "pass1.gpx", "passname": "Great Pass", "latitude": 45.0, "longitude": 15.0}],
+            },
+            {
+                "arrival_date": "2026-05-20",  # Gap of 3 days
+                "hotel_name": "After Gap Hotel",
+                "address": "Road 2",
+            },
+        ]
+
+        json_path = tmp_path / "bookings.json"
+        output_path = tmp_path / "output.pdf"
+        gpx_dir = tmp_path / "gpx"
+        gpx_dir.mkdir()
+        (gpx_dir / "pass1.gpx").touch()
+
+        import json
+
+        json_path.write_text(json.dumps(bookings), encoding="utf-8")
+
+        mock_get_gpx.return_value = []
+        mock_read_gpx.return_value = MagicMock(tracks=[True])
+        mock_stats.return_value = (2000.0, 10000.0, 1000.0, 0.0)
+
+        export_bookings_to_pdf(json_path, output_path, gpx_dir=gpx_dir)
+        assert mock_doc.called
+
+    @patch("biketour_planner.pdf_export.SimpleDocTemplate")
+    @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
+    @patch("biketour_planner.pdf_export.pdfmetrics.registerFont")
+    def test_export_font_registration_failure(self, mock_register, mock_get_gpx, mock_doc, bookings_data, tmp_path):
+        """Testet Verhalten bei fehlgeschlagener Font-Registrierung."""
+        mock_register.side_effect = Exception("Font missing")
+
+        json_path = tmp_path / "bookings.json"
+        output_path = tmp_path / "output.pdf"
+        import json
+
+        json_path.write_text(json.dumps(bookings_data), encoding="utf-8")
+
+        mock_get_gpx.return_value = []
+
+        # Should use fallback fonts and not crash
+        export_bookings_to_pdf(json_path, output_path)
+        assert mock_doc.called
 
     @patch("biketour_planner.pdf_export.SimpleDocTemplate")
     @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
