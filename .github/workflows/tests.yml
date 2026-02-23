@@ -98,8 +98,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           use_oidc: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: dgaida/biketour_planner
           files: ./coverage.xml
           flags: unittests
           name: biketour_planner
           fail_ci_if_error: false
+          verbose: true
