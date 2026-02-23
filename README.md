@@ -12,7 +12,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://dgaida.github.io/biketour_planner/)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/dgaida/biketour_planner/graphs/commit-activity)
 ![Last commit](https://img.shields.io/github/last-commit/dgaida/biketour_planner)
-![Version](https://img.shields.io/badge/version-0.1.4-blue)
+[![Version](https://img.shields.io/github/v/tag/dgaida/biketour_planner?label=version)](https://github.com/dgaida/biketour_planner/tags)
 
 ---
 
