@@ -30,6 +30,9 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       matrix:
         # Conditional matrix based on event type
@@ -94,8 +97,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
+          slug: dgaida/biketour_planner
           files: ./coverage.xml
           flags: unittests
           name: biketour_planner
           fail_ci_if_error: false
+          verbose: true
