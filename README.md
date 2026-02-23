@@ -9,6 +9,11 @@
 [![CodeQL](https://github.com/dgaida/biketour_planner/actions/workflows/codeql.yml/badge.svg)](https://github.com/dgaida/biketour_planner/actions/workflows/codeql.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+![Version](https://img.shields.io/badge/version-0.1.4-blue)
+[![codecov](https://codecov.io/gh/dgaida/biketour_planner/branch/main/graph/badge.svg)](https://codecov.io/gh/dgaida/biketour_planner)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://dgaida.github.io/biketour_planner/)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/dgaida/biketour_planner/graphs/commit-activity)
+![Last commit](https://img.shields.io/github/last-commit/dgaida/biketour_planner)
 
 ---
 
