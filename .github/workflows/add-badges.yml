@@ -1,0 +1,16 @@
+name: Add Badges
+on:
+  push:
+    branches: [master, main]
+
+jobs:
+  add-badges:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add Badges
+        uses: dgaida/auto-version-action@main
