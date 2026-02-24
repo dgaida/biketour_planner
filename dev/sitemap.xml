@@ -2,168 +2,168 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/changelog/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/changelog/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/changelog/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/configuration/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/configuration/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/configuration/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/getting-started/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/getting-started/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/getting-started/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/installation/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/installation/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/installation/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/troubleshooting/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/troubleshooting/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/troubleshooting/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/api/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/api/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/api/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/architecture/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/architecture/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/architecture/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/development/docstrings/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/development/docstrings/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/development/docstrings/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/development/metrics/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/development/metrics/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/development/metrics/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/development/release/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/development/release/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/development/release/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/development/testing/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev/development/testing/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/deven/development/testing/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/dev"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/changelog/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/changelog/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devchangelog/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/configuration/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/configuration/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devconfiguration/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/getting-started/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/getting-started/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devgetting-started/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/installation/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/installation/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devinstallation/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/troubleshooting/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/troubleshooting/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devtroubleshooting/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/api/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/api/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devapi/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/architecture/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/architecture/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devarchitecture/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/development/docstrings/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/development/docstrings/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devdevelopment/docstrings/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/development/metrics/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/development/metrics/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devdevelopment/metrics/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/development/release/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/development/release/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devdevelopment/release/"/>
     </url>
     <url>
         <loc>https://dgaida.github.io/biketour_planner/dev/en/development/testing/</loc>
-        <lastmod>2026-02-23</lastmod>
+        <lastmod>2026-02-24</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://dgaida.github.io/biketour_planner/dev/en/development/testing/"/>
         <xhtml:link rel="alternate" hreflang="de" href="https://dgaida.github.io/biketour_planner/devdevelopment/testing/"/>
