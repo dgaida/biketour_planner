@@ -5,6 +5,7 @@ Google Maps links for tourist sights and elevation profiles.
 """
 
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -122,8 +123,23 @@ def export_bookings_to_pdf(
     """
     # Register Unicode fonts
     try:
-        pdfmetrics.registerFont(TTFont("DejaVuSans", "DejaVuSans.ttf"))
-        pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", "DejaVuSans-Bold.ttf"))
+        # Common system paths for DejaVu fonts on Linux
+        dejavu_paths = [
+            "DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        ]
+        dejavu_bold_paths = [
+            "DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+        ]
+
+        default_font_path = next((p for p in dejavu_paths if os.path.exists(p)), "DejaVuSans.ttf")
+        bold_font_path = next((p for p in dejavu_bold_paths if os.path.exists(p)), "DejaVuSans-Bold.ttf")
+
+        pdfmetrics.registerFont(TTFont("DejaVuSans", default_font_path))
+        pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", bold_font_path))
         default_font, bold_font = "DejaVuSans", "DejaVuSans-Bold"
     except Exception:
         try:
@@ -242,7 +258,8 @@ def export_bookings_to_pdf(
             date_str = ""
 
         current_city = extract_city_name(booking.get("address", ""))
-        accommodation_text = create_accommodation_text(booking, use_symbols=True)
+        # We use text instead of symbols for PDF because emoji support in PDF fonts is often limited
+        accommodation_text = create_accommodation_text(booking, use_symbols=False)
 
         km_values, hm_max_values, gpx_tracks = [], [], []
 
