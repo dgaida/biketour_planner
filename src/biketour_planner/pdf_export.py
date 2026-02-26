@@ -143,6 +143,9 @@ def export_bookings_to_pdf(
     if excel_info_path and excel_info_path.exists():
         daily_info = read_daily_info_from_excel(excel_info_path)
 
+    # Check if all accommodations have towels
+    all_have_towels = all(booking.get("has_towels", False) for booking in bookings)
+
     # Create PDF
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(
@@ -239,7 +242,7 @@ def export_bookings_to_pdf(
             date_str = ""
 
         current_city = extract_city_name(booking.get("address", ""))
-        accommodation_text = create_accommodation_text(booking)
+        accommodation_text = create_accommodation_text(booking, use_symbols=True)
 
         km_values, hm_max_values, gpx_tracks = [], [], []
 
@@ -408,6 +411,10 @@ def export_bookings_to_pdf(
         f"<b>Gesamtkosten:</b> {total_price:.2f} €"
     )
     story.append(Paragraph(summary_text, summary_style))
+
+    if all_have_towels:
+        story.append(Spacer(1, 0.4 * cm))
+        story.append(Paragraph("In allen Unterkünften gibt es Handtücher.", cell_style))
 
     if output_dir:
         gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)

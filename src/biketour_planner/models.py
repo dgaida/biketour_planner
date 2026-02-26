@@ -117,6 +117,7 @@ class Booking(BaseModel):
     has_kitchen: bool = False
     has_washing_machine: bool = False
     has_breakfast: bool = False
+    has_towels: bool = False
 
     total_price: float | None = Field(None, ge=0)
     free_cancel_until: date | None = None

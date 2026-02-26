@@ -445,6 +445,37 @@ class TestExtractBookingInfo:
         assert result["has_kitchen"] is True
         assert result["has_breakfast"] is True
 
+    def test_extract_booking_info_towels(self, tmp_path):
+        """Testet Extraktion von Handtüchern."""
+        html_content = """
+        <html>
+        <body>
+            <h5>Ausstattung</h5>
+            <th><td>Handtücher, Küche</td></th>
+        </body>
+        </html>
+        """
+        html_file = tmp_path / "towels.html"
+        html_file.write_text(html_content, encoding="utf-8")
+        result = extract_booking_info(html_file)
+        assert result["has_towels"] is True
+        assert result["has_kitchen"] is True
+
+    def test_extract_airbnb_booking_towels(self, tmp_path):
+        """Testet Extraktion von Handtüchern/Grundausstattung aus Airbnb."""
+        html_content = """
+        <html>
+        <script>
+            var data = {"metadata":{"title":"Airbnb Towels","check_in_date":"2026-06-01","check_out_date":"2026-06-05"},"lat":44.123,"lng":15.456};
+        </script>
+        <body>Grundausstattung</body>
+        </html>
+        """
+        html_file = tmp_path / "airbnb_towels.html"
+        html_file.write_text(html_content, encoding="utf-8")
+        result = extract_booking_info(html_file)
+        assert result["has_towels"] is True
+
 
 class TestMonthsDE:
     """Tests für das MONTHS_DE Dictionary."""

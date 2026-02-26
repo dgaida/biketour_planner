@@ -198,6 +198,13 @@ def parse_airbnb_booking(soup: BeautifulSoup) -> dict[str, Any] | None:
 
     logger.info(f"Airbnb booking detected: {hotel_name}")
 
+    # Search for amenities in the whole text as fallback for Airbnb
+    all_text = soup.get_text()
+    has_towels = "Handtücher" in all_text or "Grundausstattung" in all_text
+    has_kitchen = "Küche" in all_text
+    has_washing_machine = "Waschmaschine" in all_text
+    has_breakfast = "Frühstück" in all_text
+
     return {
         "hotel_name": hotel_name,
         "arrival_date": arrival_date,
@@ -209,9 +216,10 @@ def parse_airbnb_booking(soup: BeautifulSoup) -> dict[str, Any] | None:
         "checkin_time": checkin_time,
         "address": address,
         "phone": phone,
-        "has_kitchen": False,
-        "has_washing_machine": False,
-        "has_breakfast": False,
+        "has_kitchen": has_kitchen,
+        "has_washing_machine": has_washing_machine,
+        "has_breakfast": has_breakfast,
+        "has_towels": has_towels,
         "total_price": total_price,
         "free_cancel_until": None,
     }
@@ -344,7 +352,7 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
             address = addr_label.find_next("div").text.strip()
 
     # Amenities
-    has_kitchen = has_washing_machine = has_breakfast = False
+    has_kitchen = has_washing_machine = has_breakfast = has_towels = False
     amenities_header = soup.find("h5", string="Ausstattung")
     if amenities_header:
         parent = amenities_header.find_parent(["tr", "th"])
@@ -352,6 +360,11 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
         if td:
             txt = td.get_text(" ")
             has_kitchen, has_washing_machine = "Küche" in txt, "Waschmaschine" in txt
+            has_towels = "Handtücher" in txt
+
+    # General towel check if not found in amenities
+    if not has_towels:
+        has_towels = "Handtücher" in soup.get_text()
 
     meals_header = soup.find("h5", string="Mahlzeiten")
     if meals_header:
@@ -399,6 +412,7 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
         "has_kitchen": has_kitchen,
         "has_washing_machine": has_washing_machine,
         "has_breakfast": has_breakfast,
+        "has_towels": has_towels,
         "total_price": total_price,
         "free_cancel_until": free_cancel_until,
     }
