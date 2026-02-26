@@ -74,6 +74,8 @@ def create_accommodation_text(booking: dict, use_symbols: bool = False) -> str:
         amenities.append("🍳" if use_symbols else "Küche")
     if booking.get("has_towels"):
         amenities.append("🧺" if use_symbols else "Handtücher")
+    if booking.get("has_toiletries"):
+        amenities.append("Pflege")
     if booking.get("has_breakfast"):
         amenities.append("Früh")
     if booking.get("checkin_time"):

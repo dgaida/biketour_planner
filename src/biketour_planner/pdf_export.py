@@ -161,6 +161,7 @@ def export_bookings_to_pdf(
 
     # Check if all accommodations have towels
     all_have_towels = all(booking.get("has_towels", False) for booking in bookings)
+    all_have_toiletries = all(booking.get("has_toiletries", False) for booking in bookings)
 
     # Create PDF
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -432,6 +433,10 @@ def export_bookings_to_pdf(
     if all_have_towels:
         story.append(Spacer(1, 0.4 * cm))
         story.append(Paragraph("In allen Unterkünften gibt es Handtücher.", cell_style))
+
+    if all_have_toiletries:
+        story.append(Spacer(1, 0.4 * cm))
+        story.append(Paragraph("In allen Unterkünften gibt es kostenlose Pflegeprodukte.", cell_style))
 
     if output_dir:
         gpx_files = get_merged_gpx_files_from_bookings(bookings_sorted, output_dir)

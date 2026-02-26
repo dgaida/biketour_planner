@@ -459,6 +459,37 @@ class TestExtractBookingInfo:
         html_file.write_text(html_content, encoding="utf-8")
         result = extract_booking_info(html_file)
         assert result["has_towels"] is True
+
+    def test_extract_booking_info_toiletries(self, tmp_path):
+        """Testet Extraktion von kostenlosen Pflegeprodukten."""
+        html_content = """
+        <html>
+        <body>
+            <h5>Ausstattung</h5>
+            <th><td>Kostenlose Pflegeprodukte, Küche</td></th>
+        </body>
+        </html>
+        """
+        html_file = tmp_path / "toiletries.html"
+        html_file.write_text(html_content, encoding="utf-8")
+        result = extract_booking_info(html_file)
+        assert result["has_toiletries"] is True
+        assert result["has_kitchen"] is True
+
+    def test_extract_airbnb_booking_toiletries(self, tmp_path):
+        """Testet Extraktion von Pflegeprodukten aus Airbnb."""
+        html_content = """
+        <html>
+        <script>
+            var data = {"metadata":{"title":"Airbnb Toiletries","check_in_date":"2026-06-01","check_out_date":"2026-06-05"},"lat":44.123,"lng":15.456};
+        </script>
+        <body>Kostenlose Pflegeprodukte, Küche</body>
+        </html>
+        """
+        html_file = tmp_path / "airbnb_toiletries.html"
+        html_file.write_text(html_content, encoding="utf-8")
+        result = extract_booking_info(html_file)
+        assert result["has_toiletries"] is True
         assert result["has_kitchen"] is True
 
     def test_extract_airbnb_booking_towels(self, tmp_path):
