@@ -620,11 +620,12 @@ class TestExportBookingsToPDF:
                 "hotel_name": "Hotel 2",
                 "address": "Address 2",
                 "has_towels": True,
-            }
+            },
         ]
         json_path = tmp_path / "bookings.json"
         output_path = tmp_path / "output.pdf"
         import json
+
         json_path.write_text(json.dumps(bookings), encoding="utf-8")
 
         mock_doc_instance = Mock()
@@ -661,11 +662,12 @@ class TestExportBookingsToPDF:
                 "arrival_date": "2026-05-16",
                 "hotel_name": "Hotel 2",
                 "has_towels": False,
-            }
+            },
         ]
         json_path = tmp_path / "bookings.json"
         output_path = tmp_path / "output.pdf"
         import json
+
         json_path.write_text(json.dumps(bookings), encoding="utf-8")
 
         mock_doc_instance = Mock()
