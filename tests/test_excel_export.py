@@ -50,13 +50,14 @@ class TestExcelExport(unittest.TestCase):
             "address": "Symbol Street 1",
             "has_kitchen": True,
             "has_towels": True,
+            "has_toiletries": True,
         }
         # Without symbols
-        expected_text = "Symbol Hotel\nSymbol Street 1\nKüche, Handtücher"
+        expected_text = "Symbol Hotel\nSymbol Street 1\nKüche, Handtücher, Pflege"
         self.assertEqual(create_accommodation_text(booking), expected_text)
 
         # With symbols
-        expected_text_symbols = "Symbol Hotel\nSymbol Street 1\n🍳, 🧺"
+        expected_text_symbols = "Symbol Hotel\nSymbol Street 1\n🍳, 🧺, Pflege"
         self.assertEqual(create_accommodation_text(booking, use_symbols=True), expected_text_symbols)
 
     def test_export_bookings_to_excel(self):

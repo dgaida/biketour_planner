@@ -204,6 +204,7 @@ def parse_airbnb_booking(soup: BeautifulSoup) -> dict[str, Any] | None:
     has_kitchen = "Küche" in all_text
     has_washing_machine = "Waschmaschine" in all_text
     has_breakfast = "Frühstück" in all_text
+    has_toiletries = "Kostenlose Pflegeprodukte" in all_text
 
     return {
         "hotel_name": hotel_name,
@@ -220,6 +221,7 @@ def parse_airbnb_booking(soup: BeautifulSoup) -> dict[str, Any] | None:
         "has_washing_machine": has_washing_machine,
         "has_breakfast": has_breakfast,
         "has_towels": has_towels,
+        "has_toiletries": has_toiletries,
         "total_price": total_price,
         "free_cancel_until": None,
     }
@@ -352,7 +354,7 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
             address = addr_label.find_next("div").text.strip()
 
     # Amenities
-    has_kitchen = has_washing_machine = has_breakfast = has_towels = False
+    has_kitchen = has_washing_machine = has_breakfast = has_towels = has_toiletries = False
     amenities_header = soup.find("h5", string="Ausstattung")
     if amenities_header:
         parent = amenities_header.find_parent(["tr", "th"])
@@ -361,10 +363,14 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
             txt = td.get_text(" ")
             has_kitchen, has_washing_machine = "Küche" in txt, "Waschmaschine" in txt
             has_towels = "Handtücher" in txt
+            has_toiletries = "Kostenlose Pflegeprodukte" in txt
 
-    # General towel check if not found in amenities
+    # General fallback check if not found in amenities
+    all_text = soup.get_text()
     if not has_towels:
-        has_towels = "Handtücher" in soup.get_text()
+        has_towels = "Handtücher" in all_text
+    if not has_toiletries:
+        has_toiletries = "Kostenlose Pflegeprodukte" in all_text
 
     meals_header = soup.find("h5", string="Mahlzeiten")
     if meals_header:
@@ -413,6 +419,7 @@ def extract_booking_info(html_path: Path) -> dict[str, Any]:
         "has_washing_machine": has_washing_machine,
         "has_breakfast": has_breakfast,
         "has_towels": has_towels,
+        "has_toiletries": has_toiletries,
         "total_price": total_price,
         "free_cancel_until": free_cancel_until,
     }

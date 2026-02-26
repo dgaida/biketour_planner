@@ -685,6 +685,48 @@ class TestExportBookingsToPDF:
                 footer_found = True
         assert footer_found is False
 
+    @patch("biketour_planner.pdf_export.SimpleDocTemplate")
+    @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
+    def test_export_toiletries_footer(self, mock_get_gpx, mock_doc, tmp_path):
+        """Testet dass der Pflegeprodukte-Satz am Ende erscheint wenn alle welche haben."""
+        bookings = [
+            {
+                "arrival_date": "2026-05-15",
+                "hotel_name": "Hotel 1",
+                "has_toiletries": True,
+            },
+            {
+                "arrival_date": "2026-05-16",
+                "hotel_name": "Hotel 2",
+                "has_toiletries": True,
+            },
+        ]
+        json_path = tmp_path / "bookings.json"
+        output_path = tmp_path / "output.pdf"
+        import json
+
+        json_path.write_text(json.dumps(bookings), encoding="utf-8")
+
+        mock_doc_instance = Mock()
+        mock_doc.return_value = mock_doc_instance
+
+        export_bookings_to_pdf(json_path, output_path)
+
+        # Get the story passed to build
+        story = mock_doc_instance.build.call_args[0][0]
+
+        # The last elements should contain the footer sentence
+        footer_found = False
+        for item in story:
+            if hasattr(item, "getPlainText"):
+                if "In allen Unterkünften gibt es kostenlose Pflegeprodukte." in item.getPlainText():
+                    footer_found = True
+                    break
+            elif hasattr(item, "text") and "In allen Unterkünften gibt es kostenlose Pflegeprodukte." in item.text:
+                footer_found = True
+                break
+        assert footer_found is True
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
