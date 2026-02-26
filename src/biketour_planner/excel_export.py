@@ -46,11 +46,12 @@ def extract_city_name(address: str) -> str:
     return city_part
 
 
-def create_accommodation_text(booking: dict) -> str:
+def create_accommodation_text(booking: dict, use_symbols: bool = False) -> str:
     """Creates a formatted text for accommodation including name, address, and amenities.
 
     Args:
         booking: Dictionary containing booking information.
+        use_symbols: Whether to use symbols instead of text for amenities.
 
     Returns:
         Formatted multi-line text for the Excel cell.
@@ -70,7 +71,9 @@ def create_accommodation_text(booking: dict) -> str:
     if booking.get("has_washing_machine"):
         amenities.append("Wasch")
     if booking.get("has_kitchen"):
-        amenities.append("Küche")
+        amenities.append("🍳" if use_symbols else "Küche")
+    if booking.get("has_towels"):
+        amenities.append("🧺" if use_symbols else "Handtücher")
     if booking.get("has_breakfast"):
         amenities.append("Früh")
     if booking.get("checkin_time"):

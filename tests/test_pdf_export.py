@@ -604,6 +604,87 @@ class TestExportBookingsToPDF:
         # (SimpleDocTemplate sollte aufgerufen worden sein)
         assert mock_doc.called
 
+    @patch("biketour_planner.pdf_export.SimpleDocTemplate")
+    @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
+    def test_export_towel_footer(self, mock_get_gpx, mock_doc, tmp_path):
+        """Testet dass der Handtuch-Satz am Ende erscheint wenn alle Handtücher haben."""
+        bookings = [
+            {
+                "arrival_date": "2026-05-15",
+                "hotel_name": "Hotel 1",
+                "address": "Address 1",
+                "has_towels": True,
+            },
+            {
+                "arrival_date": "2026-05-16",
+                "hotel_name": "Hotel 2",
+                "address": "Address 2",
+                "has_towels": True,
+            },
+        ]
+        json_path = tmp_path / "bookings.json"
+        output_path = tmp_path / "output.pdf"
+        import json
+
+        json_path.write_text(json.dumps(bookings), encoding="utf-8")
+
+        mock_doc_instance = Mock()
+        mock_doc.return_value = mock_doc_instance
+
+        export_bookings_to_pdf(json_path, output_path)
+
+        # Get the story passed to build
+        story = mock_doc_instance.build.call_args[0][0]
+
+        # The last elements should contain the footer sentence
+        footer_found = False
+        for item in story:
+            if hasattr(item, "getPlainText"):
+                if "In allen Unterkünften gibt es Handtücher." in item.getPlainText():
+                    footer_found = True
+                    break
+            elif hasattr(item, "text") and "In allen Unterkünften gibt es Handtücher." in item.text:
+                footer_found = True
+                break
+        assert footer_found is True
+
+    @patch("biketour_planner.pdf_export.SimpleDocTemplate")
+    @patch("biketour_planner.pdf_export.get_merged_gpx_files_from_bookings")
+    def test_export_no_towel_footer_if_missing(self, mock_get_gpx, mock_doc, tmp_path):
+        """Testet dass der Handtuch-Satz NICHT erscheint wenn einer keine Handtücher hat."""
+        bookings = [
+            {
+                "arrival_date": "2026-05-15",
+                "hotel_name": "Hotel 1",
+                "has_towels": True,
+            },
+            {
+                "arrival_date": "2026-05-16",
+                "hotel_name": "Hotel 2",
+                "has_towels": False,
+            },
+        ]
+        json_path = tmp_path / "bookings.json"
+        output_path = tmp_path / "output.pdf"
+        import json
+
+        json_path.write_text(json.dumps(bookings), encoding="utf-8")
+
+        mock_doc_instance = Mock()
+        mock_doc.return_value = mock_doc_instance
+
+        export_bookings_to_pdf(json_path, output_path)
+
+        story = mock_doc_instance.build.call_args[0][0]
+        footer_found = False
+        for item in story:
+            if hasattr(item, "getPlainText"):
+                if "In allen Unterkünften gibt es Handtücher." in item.getPlainText():
+                    footer_found = True
+            elif hasattr(item, "text") and "In allen Unterkünften gibt es Handtücher." in item.text:
+                footer_found = True
+        assert footer_found is False
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -44,6 +44,21 @@ class TestExcelExport(unittest.TestCase):
         booking_empty = {}
         self.assertEqual(create_accommodation_text(booking_empty), "")
 
+    def test_create_accommodation_text_with_symbols(self):
+        booking = {
+            "hotel_name": "Symbol Hotel",
+            "address": "Symbol Street 1",
+            "has_kitchen": True,
+            "has_towels": True,
+        }
+        # Without symbols
+        expected_text = "Symbol Hotel\nSymbol Street 1\nKüche, Handtücher"
+        self.assertEqual(create_accommodation_text(booking), expected_text)
+
+        # With symbols
+        expected_text_symbols = "Symbol Hotel\nSymbol Street 1\n🍳, 🧺"
+        self.assertEqual(create_accommodation_text(booking, use_symbols=True), expected_text_symbols)
+
     def test_export_bookings_to_excel(self):
         # Create a temporary directory for test files
         test_dir = Path("test_excel_export_temp")
