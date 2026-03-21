@@ -72,10 +72,10 @@ def parse_brouter_geojson(geojson_str: str) -> tuple[list[gpxpy.gpx.GPXTrackPoin
     Returns:
         Tuple of:
             - List of GPXTrackPoint objects.
-            - Dictionary with 'paved' and 'unpaved' distances in meters.
+            - Dictionary with 'paved', 'unpaved' and 'other' distances in meters.
     """
     if not geojson_str:
-        return [], {"paved": 0.0, "unpaved": 0.0}
+        return [], {"paved": 0.0, "unpaved": 0.0, "other": 0.0}
 
     try:
         data = json.loads(geojson_str)
@@ -97,8 +97,24 @@ def parse_brouter_geojson(geojson_str: str) -> tuple[list[gpxpy.gpx.GPXTrackPoin
     # BRouter GeoJSON messages property contains segment details
     paved_dist = 0.0
     unpaved_dist = 0.0
+    other_dist = 0.0
 
     paved_surfaces = {"asphalt", "concrete", "paved", "paving_stones"}
+    unpaved_surfaces = {
+        "gravel",
+        "fine_gravel",
+        "compacted",
+        "unpaved",
+        "ground",
+        "dirt",
+        "earth",
+        "grass",
+        "sand",
+        "cobblestone",
+        "sett",
+        "shingle",
+        "pebblestone",
+    }
 
     if "features" in data and len(data["features"]) > 0:
         props = data["features"][0].get("properties", {})
@@ -127,12 +143,14 @@ def parse_brouter_geojson(geojson_str: str) -> tuple[list[gpxpy.gpx.GPXTrackPoin
 
                         if any(s in surface for s in paved_surfaces):
                             paved_dist += segment_dist
-                        else:
+                        elif any(s in surface for s in unpaved_surfaces):
                             unpaved_dist += segment_dist
+                        else:
+                            other_dist += segment_dist
                     except (ValueError, IndexError):
                         continue
 
-    return points, {"paved": paved_dist, "unpaved": unpaved_dist}
+    return points, {"paved": paved_dist, "unpaved": unpaved_dist, "other": other_dist}
 
 
 def get_route2address_with_stats(
