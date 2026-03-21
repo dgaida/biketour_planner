@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import gpxpy
 from tqdm import tqdm
 
-from .brouter import get_route2address_as_points, get_route2address_with_stats
+from .brouter import get_route2address_with_stats
 from .config import get_config
 from .gpx_route_manager_static import (
     find_closest_point_in_track,

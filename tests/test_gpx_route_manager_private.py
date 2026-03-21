@@ -652,7 +652,7 @@ class TestUpdateGPXIndexEntry:
 class TestExtendTrack2Hotel:
     """Tests für die extend_track2hotel Methode."""
 
-    @patch("biketour_planner.gpx_route_manager.get_route2address_as_points")
+    @patch("biketour_planner.gpx_route_manager.get_route2address_with_stats")
     def test_extend_track2hotel_basic(self, mock_get_route, manager_with_test_track, output_dir):
         """Testet grundlegendes Erweitern zur Unterkunft."""
         manager = manager_with_test_track
@@ -663,7 +663,7 @@ class TestExtendTrack2Hotel:
             Mock(latitude=48.45, longitude=11.45, elevation=590),
             Mock(latitude=48.5, longitude=11.5, elevation=600),
         ]
-        mock_get_route.return_value = mock_points
+        mock_get_route.return_value = (mock_points, {"paved": 1000.0, "unpaved": 500.0})
 
         booking = {
             "arrival_date": "2026-05-15",
@@ -700,13 +700,13 @@ class TestExtendTrack2Hotel:
 
         assert result is None
 
-    @patch("biketour_planner.gpx_route_manager.get_route2address_as_points")
+    @patch("biketour_planner.gpx_route_manager.get_route2address_with_stats")
     def test_extend_track2hotel_updates_booking(self, mock_get_route, manager_with_test_track, output_dir):
         """Testet dass Booking aktualisiert wird."""
         manager = manager_with_test_track
 
         mock_points = [Mock(latitude=48.4, longitude=11.4, elevation=580), Mock(latitude=48.5, longitude=11.5, elevation=600)]
-        mock_get_route.return_value = mock_points
+        mock_get_route.return_value = (mock_points, {"paved": 500.0, "unpaved": 0.0})
 
         booking = {
             "arrival_date": "2026-05-15",
@@ -732,8 +732,10 @@ class TestExtendTrack2Hotel:
 class TestPrivateMethodsIntegration:
     """Integrationstests für Zusammenspiel der privaten Methoden."""
 
-    def test_routing_workflow_with_private_methods(self, manager_with_multiple_tracks):
+    @patch("biketour_planner.gpx_route_manager.get_route2address_with_stats")
+    def test_routing_workflow_with_private_methods(self, mock_get_stats, manager_with_multiple_tracks):
         """Testet kompletten Routing-Workflow mit privaten Methoden."""
+        mock_get_stats.return_value = ([], {"paved": 0.0, "unpaved": 0.0})
         manager = manager_with_multiple_tracks
 
         # 1. Finde Start

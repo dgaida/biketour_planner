@@ -1,9 +1,9 @@
 """BRouter API integration for offline routing."""
 
+import json
+
 import gpxpy
 import requests
-
-import json
 
 from .config import get_config
 from .exceptions import RoutingError
@@ -80,7 +80,7 @@ def parse_brouter_geojson(geojson_str: str) -> tuple[list[gpxpy.gpx.GPXTrackPoin
     try:
         data = json.loads(geojson_str)
     except json.JSONDecodeError as e:
-        raise RoutingError(f"Failed to parse GeoJSON: {e}")
+        raise RoutingError(f"Failed to parse GeoJSON: {e}") from e
 
     # Extract points
     points = []
