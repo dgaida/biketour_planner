@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 import gpxpy
 from tqdm import tqdm
 
-from .brouter import get_route2address_as_points
+from .brouter import get_route2address_with_stats
 from .config import get_config
 from .gpx_route_manager_static import (
     find_closest_point_in_track,
@@ -653,6 +653,18 @@ class GPXRouteManager:
         stats.total_ascent = asc
         stats.total_descent = desc
 
+        # Surface statistics (only possible for BRouter segments)
+        # However, our local GPX tracks don't have surface info easily.
+        # But we could try to call BRouter for the coordinates.
+        try:
+            pt_start = meta["points"][current.index]
+            pt_end = meta["points"][end_index]
+            _, surf_stats = get_route2address_with_stats(pt_start["lat"], pt_start["lon"], pt_end["lat"], pt_end["lon"])
+            stats.paved_distance += surf_stats["paved"]
+            stats.unpaved_distance += surf_stats["unpaved"]
+        except Exception as e:
+            logger.warning(f"Could not fetch surface stats for segment: {e}")
+
         # Update position
         end_pt = meta["points"][end_index]
         current_lat, current_lon = end_pt["lat"], end_pt["lon"]
@@ -787,6 +799,8 @@ class GPXRouteManager:
         booking["total_ascent_m"] = int(round(stats.total_ascent))
         booking["total_descent_m"] = int(round(stats.total_descent))
         booking["max_elevation_m"] = int(round(stats.max_elevation)) if stats.max_elevation != 0 else None
+        booking["paved_distance_km"] = round(stats.paved_distance / 1000, 2)
+        booking["unpaved_distance_km"] = round(stats.unpaved_distance / 1000, 2)
 
         if context.route_files:
             last = context.route_files[-1]
@@ -924,11 +938,30 @@ class GPXRouteManager:
             for p in pts:
                 segment.points.append(gpxpy.gpx.GPXTrackPoint(p.latitude, p.longitude, elevation=p.elevation, time=p.time))
 
-            new_pts = get_route2address_as_points(
+            new_pts, surf_stats = get_route2address_with_stats(
                 pts[-1].latitude, pts[-1].longitude, booking["latitude"], booking["longitude"]
             )
             for p in new_pts:
                 segment.points.append(gpxpy.gpx.GPXTrackPoint(p.latitude, p.longitude, elevation=p.elevation, time=p.time))
+
+            # Update surface statistics for the extension
+            try:
+                if "paved_distance_km" in booking and booking["paved_distance_km"] is not None:
+                    booking["paved_distance_km"] += round(surf_stats["paved"] / 1000, 2)
+                if "unpaved_distance_km" in booking and booking["unpaved_distance_km"] is not None:
+                    booking["unpaved_distance_km"] += round(surf_stats["unpaved"] / 1000, 2)
+
+                # Recalculate total distance as it might have changed
+                new_ext_dist = (surf_stats["paved"] + surf_stats["unpaved"]) / 1000
+                if "total_distance_km" in booking and booking["total_distance_km"] is not None:
+                    # This might be redundant as total_distance_km was already set before extension,
+                    # but extend_track2hotel is called after collect_route_between_locations.
+                    # Actually collect_route_between_locations sets it based on stats.total_distance.
+                    # stats.total_distance didn't include the extension yet.
+                    booking["total_distance_km"] += round(new_ext_dist, 2)
+
+            except Exception as e:
+                logger.warning(f"Could not fetch surface stats for extension: {e}")
 
             output_path.mkdir(parents=True, exist_ok=True)
             date_str = booking.get("arrival_date", "unknown_date")

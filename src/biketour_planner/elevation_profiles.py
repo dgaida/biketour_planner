@@ -267,6 +267,7 @@ def create_elevation_profile_plot(
         f"↑ {total_ascent:.0f} m  |  "
         f"↓ {total_descent:.0f} m"
     )
+
     ax.text(
         0.5,
         0.98,
@@ -508,6 +509,13 @@ def add_elevation_profiles_to_story(
                 logger.debug(f"📝 Image-Objekt erstellt: {type(img)}, width={img.drawWidth}, height={img.drawHeight}")
 
                 story.append(img)
+
+                # Add surface statistics below the profile
+                paved_km = task["booking"].get("paved_distance_km", 0) if task["booking"] else 0
+                unpaved_km = task["booking"].get("unpaved_distance_km", 0) if task["booking"] else 0
+                if paved_km or unpaved_km:
+                    surface_text = f"<b>Asphalt:</b> {paved_km:.1f} km  |  <b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km"
+                    story.append(Paragraph(surface_text, title_style))
                 added_count += 1
                 logger.debug(f"✅ Haupt-Track hinzugefügt: {filename}")
 
@@ -594,6 +602,13 @@ def add_elevation_profiles_to_story_seq(
 
             img = Image(img_buffer, width=page_width_cm * cm, height=(page_width_cm / 3) * cm)
             story.append(img)
+
+            # Add surface statistics below the profile
+            paved_km = booking.get("paved_distance_km", 0) if booking else 0
+            unpaved_km = booking.get("unpaved_distance_km", 0) if booking else 0
+            if paved_km or unpaved_km:
+                surface_text = f"<b>Asphalt:</b> {paved_km:.1f} km  |  <b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km"
+                story.append(Paragraph(surface_text, title_style))
             added_count += 1
             logger.debug(f"✅ Haupt-Track hinzugefügt: {gpx_file.name}")
 
