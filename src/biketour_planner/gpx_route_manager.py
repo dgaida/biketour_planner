@@ -954,11 +954,11 @@ class GPXRouteManager:
                 # Recalculate total distance as it might have changed
                 new_ext_dist = (surf_stats["paved"] + surf_stats["unpaved"]) / 1000
                 if "total_distance_km" in booking and booking["total_distance_km"] is not None:
-                     # This might be redundant as total_distance_km was already set before extension,
-                     # but extend_track2hotel is called after collect_route_between_locations.
-                     # Actually collect_route_between_locations sets it based on stats.total_distance.
-                     # stats.total_distance didn't include the extension yet.
-                     booking["total_distance_km"] += round(new_ext_dist, 2)
+                    # This might be redundant as total_distance_km was already set before extension,
+                    # but extend_track2hotel is called after collect_route_between_locations.
+                    # Actually collect_route_between_locations sets it based on stats.total_distance.
+                    # stats.total_distance didn't include the extension yet.
+                    booking["total_distance_km"] += round(new_ext_dist, 2)
 
             except Exception as e:
                 logger.warning(f"Could not fetch surface stats for extension: {e}")
