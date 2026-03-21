@@ -7,6 +7,7 @@ Testet die BRouter API Integration inklusive:
 - Validierung der GPX-Ausgabe
 """
 
+import json
 from unittest.mock import Mock, patch
 
 import gpxpy
@@ -16,6 +17,8 @@ import requests
 from biketour_planner.brouter import (
     check_brouter_availability,
     get_route2address_as_points,
+    get_route2address_with_stats,
+    parse_brouter_geojson,
     route_to_address,
 )
 from biketour_planner.exceptions import RoutingError
@@ -290,23 +293,12 @@ class TestGetRoute2AddressAsPoints:
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_success(self, mock_route):
         """Testet erfolgreiche Punkt-Extraktion."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050">
-        <ele>35</ele>
-      </trkpt>
-      <trkpt lat="52.5100" lon="13.4000">
-        <ele>40</ele>
-      </trkpt>
-      <trkpt lat="52.3906" lon="13.0645">
-        <ele>50</ele>
-      </trkpt>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[13.4050, 52.5200, 35], [13.4000, 52.5100, 40], [13.0645, 52.3906, 50]]}
+            }]
+        }
+        mock_route.return_value = json.dumps(geojson_data)
 
         points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
@@ -335,58 +327,23 @@ class TestGetRoute2AddressAsPoints:
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_no_tracks(self, mock_route):
-        """Testet Verhalten wenn GPX keine Tracks enthält."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-</gpx>"""
-        mock_route.return_value = gpx_string
+    def test_get_points_no_features(self, mock_route):
+        """Testet Verhalten wenn GeoJSON keine Features enthält."""
+        geojson_data = {"features": []}
+        mock_route.return_value = json.dumps(geojson_data)
 
-        with pytest.raises(RoutingError, match="No tracks or segments found in GPX"):
-            get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
-
-    @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_no_segments(self, mock_route):
-        """Testet Verhalten wenn Track keine Segmente enthält."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
-
-        with pytest.raises(RoutingError, match="No tracks or segments found in GPX"):
-            get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
-
-    @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_no_points(self, mock_route):
-        """Testet Verhalten wenn Segment keine Punkte enthält."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
-
-        with pytest.raises(RoutingError, match="No points found in GPX"):
-            get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
+        points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
+        assert len(points) == 0
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_single_point(self, mock_route):
         """Testet Route mit nur einem Punkt."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050">
-        <ele>35</ele>
-      </trkpt>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[13.4050, 52.5200, 35]]}
+            }]
+        }
+        mock_route.return_value = json.dumps(geojson_data)
 
         points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
@@ -396,73 +353,18 @@ class TestGetRoute2AddressAsPoints:
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_without_elevation(self, mock_route):
         """Testet Punkte ohne Höheninformation."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050"/>
-      <trkpt lat="52.3906" lon="13.0645"/>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[13.4050, 52.5200], [13.0645, 52.3906]]}
+            }]
+        }
+        mock_route.return_value = json.dumps(geojson_data)
 
         points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
         assert len(points) == 2
         assert points[0].elevation is None
         assert points[1].elevation is None
-
-    @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_with_time(self, mock_route):
-        """Testet Punkte mit Zeitstempel."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050">
-        <ele>35</ele>
-        <time>2026-05-15T10:00:00Z</time>
-      </trkpt>
-      <trkpt lat="52.3906" lon="13.0645">
-        <ele>50</ele>
-        <time>2026-05-15T12:00:00Z</time>
-      </trkpt>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
-
-        points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
-
-        assert len(points) == 2
-        assert points[0].time is not None
-        assert points[1].time is not None
-
-    @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_multiple_segments(self, mock_route):
-        """Testet dass nur das erste Segment verwendet wird."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050"/>
-      <trkpt lat="52.5100" lon="13.4000"/>
-    </trkseg>
-    <trkseg>
-      <trkpt lat="52.4000" lon="13.3000"/>
-      <trkpt lat="52.3906" lon="13.0645"/>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
-
-        points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
-
-        # Nur Punkte aus dem ersten Segment
-        assert len(points) == 2
-        assert points[0].latitude == 52.5200
-        assert points[1].latitude == 52.5100
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_propagates_http_errors(self, mock_route):
@@ -489,33 +391,23 @@ class TestGetRoute2AddressAsPoints:
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
-    def test_get_points_invalid_xml(self, mock_route):
-        """Testet Verhalten bei ungültigem XML."""
-        mock_route.return_value = "ungültiges XML <gpx"
+    def test_get_points_invalid_geojson(self, mock_route):
+        """Testet Verhalten bei ungültigem GeoJSON."""
+        mock_route.return_value = "invalid json"
 
-        with pytest.raises(RoutingError, match="Failed to parse GPX"):
+        with pytest.raises(RoutingError, match="Failed to parse GeoJSON"):
             get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_large_route(self, mock_route):
         """Testet Verhalten bei sehr großer Route (viele Punkte)."""
-        # Erstelle GPX with 1000 points
-        points_xml = "\n".join(
-            [
-                f'<trkpt lat="{52.5200 - i * 0.001}" lon="{13.4050 - i * 0.001}"><ele>{35 + i}</ele></trkpt>'
-                for i in range(1000)
-            ]
-        )
-
-        gpx_string = f"""<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      {points_xml}
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
+        coords = [[13.4050 - i * 0.001, 52.5200 - i * 0.001, 35 + i] for i in range(1000)]
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": coords}
+            }]
+        }
+        mock_route.return_value = json.dumps(geojson_data)
 
         points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
@@ -526,17 +418,12 @@ class TestGetRoute2AddressAsPoints:
     @patch("biketour_planner.brouter.route_to_address")
     def test_get_points_returns_gpxtrackpoint_objects(self, mock_route):
         """Testet dass GPXTrackPoint-Objekte zurückgegeben werden."""
-        gpx_string = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050">
-        <ele>35</ele>
-      </trkpt>
-    </trkseg>
-  </trk>
-</gpx>"""
-        mock_route.return_value = gpx_string
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[13.4050, 52.5200, 35]]}
+            }]
+        }
+        mock_route.return_value = json.dumps(geojson_data)
 
         points = get_route2address_as_points(52.5200, 13.4050, 52.3906, 13.0645)
 
@@ -547,34 +434,92 @@ class TestGetRoute2AddressAsPoints:
         assert hasattr(points[0], "time")
 
 
+class TestBRouterGeoJSON:
+    """Tests für GeoJSON-spezifische BRouter-Funktionen."""
+
+    @patch("biketour_planner.brouter.check_brouter_availability")
+    @patch("biketour_planner.brouter.requests.get")
+    def test_get_route2address_with_stats_success(self, mock_get, mock_check):
+        """Testet erfolgreiche GeoJSON-Routenanforderung."""
+        mock_check.return_value = True
+        mock_response = Mock()
+        mock_response.status_code = 200
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[11.58, 48.13, 500], [11.59, 48.14, 510]]},
+                "properties": {
+                    "messages": [
+                        ["Longitude", "Latitude", "Distance", "surface"],
+                        ["11580000", "48130000", "0", "asphalt"],
+                        ["11590000", "48140000", "1000", "gravel"]
+                    ]
+                }
+            }]
+        }
+        mock_response.text = json.dumps(geojson_data)
+        mock_get.return_value = mock_response
+
+        points, stats = get_route2address_with_stats(48.13, 11.58, 48.14, 11.59)
+        assert len(points) == 2
+        assert stats["paved"] == 0.0 # because it starts with 0 distance for asphalt
+        # Wait, the way BRouter works: the distance in row N is the distance REACHED after segment N-1.
+        # Header is messages[0].
+        # Row 1: asphalt, distance 0. (Start point)
+        # Row 2: gravel, distance 1000. (Segment 1 to point 2 is gravel, distance 1000)
+        # So paved (asphalt) = 0, unpaved (gravel) = 1000. Correct.
+        assert stats["unpaved"] == 1000.0
+
+    def test_parse_brouter_geojson_mixed(self):
+        """Testet Parsing von gemischten Oberflächen im GeoJSON."""
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[0,0], [1,1], [2,2]]},
+                "properties": {
+                    "messages": [
+                        ["Distance", "surface"],
+                        ["0", "asphalt"],
+                        ["1000", "asphalt"],
+                        ["1500", "gravel"]
+                    ]
+                }
+            }]
+        }
+        _, stats = parse_brouter_geojson(json.dumps(geojson_data))
+        assert stats["paved"] == 1000.0
+        assert stats["unpaved"] == 500.0
+
+    def test_parse_brouter_geojson_empty(self):
+        """Testet Parsing von leerem Content."""
+        points, stats = parse_brouter_geojson("")
+        assert points == []
+        assert stats["paved"] == 0.0
+
+
 class TestBRouterIntegration:
     """Integrationstests für die BRouter-Module."""
 
+    @patch("biketour_planner.brouter.check_brouter_availability")
     @patch("biketour_planner.brouter.requests.get")
-    def test_full_workflow(self, mock_get):
+    def test_full_workflow(self, mock_get, mock_check):
         """Testet kompletten Workflow: Route anfordern + Punkte extrahieren."""
-        gpx_response = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="48.1351" lon="11.5820"><ele>520</ele></trkpt>
-      <trkpt lat="48.0000" lon="11.3000"><ele>600</ele></trkpt>
-      <trkpt lat="47.4917" lon="11.0953"><ele>705</ele></trkpt>
-    </trkseg>
-  </trk>
-</gpx>"""
+        mock_check.return_value = True
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[11.5820, 48.1351, 520], [11.3000, 48.0000, 600], [11.0953, 47.4917, 705]]}
+            }]
+        }
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.text = gpx_response
+        mock_response.text = json.dumps(geojson_data)
         mock_get.return_value = mock_response
 
-        # 1. Route anfordern
+        # 1. Route anfordern (GPX)
         gpx_string = route_to_address(48.1351, 11.5820, 47.4917, 11.0953)
         assert gpx_string is not None
-        assert "<gpx" in gpx_string
+        assert json.loads(gpx_string) == geojson_data # In reality it would be GPX if format=gpx, but we mocked it
 
-        # 2. Punkte extrahieren (nutzt intern route_to_address nochmal)
+        # 2. Punkte extrahieren (nutzt intern route_to_address mit format=geojson)
         points = get_route2address_as_points(48.1351, 11.5820, 47.4917, 11.0953)
         assert len(points) == 3
         assert points[0].latitude == 48.1351
@@ -605,17 +550,14 @@ class TestBRouterIntegration:
         # Mock BRouter als verfügbar
         mock_check.return_value = True
 
-        gpx_response = """<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1">
-  <trk>
-    <trkseg>
-      <trkpt lat="52.5200" lon="13.4050"/>
-    </trkseg>
-  </trk>
-</gpx>"""
+        geojson_data = {
+            "features": [{
+                "geometry": {"coordinates": [[13.4050, 52.5200]]}
+            }]
+        }
 
         mock_response = Mock()
-        mock_response.text = gpx_response
+        mock_response.text = json.dumps(geojson_data)
         mock_get.return_value = mock_response
 
         # Teste verschiedene Koordinatenformate

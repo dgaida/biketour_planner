@@ -35,12 +35,16 @@ class RouteStatistics:
         total_distance: Total distance traveled in meters.
         total_ascent: Total ascent in meters.
         total_descent: Total descent in meters.
+        paved_distance: Total distance on paved surfaces in meters.
+        unpaved_distance: Total distance on unpaved surfaces in meters.
     """
 
     max_elevation: float = 0.0
     total_distance: float = 0.0
     total_ascent: float = 0.0
     total_descent: float = 0.0
+    paved_distance: float = 0.0
+    unpaved_distance: float = 0.0
 
     def update(self, other: RouteStatistics) -> None:
         """Update statistics with another statistics object.
@@ -52,6 +56,8 @@ class RouteStatistics:
         self.total_distance += other.total_distance
         self.total_ascent += other.total_ascent
         self.total_descent += other.total_descent
+        self.paved_distance += other.paved_distance
+        self.unpaved_distance += other.unpaved_distance
 
 
 @dataclass
@@ -100,6 +106,8 @@ class Booking(BaseModel):
         total_ascent_m: Total ascent for the daily route in meters.
         total_descent_m: Total descent for the daily route in meters.
         max_elevation_m: Maximum elevation reached on the route in meters.
+        paved_distance_km: Total distance on paved surfaces in km.
+        unpaved_distance_km: Total distance on unpaved surfaces in km.
         last_gpx_file: Internal state for chaining routes to the next day.
     """
 
@@ -131,6 +139,8 @@ class Booking(BaseModel):
     total_ascent_m: int | None = Field(None, ge=0)
     total_descent_m: int | None = Field(None, ge=0)
     max_elevation_m: int | None = None
+    paved_distance_km: float | None = Field(None, ge=0)
+    unpaved_distance_km: float | None = Field(None, ge=0)
 
     # Internal state for routing
     last_gpx_file: dict[str, Any] | None = Field(None, alias="_last_gpx_file")
