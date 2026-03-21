@@ -513,8 +513,13 @@ def add_elevation_profiles_to_story(
                 # Add surface statistics below the profile
                 paved_km = task["booking"].get("paved_distance_km", 0) if task["booking"] else 0
                 unpaved_km = task["booking"].get("unpaved_distance_km", 0) if task["booking"] else 0
-                if paved_km or unpaved_km:
-                    surface_text = f"<b>Asphalt:</b> {paved_km:.1f} km  |  <b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km"
+                other_km = task["booking"].get("other_distance_km", 0) if task["booking"] else 0
+                if paved_km or unpaved_km or other_km:
+                    surface_text = (
+                        f"<b>Asphalt:</b> {paved_km:.1f} km  |  "
+                        f"<b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km  |  "
+                        f"<b>Sonstiges:</b> {other_km:.1f} km"
+                    )
                     story.append(Paragraph(surface_text, title_style))
                 added_count += 1
                 logger.debug(f"✅ Haupt-Track hinzugefügt: {filename}")
@@ -606,8 +611,13 @@ def add_elevation_profiles_to_story_seq(
             # Add surface statistics below the profile
             paved_km = booking.get("paved_distance_km", 0) if booking else 0
             unpaved_km = booking.get("unpaved_distance_km", 0) if booking else 0
-            if paved_km or unpaved_km:
-                surface_text = f"<b>Asphalt:</b> {paved_km:.1f} km  |  <b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km"
+            other_km = booking.get("other_distance_km", 0) if booking else 0
+            if paved_km or unpaved_km or other_km:
+                surface_text = (
+                    f"<b>Asphalt:</b> {paved_km:.1f} km  |  "
+                    f"<b>Schotter/Unbefestigt:</b> {unpaved_km:.1f} km  |  "
+                    f"<b>Sonstiges:</b> {other_km:.1f} km"
+                )
                 story.append(Paragraph(surface_text, title_style))
             added_count += 1
             logger.debug(f"✅ Haupt-Track hinzugefügt: {gpx_file.name}")

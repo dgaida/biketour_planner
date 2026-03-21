@@ -448,34 +448,39 @@ class TestBRouterGeoJSON:
         points, stats = get_route2address_with_stats(48.13, 11.58, 48.14, 11.59)
         assert len(points) == 2
         assert stats["paved"] == 0.0  # because it starts with 0 distance for asphalt
-        # Wait, the way BRouter works: the distance in row N is the distance REACHED after segment N-1.
-        # Header is messages[0].
-        # Row 1: asphalt, distance 0. (Start point)
-        # Row 2: gravel, distance 1000. (Segment 1 to point 2 is gravel, distance 1000)
-        # So paved (asphalt) = 0, unpaved (gravel) = 1000. Correct.
         assert stats["unpaved"] == 1000.0
+        assert stats["other"] == 0.0
 
     def test_parse_brouter_geojson_mixed(self):
         """Testet Parsing von gemischten Oberflächen im GeoJSON."""
         geojson_data = {
             "features": [
                 {
-                    "geometry": {"coordinates": [[0, 0], [1, 1], [2, 2]]},
+                    "geometry": {"coordinates": [[0, 0], [1, 1], [2, 2], [3, 3]]},
                     "properties": {
-                        "messages": [["Distance", "surface"], ["0", "asphalt"], ["1000", "asphalt"], ["1500", "gravel"]]
+                        "messages": [
+                            ["Distance", "surface"],
+                            ["0", "asphalt"],
+                            ["1000", "asphalt"],
+                            ["1500", "gravel"],
+                            ["2000", "cobblestone"],  # classified as unpaved
+                            ["3000", "unknown_tag"],  # classified as other
+                        ]
                     },
                 }
             ]
         }
         _, stats = parse_brouter_geojson(json.dumps(geojson_data))
         assert stats["paved"] == 1000.0
-        assert stats["unpaved"] == 500.0
+        assert stats["unpaved"] == 1000.0  # 500 (gravel) + 500 (cobblestone)
+        assert stats["other"] == 1000.0
 
     def test_parse_brouter_geojson_empty(self):
         """Testet Parsing von leerem Content."""
         points, stats = parse_brouter_geojson("")
         assert points == []
         assert stats["paved"] == 0.0
+        assert stats["other"] == 0.0
 
 
 class TestBRouterIntegration:

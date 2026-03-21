@@ -662,6 +662,7 @@ class GPXRouteManager:
             _, surf_stats = get_route2address_with_stats(pt_start["lat"], pt_start["lon"], pt_end["lat"], pt_end["lon"])
             stats.paved_distance += surf_stats["paved"]
             stats.unpaved_distance += surf_stats["unpaved"]
+            stats.other_distance += surf_stats["other"]
         except Exception as e:
             logger.warning(f"Could not fetch surface stats for segment: {e}")
 
@@ -801,6 +802,7 @@ class GPXRouteManager:
         booking["max_elevation_m"] = int(round(stats.max_elevation)) if stats.max_elevation != 0 else None
         booking["paved_distance_km"] = round(stats.paved_distance / 1000, 2)
         booking["unpaved_distance_km"] = round(stats.unpaved_distance / 1000, 2)
+        booking["other_distance_km"] = round(stats.other_distance / 1000, 2)
 
         if context.route_files:
             last = context.route_files[-1]
@@ -950,9 +952,11 @@ class GPXRouteManager:
                     booking["paved_distance_km"] += round(surf_stats["paved"] / 1000, 2)
                 if "unpaved_distance_km" in booking and booking["unpaved_distance_km"] is not None:
                     booking["unpaved_distance_km"] += round(surf_stats["unpaved"] / 1000, 2)
+                if "other_distance_km" in booking and booking["other_distance_km"] is not None:
+                    booking["other_distance_km"] += round(surf_stats["other"] / 1000, 2)
 
                 # Recalculate total distance as it might have changed
-                new_ext_dist = (surf_stats["paved"] + surf_stats["unpaved"]) / 1000
+                new_ext_dist = (surf_stats["paved"] + surf_stats["unpaved"] + surf_stats["other"]) / 1000
                 if "total_distance_km" in booking and booking["total_distance_km"] is not None:
                     # This might be redundant as total_distance_km was already set before extension,
                     # but extend_track2hotel is called after collect_route_between_locations.
