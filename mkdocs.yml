@@ -89,6 +89,7 @@ nav:
   - Getting Started: getting-started.md
   - Installation: installation.md
   - Configuration: configuration.md
+  - Usage: usage/index.md
   - Architecture: architecture/index.md
   - API Reference: api/index.md
   - Development:
