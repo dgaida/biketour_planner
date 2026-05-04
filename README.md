@@ -49,9 +49,63 @@ python main.py
 * 🎯 **Tourist Sight Discovery**
 * 📊 **Professional PDF & Excel Exports**
 
+## 📁 Project Structure
+
+```
+├── pyproject.toml                       # Project configuration
+├── requirements.txt                     # Python dependencies
+├── environment.yml                      # Conda environment
+├── setup_precommit.sh                   # Pre-commit setup script
+├── src/
+│   └── biketour_planner/
+│       ├── parse_booking.py            # Parse Booking.com/Airbnb HTML
+│       ├── geocode.py                  # Address geocoding with fallbacks
+│       ├── gpx_utils.py                # GPX utilities wrapper
+│       ├── gpx_route_manager.py        # Main route management class
+│       ├── gpx_route_manager_static.py # Static GPX helper functions
+│       ├── brouter.py                  # BRouter API integration
+│       ├── elevation_calc.py           # Advanced elevation calculations
+│       ├── elevation_profiles.py       # Elevation profile generation
+│       ├── pass_finder.py              # Mountain pass detection
+│       ├── geoapify.py                 # Tourist sights API
+│       ├── pdf_export.py               # PDF report generation
+│       ├── excel_export.py             # Excel export (alternative)
+│       ├── excel_hyperlinks.py         # Excel hyperlink utilities
+│       ├── excel_info_reader.py        # Read additional trip info
+│       └── logger.py                   # Centralized logging
+├── booking/                             # (Optional) Booking HTML files
+├── gpx/                                 # (Optional) Original GPX files
+├── brouter_docker/                      # Dockerfile for BRouter
+├── logs/                                # Application logs
+├── output/
+│   ├── bookings.json                   # Processed booking data
+│   ├── gpx_modified/                   # Extended GPX files
+│   └── Reiseplanung_*.pdf             # Generated PDF report
+└── tests/                               # Unit and integration tests
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Development Documentation](https://dgaida.github.io/biketour_planner/latest/development/testing/).
+
+## 🗺️ Roadmap
+
+Planned features:
+
+- [ ] Web UI for easier configuration
+- [ ] Support for more booking platforms (hotels.com, etc.)
+- [ ] Interactive map visualization
+- [ ] Weather forecast integration
+- [ ] Bike shop finder along the route
+- [ ] Automatic backup/sync to cloud storage
+- [ ] Mobile app for on-tour navigation
+
+## 🙏 Acknowledgements
+
+* **BRouter** – Offline routing engine ([https://github.com/abrensch/brouter](https://github.com/abrensch/brouter))
+* **OpenStreetMap contributors** – Underlying map data
+* **Geoapify** – Places API for tourist attractions
+* **Booking.com & Airbnb** – Data source for accommodation confirmations
 
 ## 📜 License
 
