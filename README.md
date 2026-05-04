@@ -4,6 +4,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/dgaida/biketour_planner/branch/master/graph/badge.svg)](https://codecov.io/gh/dgaida/biketour_planner)
 [![Code Quality](https://github.com/dgaida/biketour_planner/actions/workflows/lint.yml/badge.svg)](https://github.com/dgaida/biketour_planner/actions/workflows/lint.yml)
+[![Tests](https://github.com/dgaida/biketour_planner/actions/workflows/tests.yml/badge.svg)](https://github.com/dgaida/biketour_planner/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/dgaida/biketour_planner/actions/workflows/codeql.yml/badge.svg)](https://github.com/dgaida/biketour_planner/actions/workflows/codeql.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://dgaida.github.io/biketour_planner/)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/dgaida/biketour_planner/graphs/commit-activity)
+![Last commit](https://img.shields.io/github/last-commit/dgaida/biketour_planner)
+[![Version](https://img.shields.io/github/v/tag/dgaida/biketour_planner?label=version)](https://github.com/dgaida/biketour_planner/tags)
 
 **Bike Tour Planner** is a Python-based toolchain for planning long-distance bike tours by combining:
 
