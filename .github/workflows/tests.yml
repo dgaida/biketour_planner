@@ -96,8 +96,11 @@ jobs:
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
+        env:
+          CODECOV_SLUG: dgaida/biketour_planner
         with:
           files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
+          use_oidc: true
           fail_ci_if_error: false
