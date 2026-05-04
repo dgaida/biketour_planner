@@ -37,30 +37,30 @@ logging:
 
 ## Konfigurations-Optionen
 
-### Verzeichnisse (`directories`)
-- `booking`: Pfad zu den HTML-Buchungsbestätigungen.
-- `gpx`: Pfad zu den ursprünglichen GPX-Tracks.
-- `output`: Pfad für generierte Dateien (PDF, merged GPX).
+### Verzeichnisse (`directories`)  
+- `booking`: Pfad zu den HTML-Buchungsbestätigungen.  
+- `gpx`: Pfad zu den ursprünglichen GPX-Tracks.  
+- `output`: Pfad für generierte Dateien (PDF, merged GPX).  
 
-### Routing (`routing`)
-- `brouter_url`: URL des BRouter-Servers.
-- `max_connection_distance_m`: Maximale Distanz zwischen zwei Tracks, um sie automatisch zu verbinden.
-- `max_chain_length`: Maximale Anzahl an Tracks, die für eine Tagesroute verkettet werden.
-- `start_search_radius_km`: Suchradius um den Startpunkt, um den ersten Track zu finden.
-- `target_search_radius_km`: Suchradius um die Unterkunft, um den Ziel-Track zu finden.
+### Routing (`routing`)  
+- `brouter_url`: URL des BRouter-Servers.  
+- `max_connection_distance_m`: Maximale Distanz zwischen zwei Tracks, um sie automatisch zu verbinden.  
+- `max_chain_length`: Maximale Anzahl an Tracks, die für eine Tagesroute verkettet werden.  
+- `start_search_radius_km`: Suchradius um den Startpunkt, um den ersten Track zu finden.  
+- `target_search_radius_km`: Suchradius um die Unterkunft, um den Ziel-Track zu finden.  
 
-### Pässe (`passes`)
-- `hotel_radius_km`: Suchradius um Hotels für Pässe.
-- `pass_radius_km`: Suchradius um den Pass-Gipfel.
-- `passes_file`: Name der JSON-Datei mit den Pässen im GPX-Verzeichnis.
+### Pässe (`passes`)  
+- `hotel_radius_km`: Suchradius um Hotels für Pässe.  
+- `pass_radius_km`: Suchradius um den Pass-Gipfel.  
+- `passes_file`: Name der JSON-Datei mit den Pässen im GPX-Verzeichnis.  
 
-### Geoapify (`geoapify`)
-- `search_radius_m`: Suchradius für Sehenswürdigkeiten in Metern.
-- `max_pois`: Maximale Anzahl an Sehenswürdigkeiten pro Unterkunft.
+### Geoapify (`geoapify`)  
+- `search_radius_m`: Suchradius für Sehenswürdigkeiten in Metern.  
+- `max_pois`: Maximale Anzahl an Sehenswürdigkeiten pro Unterkunft.  
 
-### Export (`export`)
-- `title`: Titel des PDF-Berichts.
-- `excel_info_file`: Name einer optionalen Excel-Datei mit Zusatzinformationen.
+### Export (`export`)  
+- `title`: Titel des PDF-Berichts.  
+- `excel_info_file`: Name einer optionalen Excel-Datei mit Zusatzinformationen.  
 
 ## Geheimnisse (`secrets.env`)
 

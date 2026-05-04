@@ -63,13 +63,13 @@ python main.py
 
 The planner generates:
 
-* `output/bookings.json` – Structured booking & tour metadata
-* `output/gpx_modified/` – Extended GPX files (one per day)
-* `output/Reiseplanung_*.pdf` – Professional PDF report with:
-  * Daily itinerary table
-  * Elevation profiles for routes and passes
-  * Clickable links to tourist sights
-  * Summary statistics
+* `output/bookings.json` – Structured booking & tour metadata  
+* `output/gpx_modified/` – Extended GPX files (one per day)  
+* `output/Reiseplanung_*.pdf` – Professional PDF report with:  
+  * Daily itinerary table  
+  * Elevation profiles for routes and passes  
+  * Clickable links to tourist sights  
+  * Summary statistics  
 
 ---
 
@@ -142,31 +142,31 @@ export_bookings_to_pdf(
 
 For each accommodation/day, the planner records:
 
-* **Accommodation Details:**
-  * Name, address, phone
-  * Arrival/departure dates
-  * Check-in time
-  * Amenities (kitchen, washing machine, breakfast)
-  * Cancellation deadline
-  * Total price
-  * GPS coordinates
+* **Accommodation Details:**  
+  * Name, address, phone  
+  * Arrival/departure dates  
+  * Check-in time  
+  * Amenities (kitchen, washing machine, breakfast)  
+  * Cancellation deadline  
+  * Total price  
+  * GPS coordinates  
 
-* **Route Information:**
-  * List of GPX files used
-  * Total distance (km)
-  * Total ascent and descent (m)
-  * Maximum elevation (m)
-  * Final merged GPX file name
+* **Route Information:**  
+  * List of GPX files used  
+  * Total distance (km)  
+  * Total ascent and descent (m)  
+  * Maximum elevation (m)  
+  * Final merged GPX file name  
 
-* **Mountain Passes:**
-  * Pass name and coordinates
-  * Distance to pass
-  * Elevation gain to summit
-  * Associated GPX track
+* **Mountain Passes:**  
+  * Pass name and coordinates  
+  * Distance to pass  
+  * Elevation gain to summit  
+  * Associated GPX track  
 
-* **Tourist Attractions:**
-  * Names and coordinates
-  * Google Maps links
+* **Tourist Attractions:**  
+  * Names and coordinates  
+  * Google Maps links  
 
 ---
 
@@ -176,33 +176,33 @@ For each accommodation/day, the planner records:
 
 The planner uses a sophisticated algorithm to connect multiple GPX tracks:
 
-1. **Target Side Determination**: Identifies which end of the destination track is closer to the start
-2. **Start Point Optimization**: Navigates to the relevant side of the destination, not just the nearest point
-3. **Automatic Direction Detection**: Determines whether to traverse tracks forward or backward
-4. **Multi-Day Continuity**: Seamlessly continues routes from previous days
+1. **Target Side Determination**: Identifies which end of the destination track is closer to the start  
+2. **Start Point Optimization**: Navigates to the relevant side of the destination, not just the nearest point  
+3. **Automatic Direction Detection**: Determines whether to traverse tracks forward or backward  
+4. **Multi-Day Continuity**: Seamlessly continues routes from previous days  
 
 ### Elevation Calculation Methods
 
 Three elevation calculation methods are available:
 
-1. **Simple with Threshold** (`calculate_elevation_gain_simple`):
-   - Fast, ignores GPS noise under threshold
+1. **Simple with Threshold** (`calculate_elevation_gain_simple`):  
+   - Fast, ignores GPS noise under threshold  
 
-2. **Smoothed** (`calculate_elevation_gain_smoothed`):
-   - Moving average smoothing + threshold
-   - Recommended for most use cases
+2. **Smoothed** (`calculate_elevation_gain_smoothed`):  
+   - Moving average smoothing + threshold  
+   - Recommended for most use cases  
 
-3. **Segment-Based** (`calculate_elevation_gain_segment_based`):
-   - Most accurate, identifies continuous climbs/descents
-   - Used by default in the planner
+3. **Segment-Based** (`calculate_elevation_gain_segment_based`):  
+   - Most accurate, identifies continuous climbs/descents  
+   - Used by default in the planner  
 
 ### Color-Coded Cancellation Deadlines
 
 In PDF reports, cancellation dates are color-coded:
 
-* 🟢 **Green**: < 7 days before arrival (flexible)
-* ⚫ **Black**: 7-30 days before arrival (moderate)
-* 🔴 **Red**: > 30 days before arrival (inflexible)
+* 🟢 **Green**: < 7 days before arrival (flexible)  
+* ⚫ **Black**: 7-30 days before arrival (moderate)  
+* 🔴 **Red**: > 30 days before arrival (inflexible)  
 
 ### Configuration Parameters
 

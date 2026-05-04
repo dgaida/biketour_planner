@@ -12,14 +12,15 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/dgaida/biketour_planner/graphs/commit-activity)
 ![Last commit](https://img.shields.io/github/last-commit/dgaida/biketour_planner)
 [![Version](https://img.shields.io/github/v/tag/dgaida/biketour_planner?label=version)](https://github.com/dgaida/biketour_planner/tags)
+[![codecov](https://codecov.io/gh/dgaida/biketour_planner/branch/main/graph/badge.svg)](https://codecov.io/gh/dgaida/biketour_planner)
 
 **Bike Tour Planner** is a Python-based toolchain for planning long-distance bike tours by combining:
 
-* real accommodation data (Booking.com & Airbnb HTML confirmations),
-* existing GPX tracks of your planned or ridden tour,
-* **offline bike routing** with **BRouter**,
-* tourist attraction discovery via Geoapify API,
-* and automatic mountain pass detection.
+* real accommodation data (Booking.com & Airbnb HTML confirmations),  
+* existing GPX tracks of your planned or ridden tour,  
+* **offline bike routing** with **BRouter**,  
+* tourist attraction discovery via Geoapify API,  
+* and automatic mountain pass detection.  
 
 The main goal is to **automatically extend and connect GPX routes** so they lead precisely to the booked accommodations, while collecting useful tour statistics like distance, elevation gain, and highest point. The planner generates professional PDF reports with elevation profiles, clickable maps, and comprehensive tour information.
 
@@ -27,11 +28,11 @@ The main goal is to **automatically extend and connect GPX routes** so they lead
 
 Full documentation is available at [https://dgaida.github.io/biketour_planner/](https://dgaida.github.io/biketour_planner/)
 
-* [Installation Guide](https://dgaida.github.io/biketour_planner/latest/installation/)
-* [Getting Started](https://dgaida.github.io/biketour_planner/latest/getting-started/)
-* [Usage & Examples](https://dgaida.github.io/biketour_planner/latest/usage/)
-* [Configuration](https://dgaida.github.io/biketour_planner/latest/configuration/)
-* [API Reference](https://dgaida.github.io/biketour_planner/latest/api/)
+* [Installation Guide](https://dgaida.github.io/biketour_planner/latest/installation/)  
+* [Getting Started](https://dgaida.github.io/biketour_planner/latest/getting-started/)  
+* [Usage & Examples](https://dgaida.github.io/biketour_planner/latest/usage/)  
+* [Configuration](https://dgaida.github.io/biketour_planner/latest/configuration/)  
+* [API Reference](https://dgaida.github.io/biketour_planner/latest/api/)  
 
 ## 🚀 Quick Start
 
@@ -49,13 +50,13 @@ python main.py
 
 ## 🏔️ Main Features
 
-* 📄 **Parsing of Booking.com & Airbnb confirmations (HTML)**
-* 🌍 **Intelligent Geocoding**
-* 🗺️ **Advanced GPX Route Management**
-* 🚴 **Offline Bike Routing with BRouter**
-* 🏔️ **Mountain Pass Integration**
-* 🎯 **Tourist Sight Discovery**
-* 📊 **Professional PDF & Excel Exports**
+* 📄 **Parsing of Booking.com & Airbnb confirmations (HTML)**  
+* 🌍 **Intelligent Geocoding**  
+* 🗺️ **Advanced GPX Route Management**  
+* 🚴 **Offline Bike Routing with BRouter**  
+* 🏔️ **Mountain Pass Integration**  
+* 🎯 **Tourist Sight Discovery**  
+* 📊 **Professional PDF & Excel Exports**  
 
 ## 📁 Project Structure
 
@@ -100,20 +101,20 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our
 
 Planned features:
 
-- [ ] Web UI for easier configuration
-- [ ] Support for more booking platforms (hotels.com, etc.)
-- [ ] Interactive map visualization
-- [ ] Weather forecast integration
-- [ ] Bike shop finder along the route
-- [ ] Automatic backup/sync to cloud storage
-- [ ] Mobile app for on-tour navigation
+- [ ] Web UI for easier configuration  
+- [ ] Support for more booking platforms (hotels.com, etc.)  
+- [ ] Interactive map visualization  
+- [ ] Weather forecast integration  
+- [ ] Bike shop finder along the route  
+- [ ] Automatic backup/sync to cloud storage  
+- [ ] Mobile app for on-tour navigation  
 
 ## 🙏 Acknowledgements
 
-* **BRouter** – Offline routing engine ([https://github.com/abrensch/brouter](https://github.com/abrensch/brouter))
-* **OpenStreetMap contributors** – Underlying map data
-* **Geoapify** – Places API for tourist attractions
-* **Booking.com & Airbnb** – Data source for accommodation confirmations
+* **BRouter** – Offline routing engine ([https://github.com/abrensch/brouter](https://github.com/abrensch/brouter))  
+* **OpenStreetMap contributors** – Underlying map data  
+* **Geoapify** – Places API for tourist attractions  
+* **Booking.com & Airbnb** – Data source for accommodation confirmations  
 
 ## 📜 License
 

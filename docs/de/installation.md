@@ -34,9 +34,9 @@ Python **3.9 oder neuer** ist erforderlich.
 
 Um die Geoapify-Integration für die Suche nach Touristenattraktionen zu nutzen:
 
-1. Erstellen Sie ein kostenloses Konto unter [https://www.geoapify.com](https://www.geoapify.com)
-2. Holen Sie sich Ihren API-Schlüssel (kostenloses Kontingent: 3.000 Anfragen/Tag)
-3. Erstellen Sie eine `secrets.env`-Datei im Projektstamm:
+1. Erstellen Sie ein kostenloses Konto unter [https://www.geoapify.com](https://www.geoapify.com)  
+2. Holen Sie sich Ihren API-Schlüssel (kostenloses Kontingent: 3.000 Anfragen/Tag)  
+3. Erstellen Sie eine `secrets.env`-Datei im Projektstamm:  
 
 ```bash
 GEOAPIFY_API_KEY=ihr_api_schlüssel_hier

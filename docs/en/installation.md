@@ -34,9 +34,9 @@ Python **3.9 or newer** is required.
 
 To use the Geoapify integration for finding tourist attractions:
 
-1. Create a free account at [https://www.geoapify.com](https://www.geoapify.com)
-2. Get your API key (free tier: 3,000 requests/day)
-3. Create a `secrets.env` file in the project root:
+1. Create a free account at [https://www.geoapify.com](https://www.geoapify.com)  
+2. Get your API key (free tier: 3,000 requests/day)  
+3. Create a `secrets.env` file in the project root:  
 
 ```bash
 GEOAPIFY_API_KEY=your_api_key_here

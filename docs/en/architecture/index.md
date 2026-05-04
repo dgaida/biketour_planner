@@ -65,8 +65,8 @@ stateDiagram-v2
 
 ## Key Abstractions
 
-- **Booking**: Pydantic model representing an accommodation with dates, location, and amenities.
-- **RoutePosition**: Dataclass representing a point in a GPX track (file and index).
-- **RouteStatistics**: Dataclass for accumulating distance and elevation data.
-- **RouteContext**: Dataclass for managing state during route discovery.
-- **Pass**: Mountain pass with associated track data.
+- **Booking**: Pydantic model representing an accommodation with dates, location, and amenities.  
+- **RoutePosition**: Dataclass representing a point in a GPX track (file and index).  
+- **RouteStatistics**: Dataclass for accumulating distance and elevation data.  
+- **RouteContext**: Dataclass for managing state during route discovery.  
+- **Pass**: Mountain pass with associated track data.  

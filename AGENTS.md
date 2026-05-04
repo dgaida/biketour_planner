@@ -84,12 +84,12 @@ ruff check .
 mypy src --ignore-missing-imports --no-strict-optional
 ```
 
-Key conventions:
-- Line length: **127 characters**
-- **Google-style docstrings** on all public classes and methods (Args, Returns, Raises, Example)
-- Type annotations on all function signatures
-- No `from __future__ import annotations` unless already present in the file
-- Imports sorted with `isort` (profile: `black`)
+Key conventions:  
+- Line length: **127 characters**  
+- **Google-style docstrings** on all public classes and methods (Args, Returns, Raises, Example)  
+- Type annotations on all function signatures  
+- No `from __future__ import annotations` unless already present in the file  
+- Imports sorted with `isort` (profile: `black`)  
 
 ---
 
@@ -126,48 +126,48 @@ src/biketour_planner/
 
 ## Architecture Notes
 
-- **Configuration** is always accessed via `get_config()` (singleton). Never hardcode paths or parameters; read from the `Config` object.
-- **Logging** is always via `get_logger()`. Never use `print()` for debug/info output in library code (only `main.py` uses `print()` for user-facing messages).
-- **Caching**: geocoding and Geoapify results are cached to `output/geocode_cache.json` and `output/geoapify_cache.json` via the `@json_cache` decorator.
-- **External services**: BRouter must be running locally (default: `http://localhost:17777`). Tests mock all external HTTP calls with `unittest.mock.patch`.
-- **GPX processing**: `GPXRouteManager` preprocesses all GPX files into an in-memory index on init. Never re-read files inside hot loops.
-- **Booking data** flows as plain Python dicts (not Pydantic models) through most of the pipeline, for JSON serialisability. The `Booking` Pydantic model exists for validation only.
+- **Configuration** is always accessed via `get_config()` (singleton). Never hardcode paths or parameters; read from the `Config` object.  
+- **Logging** is always via `get_logger()`. Never use `print()` for debug/info output in library code (only `main.py` uses `print()` for user-facing messages).  
+- **Caching**: geocoding and Geoapify results are cached to `output/geocode_cache.json` and `output/geoapify_cache.json` via the `@json_cache` decorator.  
+- **External services**: BRouter must be running locally (default: `http://localhost:17777`). Tests mock all external HTTP calls with `unittest.mock.patch`.  
+- **GPX processing**: `GPXRouteManager` preprocesses all GPX files into an in-memory index on init. Never re-read files inside hot loops.  
+- **Booking data** flows as plain Python dicts (not Pydantic models) through most of the pipeline, for JSON serialisability. The `Booking` Pydantic model exists for validation only.  
 
 ---
 
 ## Adding New Features
 
-- Place new source files in `src/biketour_planner/`.
-- Add corresponding test files in `tests/test_<module>.py`.
-- Update `docs/de/api/index.md` and `docs/en/api/index.md` with `:::` autodoc entries.
-- Export public symbols from `__init__.py` if they form part of the public API.
-- Keep docstring coverage above 95% (`interrogate src/biketour_planner`).
+- Place new source files in `src/biketour_planner/`.  
+- Add corresponding test files in `tests/test_<module>.py`.  
+- Update `docs/de/api/index.md` and `docs/en/api/index.md` with `:::` autodoc entries.  
+- Export public symbols from `__init__.py` if they form part of the public API.  
+- Keep docstring coverage above 95% (`interrogate src/biketour_planner`).  
 
 ---
 
 ## Testing Instructions
 
-- Tests live in `tests/`. Unit tests cover individual modules; integration/E2E tests are marked with `@pytest.mark.integration`.
-- Mock **all** external services (BRouter, Geoapify, Nominatim). Never make real network calls in tests.
-- Use `tmp_path` (pytest fixture) for temporary files; never write to the project directory.
-- When patching module-level globals (e.g., `_geoapify_cache`), always reset them in the test to avoid state leaking between tests.
-- The `output/` directory is listed in `.gitignore` and is created at runtime; never commit files from it.
+- Tests live in `tests/`. Unit tests cover individual modules; integration/E2E tests are marked with `@pytest.mark.integration`.  
+- Mock **all** external services (BRouter, Geoapify, Nominatim). Never make real network calls in tests.  
+- Use `tmp_path` (pytest fixture) for temporary files; never write to the project directory.  
+- When patching module-level globals (e.g., `_geoapify_cache`), always reset them in the test to avoid state leaking between tests.  
+- The `output/` directory is listed in `.gitignore` and is created at runtime; never commit files from it.  
 
 ---
 
 ## PR / Commit Guidelines
 
-- Follow **Conventional Commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.
-- Run `black --check .`, `ruff check .`, and `pytest` before pushing.
-- Do not commit `secrets.env`, `.env`, or any file under `output/`.
-- For a full multi-platform test matrix, include `[full-test]` or `[full ci]` in the commit message.
+- Follow **Conventional Commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.  
+- Run `black --check .`, `ruff check .`, and `pytest` before pushing.  
+- Do not commit `secrets.env`, `.env`, or any file under `output/`.  
+- For a full multi-platform test matrix, include `[full-test]` or `[full ci]` in the commit message.  
 
 ---
 
 ## Known Gotchas
 
-- `elevation_profiles.py` uses `matplotlib` with the `Agg` backend (no GUI). Always call `matplotlib.use("Agg")` before importing pyplot, or use `matplotlib.figure.Figure` directly (as the code already does).
-- `pdf_export.py` tries to register DejaVu fonts; it falls back to Helvetica silently if they are missing. Do not break this fallback chain.
-- `brouter.py` calls BRouter with `format=geojson` for `get_route2address_with_stats` (surface statistics) and `format=gpx` for plain routing. Keep these separate.
-- The `json_cache` decorator checks for `"non_existent.json"` in the path string as a heuristic to skip disk writes during tests. Always pass `Path("non_existent.json")` as `GEOAPIFY_CACHE_FILE` / `GEOCODE_CACHE_FILE` when patching in tests.
-- `GPXRouteManager` uses `ThreadPoolExecutor` internally for preprocessing. Tests that create a `GPXRouteManager` with real GPX files on `tmp_path` are safe; tests that mock `read_gpx_file` inside the executor need `patch` to be active before the manager is instantiated.
+- `elevation_profiles.py` uses `matplotlib` with the `Agg` backend (no GUI). Always call `matplotlib.use("Agg")` before importing pyplot, or use `matplotlib.figure.Figure` directly (as the code already does).  
+- `pdf_export.py` tries to register DejaVu fonts; it falls back to Helvetica silently if they are missing. Do not break this fallback chain.  
+- `brouter.py` calls BRouter with `format=geojson` for `get_route2address_with_stats` (surface statistics) and `format=gpx` for plain routing. Keep these separate.  
+- The `json_cache` decorator checks for `"non_existent.json"` in the path string as a heuristic to skip disk writes during tests. Always pass `Path("non_existent.json")` as `GEOAPIFY_CACHE_FILE` / `GEOCODE_CACHE_FILE` when patching in tests.  
+- `GPXRouteManager` uses `ThreadPoolExecutor` internally for preprocessing. Tests that create a `GPXRouteManager` with real GPX files on `tmp_path` are safe; tests that mock `read_gpx_file` inside the executor need `patch` to be active before the manager is instantiated.  

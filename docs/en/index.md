@@ -11,11 +11,11 @@
 
 **Bike Tour Planner** is a Python-based toolchain for planning long-distance bike tours by combining:
 
-* real-world accommodation data (Booking.com & Airbnb HTML confirmations),
-* existing GPX tracks of your planned or ridden tour,
-* **offline bicycle routing** using **BRouter**,
-* tourist attractions discovery via Geoapify API,
-* and automated mountain pass detection.
+* real-world accommodation data (Booking.com & Airbnb HTML confirmations),  
+* existing GPX tracks of your planned or ridden tour,  
+* **offline bicycle routing** using **BRouter**,  
+* tourist attractions discovery via Geoapify API,  
+* and automated mountain pass detection.  
 
 The main goal is to **automatically extend and connect GPX routes** so that they lead precisely to booked accommodations, while also collecting useful tour statistics such as distance, elevation gain, and highest point. The planner generates professional PDF reports with elevation profiles, clickable maps, and comprehensive tour information.
 
@@ -23,13 +23,13 @@ The main goal is to **automatically extend and connect GPX routes** so that they
 
 ## Key Features
 
-* 📄 **Parse Booking.com & Airbnb confirmations (HTML)**
-* 🌍 **Smart Geocoding**
-* 🗺️ **Advanced GPX Route Management**
-* 🚴 **Offline Bicycle Routing with BRouter**
-* 🏔️ **Mountain Pass Integration**
-* 🎯 **Tourist Sights Discovery**
-* 📊 **Professional Export Options**
+* 📄 **Parse Booking.com & Airbnb confirmations (HTML)**  
+* 🌍 **Smart Geocoding**  
+* 🗺️ **Advanced GPX Route Management**  
+* 🚴 **Offline Bicycle Routing with BRouter**  
+* 🏔️ **Mountain Pass Integration**  
+* 🎯 **Tourist Sights Discovery**  
+* 📊 **Professional Export Options**  
 
 ---
 
@@ -63,10 +63,10 @@ python main.py
 
 ## Documentation
 
-- [Architecture](architecture/index.md)
-- [API Reference](api/index.md)
-- [Testing](development/testing.md)
-- [Troubleshooting](troubleshooting.md)
+- [Architecture](architecture/index.md)  
+- [API Reference](api/index.md)  
+- [Testing](development/testing.md)  
+- [Troubleshooting](troubleshooting.md)  
 
 ---
 

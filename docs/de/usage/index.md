@@ -63,13 +63,13 @@ python main.py
 
 Der Planer generiert:
 
-* `output/bookings.json` – Strukturierte Buchungs- & Tourmetadaten
-* `output/gpx_modified/` – Erweiterte GPX-Dateien (eine pro Tag)
-* `output/Reiseplanung_*.pdf` – Professioneller PDF-Bericht mit:
-  * Täglicher Reiseplan-Tabelle
-  * Höhenprofilen für Routen und Pässe
-  * Anklickbaren Links zu Sehenswürdigkeiten
-  * Zusammenfassenden Statistiken
+* `output/bookings.json` – Strukturierte Buchungs- & Tourmetadaten  
+* `output/gpx_modified/` – Erweiterte GPX-Dateien (eine pro Tag)  
+* `output/Reiseplanung_*.pdf` – Professioneller PDF-Bericht mit:  
+  * Täglicher Reiseplan-Tabelle  
+  * Höhenprofilen für Routen und Pässe  
+  * Anklickbaren Links zu Sehenswürdigkeiten  
+  * Zusammenfassenden Statistiken  
 
 ---
 
@@ -142,31 +142,31 @@ export_bookings_to_pdf(
 
 Für jede Unterkunft/jeden Tag zeichnet der Planer folgendes auf:
 
-* **Unterkunftsdetails:**
-  * Name, Adresse, Telefon
-  * Ankunfts-/Abreisedaten
-  * Check-in-Zeit
-  * Ausstattung (Küche, Waschmaschine, Frühstück)
-  * Stornierungsfrist
-  * Gesamtpreis
-  * GPS-Koordinaten
+* **Unterkunftsdetails:**  
+  * Name, Adresse, Telefon  
+  * Ankunfts-/Abreisedaten  
+  * Check-in-Zeit  
+  * Ausstattung (Küche, Waschmaschine, Frühstück)  
+  * Stornierungsfrist  
+  * Gesamtpreis  
+  * GPS-Koordinaten  
 
-* **Routeninformationen:**
-  * Liste der verwendeten GPX-Dateien
-  * Gesamtstrecke (km)
-  * Gesamtaufstieg und -abstieg (m)
-  * Maximale Höhe (m)
-  * Dateiname der finalen zusammengeführten GPX-Datei
+* **Routeninformationen:**  
+  * Liste der verwendeten GPX-Dateien  
+  * Gesamtstrecke (km)  
+  * Gesamtaufstieg und -abstieg (m)  
+  * Maximale Höhe (m)  
+  * Dateiname der finalen zusammengeführten GPX-Datei  
 
-* **Gebirgspässe:**
-  * Passname und Koordinaten
-  * Entfernung zum Pass
-  * Höhengewinn bis zum Gipfel
-  * Zugehöriger GPX-Track
+* **Gebirgspässe:**  
+  * Passname und Koordinaten  
+  * Entfernung zum Pass  
+  * Höhengewinn bis zum Gipfel  
+  * Zugehöriger GPX-Track  
 
-* **Sehenswürdigkeiten:**
-  * Namen und Koordinaten
-  * Google Maps Links
+* **Sehenswürdigkeiten:**  
+  * Namen und Koordinaten  
+  * Google Maps Links  
 
 ---
 
@@ -176,33 +176,33 @@ Für jede Unterkunft/jeden Tag zeichnet der Planer folgendes auf:
 
 Der Planer verwendet einen ausgeklügelten Algorithmus, um mehrere GPX-Tracks zu verbinden:
 
-1. **Bestimmung der Zielseite**: Identifiziert, welches Ende des Ziel-Tracks näher am Start liegt.
-2. **Startpunkt-Optimierung**: Navigiert zur relevanten Seite des Ziels, nicht nur zum nächstgelegenen Punkt.
-3. **Automatische Richtungserkennung**: Bestimmt, ob Tracks vorwärts oder rückwärts durchfahren werden sollen.
-4. **Mehrtägige Kontinuität**: Setzt Routen von den Vortagen nahtlos fort.
+1. **Bestimmung der Zielseite**: Identifiziert, welches Ende des Ziel-Tracks näher am Start liegt.  
+2. **Startpunkt-Optimierung**: Navigiert zur relevanten Seite des Ziels, nicht nur zum nächstgelegenen Punkt.  
+3. **Automatische Richtungserkennung**: Bestimmt, ob Tracks vorwärts oder rückwärts durchfahren werden sollen.  
+4. **Mehrtägige Kontinuität**: Setzt Routen von den Vortagen nahtlos fort.  
 
 ### Methoden zur Höhenberechnung
 
 Drei Methoden zur Höhenberechnung stehen zur Verfügung:
 
-1. **Einfach mit Schwellenwert** (`calculate_elevation_gain_simple`):
-   - Schnell, ignoriert GPS-Rauschen unterhalb eines Schwellenwerts.
+1. **Einfach mit Schwellenwert** (`calculate_elevation_gain_simple`):  
+   - Schnell, ignoriert GPS-Rauschen unterhalb eines Schwellenwerts.  
 
-2. **Geglättet** (`calculate_elevation_gain_smoothed`):
-   - Gleitender Mittelwert + Schwellenwert.
-   - Empfohlen für die meisten Anwendungsfälle.
+2. **Geglättet** (`calculate_elevation_gain_smoothed`):  
+   - Gleitender Mittelwert + Schwellenwert.  
+   - Empfohlen für die meisten Anwendungsfälle.  
 
-3. **Segmentbasiert** (`calculate_elevation_gain_segment_based`):
-   - Am genauesten, identifiziert kontinuierliche Anstiege/Abstiege.
-   - Standardmäßig im Planer verwendet.
+3. **Segmentbasiert** (`calculate_elevation_gain_segment_based`):  
+   - Am genauesten, identifiziert kontinuierliche Anstiege/Abstiege.  
+   - Standardmäßig im Planer verwendet.  
 
 ### Farbcodierte Stornierungsfristen
 
 In PDF-Berichten sind Stornierungsdaten farblich gekennzeichnet:
 
-* 🟢 **Grün**: < 7 Tage vor Ankunft (flexibel)
-* ⚫ **Schwarz**: 7-30 Tage vor Ankunft (moderat)
-* 🔴 **Rot**: > 30 Tage vor Ankunft (unflexibel)
+* 🟢 **Grün**: < 7 Tage vor Ankunft (flexibel)  
+* ⚫ **Schwarz**: 7-30 Tage vor Ankunft (moderat)  
+* 🔴 **Rot**: > 30 Tage vor Ankunft (unflexibel)  
 
 ### Konfigurationsparameter
 

@@ -46,8 +46,8 @@ open my_tour/output/Reiseplanung_*.pdf
 
 ## 🎯 Nächste Schritte
 
-- **Pässe hinzufügen**: Erstellen Sie `my_tour/gpx/Paesse.json` mit Pass-Namen.
-- **Sehenswürdigkeiten**: Fügen Sie `GEOAPIFY_API_KEY` zu `secrets.env` hinzu.
-- **Zusatzinfos**: Erstellen Sie `my_tour/booking/Reiseplanung_Fahrrad.xlsx`.
+- **Pässe hinzufügen**: Erstellen Sie `my_tour/gpx/Paesse.json` mit Pass-Namen.  
+- **Sehenswürdigkeiten**: Fügen Sie `GEOAPIFY_API_KEY` zu `secrets.env` hinzu.  
+- **Zusatzinfos**: Erstellen Sie `my_tour/booking/Reiseplanung_Fahrrad.xlsx`.  
 
 Siehe [Workflow-Dokumentation](index.md#typischer-workflow) für Details.

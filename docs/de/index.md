@@ -11,11 +11,11 @@
 
 **Bike Tour Planner** ist eine Python-basierte Toolchain zur Planung von Langstrecken-Radtouren durch die Kombination von:
 
-* realen Unterkunftsdaten (Booking.com & Airbnb HTML-Bestätigungen),
-* existierenden GPX-Tracks Ihrer geplanten oder gefahrenen Tour,
-* **Offline-Fahrrad-Routing** mit **BRouter**,
-* Entdeckung von Touristenattraktionen über die Geoapify-API,
-* und automatischer Passerkennung.
+* realen Unterkunftsdaten (Booking.com & Airbnb HTML-Bestätigungen),  
+* existierenden GPX-Tracks Ihrer geplanten oder gefahrenen Tour,  
+* **Offline-Fahrrad-Routing** mit **BRouter**,  
+* Entdeckung von Touristenattraktionen über die Geoapify-API,  
+* und automatischer Passerkennung.  
 
 Das Hauptziel besteht darin, **GPX-Routen automatisch zu erweitern und zu verbinden**, sodass sie präzise zu den gebuchten Unterkünften führen, während gleichzeitig nützliche Tourstatistiken wie Distanz, Höhengewinn und höchster Punkt gesammelt werden. Der Planer generiert professionelle PDF-Berichte mit Höhenprofilen, anklickbaren Karten und umfassenden Tourinformationen.
 
@@ -23,13 +23,13 @@ Das Hauptziel besteht darin, **GPX-Routen automatisch zu erweitern und zu verbin
 
 ## Hauptmerkmale
 
-* 📄 **Parsing von Booking.com & Airbnb Bestätigungen (HTML)**
-* 🌍 **Intelligente Geokodierung**
-* 🗺️ **Erweitertes GPX-Routenmanagement**
-* 🚴 **Offline-Fahrrad-Routing mit BRouter**
-* 🏔️ **Integration von Gebirgspässen**
-* 🎯 **Entdeckung von Sehenswürdigkeiten**
-* 📊 **Professionelle Exportoptionen**
+* 📄 **Parsing von Booking.com & Airbnb Bestätigungen (HTML)**  
+* 🌍 **Intelligente Geokodierung**  
+* 🗺️ **Erweitertes GPX-Routenmanagement**  
+* 🚴 **Offline-Fahrrad-Routing mit BRouter**  
+* 🏔️ **Integration von Gebirgspässen**  
+* 🎯 **Entdeckung von Sehenswürdigkeiten**  
+* 📊 **Professionelle Exportoptionen**  
 
 ---
 
@@ -63,10 +63,10 @@ python main.py
 
 ## Dokumentation
 
-- [Architektur](architecture/index.md)
-- [API-Referenz](api/index.md)
-- [Tests](development/testing.md)
-- [Fehlerbehebung](troubleshooting.md)
+- [Architektur](architecture/index.md)  
+- [API-Referenz](api/index.md)  
+- [Tests](development/testing.md)  
+- [Fehlerbehebung](troubleshooting.md)  
 
 ---
 

@@ -65,8 +65,8 @@ stateDiagram-v2
 
 ## Kernabstraktionen
 
-- **Booking**: Pydantic-Modell, das eine Unterkunft mit Daten, Ort und Ausstattung darstellt.
-- **RoutePosition**: Dataklasse, die einen Punkt in einem GPX-Track darstellt (Datei und Index).
-- **RouteStatistics**: Dataklasse zur Akkumulation von Distanz- und Höhendaten.
-- **RouteContext**: Dataklasse zur Verwaltung des Zustands während der Routensuche.
-- **Pass**: Gebirgspass mit zugehörigen Track-Daten.
+- **Booking**: Pydantic-Modell, das eine Unterkunft mit Daten, Ort und Ausstattung darstellt.  
+- **RoutePosition**: Dataklasse, die einen Punkt in einem GPX-Track darstellt (Datei und Index).  
+- **RouteStatistics**: Dataklasse zur Akkumulation von Distanz- und Höhendaten.  
+- **RouteContext**: Dataklasse zur Verwaltung des Zustands während der Routensuche.  
+- **Pass**: Gebirgspass mit zugehörigen Track-Daten.  

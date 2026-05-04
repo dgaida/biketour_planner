@@ -13,8 +13,8 @@ pytest
 
 ## Test-Struktur
 
-- `tests/unit/`: Unit-Tests für einzelne Module.
-- `tests/integration/`: Integrationstests, die das Zusammenspiel mehrerer Komponenten prüfen.
+- `tests/unit/`: Unit-Tests für einzelne Module.  
+- `tests/integration/`: Integrationstests, die das Zusammenspiel mehrerer Komponenten prüfen.  
 
 ## Abdeckung (Coverage)
 

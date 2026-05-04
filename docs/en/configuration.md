@@ -37,30 +37,30 @@ logging:
 
 ## Configuration Options
 
-### Directories (`directories`)
-- `booking`: Path to HTML booking confirmations.
-- `gpx`: Path to original GPX tracks.
-- `output`: Path for generated files (PDF, merged GPX).
+### Directories (`directories`)  
+- `booking`: Path to HTML booking confirmations.  
+- `gpx`: Path to original GPX tracks.  
+- `output`: Path for generated files (PDF, merged GPX).  
 
-### Routing (`routing`)
-- `brouter_url`: URL of the BRouter server.
-- `max_connection_distance_m`: Maximum distance between two tracks for automatic chaining.
-- `max_chain_length`: Maximum number of tracks to chain for a daily route.
-- `start_search_radius_km`: Search radius around the starting point to find the first track.
-- `target_search_radius_km`: Search radius around the accommodation to find the target track.
+### Routing (`routing`)  
+- `brouter_url`: URL of the BRouter server.  
+- `max_connection_distance_m`: Maximum distance between two tracks for automatic chaining.  
+- `max_chain_length`: Maximum number of tracks to chain for a daily route.  
+- `start_search_radius_km`: Search radius around the starting point to find the first track.  
+- `target_search_radius_km`: Search radius around the accommodation to find the target track.  
 
-### Mountain Passes (`passes`)
-- `hotel_radius_km`: Search radius around hotels for passes.
-- `pass_radius_km`: Search radius around the pass summit.
-- `passes_file`: Name of the JSON file containing passes in the GPX directory.
+### Mountain Passes (`passes`)  
+- `hotel_radius_km`: Search radius around hotels for passes.  
+- `pass_radius_km`: Search radius around the pass summit.  
+- `passes_file`: Name of the JSON file containing passes in the GPX directory.  
 
-### Geoapify (`geoapify`)
-- `search_radius_m`: Search radius for tourist attractions in meters.
-- `max_pois`: Maximum number of attractions per accommodation.
+### Geoapify (`geoapify`)  
+- `search_radius_m`: Search radius for tourist attractions in meters.  
+- `max_pois`: Maximum number of attractions per accommodation.  
 
-### Export (`export`)
-- `title`: Title of the PDF report.
-- `excel_info_file`: Name of an optional Excel file with additional trip info.
+### Export (`export`)  
+- `title`: Title of the PDF report.  
+- `excel_info_file`: Name of an optional Excel file with additional trip info.  
 
 ## Secrets (`secrets.env`)
 

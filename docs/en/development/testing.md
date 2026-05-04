@@ -13,8 +13,8 @@ pytest
 
 ## Test Structure
 
-- `tests/unit/`: Unit tests for individual modules.
-- `tests/integration/`: Integration tests checking the interaction between components.
+- `tests/unit/`: Unit tests for individual modules.  
+- `tests/integration/`: Integration tests checking the interaction between components.  
 
 ## Coverage
 
